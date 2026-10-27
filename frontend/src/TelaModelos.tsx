@@ -35,6 +35,8 @@ const PLACAS: [string, number][] = [
   ['AMD Radeon RX 9070 XT', 16], ['AMD Radeon RX 7900 XTX', 24], ['AMD Radeon RX 7900 XT', 20],
   ['AMD Radeon RX 7800 XT', 16], ['AMD Radeon RX 7600', 8],
 ]
+// O catalogo usa tipos em portugues ("imagem"); a tela e em ingles.
+const TIPOS: Record<string, string> = { imagem: 'image', musica: 'music', voz: 'voice', audio: 'audio' }
 const OUTRA = '__outra__'
 const OPCOES_VRAM = [4, 6, 8, 10, 11, 12, 16, 20, 24, 32, 40, 48, 80, 96]
 const OPCOES_RAM = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256]
@@ -294,32 +296,10 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
                   </h3>
                   <p className="mq-sub">{p.descricao}</p>
                 </div>
-                <div className="mq-acao">
-                  {baixando ? (
-                    <button className="mq-botao-sec" onClick={() => apiPacotes.cancelar()}>Cancel</button>
-                  ) : pronto && aBaixar === 0 ? (
-                    <span className="mq-pronto">✓ Installed</span>
-                  ) : (
-                    <button className="mq-botao" disabled={!!prog?.ativo || !!nos?.ativo || bloqueado}
-                      title={bloqueado ? avaliacao.motivo : undefined} onClick={() => instalar(p)}>
-                      ⤓ Download {aBaixar > 0 ? `(${gb(aBaixar)})` : 'nodes'}
-                    </button>
-                  )}
-                  {!baixando && pronto && (
-                    <button className="mq-remover" disabled={!!prog?.ativo || !!nos?.ativo} onClick={() => remover(p)}>Remove</button>
-                  )}
-                  {temOpcional && !baixando && (
-                    <label className="mq-opc">
-                      <input type="checkbox" checked={!!opcionais[p.id]}
-                        onChange={(e) => setOpcionais({ ...opcionais, [p.id]: e.target.checked })} />
-                      include optional
-                    </label>
-                  )}
-                </div>
               </div>
 
               <div className="mq-etiquetas">
-                <span className="mq-tag forte">{p.tipo.toUpperCase()}</span>
+                <span className="mq-tag forte">{(TIPOS[p.tipo] ?? p.tipo).toUpperCase()}</span>
                 <span className="mq-tag">{gb(essencial)}</span>
                 <span className="mq-tag">{p.requisitos.vram_min}+ GB VRAM</span>
                 <span className="mq-tag">local</span>
@@ -347,30 +327,55 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
                 </p>
               )}
 
-              <details className="mq-componentes">
-                <summary>Required components ({p.arquivos.filter((a) => !a.opcional).length + p.nos.length})</summary>
-                <ul>
-                  {p.arquivos.map((a) => (
-                    <li key={a.pasta + a.subpasta + a.arquivo} data-ok={a.instalado === true}>
-                      <span className="mq-marca">{a.instalado === true ? '✓' : '○'}</span>
-                      <span className="mq-nome">{a.rotulo}{a.opcional ? ' · optional' : ''}</span>
-                      <span className="mq-estado">
-                        {a.encontrado ? <span title={`${a.pasta}/${a.encontrado}`}>Found in your ComfyUI: {a.pasta}/{a.encontrado}</span>
-                          : a.instalado === true ? 'Ready'
-                          : a.sem_origem ? `manual: ${a.pasta}/${a.subpasta ? a.subpasta + '/' : ''}${a.arquivo}`
-                          : <>{gb(a.tamanho)}{a.requer_aceite && <> · <a href={`https://huggingface.co/${a.repo}`} target="_blank" rel="noreferrer">accept license</a></>}</>}
-                      </span>
-                    </li>
-                  ))}
-                  {p.nos.map((n) => (
-                    <li key={'no' + n.nome} data-ok={n.instalado === true}>
-                      <span className="mq-marca">{n.instalado ? '✓' : '○'}</span>
-                      <span className="mq-nome">{n.nome} · ComfyUI node</span>
-                      <span className="mq-estado">{n.instalado ? 'Ready' : 'to install'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
+              {/* Mesma linha em todo cartao: componentes a esquerda, acao a direita. */}
+              <div className="mq-rodape">
+                <details className="mq-componentes">
+                  <summary>Required components ({p.arquivos.filter((a) => !a.opcional).length + p.nos.length})</summary>
+                  <ul>
+                    {p.arquivos.map((a) => (
+                      <li key={a.pasta + a.subpasta + a.arquivo} data-ok={a.instalado === true}>
+                        <span className="mq-marca">{a.instalado === true ? '✓' : '○'}</span>
+                        <span className="mq-nome">{a.rotulo}{a.opcional ? ' · optional' : ''}</span>
+                        <span className="mq-estado">
+                          {a.encontrado ? <span title={`${a.pasta}/${a.encontrado}`}>Found in your ComfyUI: {a.pasta}/{a.encontrado}</span>
+                            : a.instalado === true ? 'Ready'
+                            : a.sem_origem ? `manual: ${a.pasta}/${a.subpasta ? a.subpasta + '/' : ''}${a.arquivo}`
+                            : <>{gb(a.tamanho)}{a.requer_aceite && <> · <a href={`https://huggingface.co/${a.repo}`} target="_blank" rel="noreferrer">accept license</a></>}</>}
+                        </span>
+                      </li>
+                    ))}
+                    {p.nos.map((n) => (
+                      <li key={'no' + n.nome} data-ok={n.instalado === true}>
+                        <span className="mq-marca">{n.instalado ? '✓' : '○'}</span>
+                        <span className="mq-nome">{n.nome} · ComfyUI node</span>
+                        <span className="mq-estado">{n.instalado ? 'Ready' : 'to install'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              <div className="mq-acao">
+                {baixando ? (
+                  <button className="mq-botao-sec" onClick={() => apiPacotes.cancelar()}>Cancel</button>
+                ) : pronto && aBaixar === 0 ? (
+                  <span className="mq-pronto">✓ Installed</span>
+                ) : (
+                  <button className="mq-botao" disabled={!!prog?.ativo || !!nos?.ativo || bloqueado}
+                    title={bloqueado ? avaliacao.motivo : undefined} onClick={() => instalar(p)}>
+                    ⤓ Download {aBaixar > 0 ? `(${gb(aBaixar)})` : 'nodes'}
+                  </button>
+                )}
+                {!baixando && pronto && (
+                  <button className="mq-remover" disabled={!!prog?.ativo || !!nos?.ativo} onClick={() => remover(p)}>Remove</button>
+                )}
+                {temOpcional && !baixando && (
+                  <label className="mq-opc">
+                    <input type="checkbox" checked={!!opcionais[p.id]}
+                      onChange={(e) => setOpcionais({ ...opcionais, [p.id]: e.target.checked })} />
+                    include optional
+                  </label>
+                )}
+              </div>
+              </div>
             </section>
           )
         })}
