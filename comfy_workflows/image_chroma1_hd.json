@@ -1,0 +1,122 @@
+{
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "AE\\ae.safetensors"
+    }
+  },
+  "latente": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "T5\\t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "chroma",
+      "device": "default"
+    }
+  },
+  "clip_t5": {
+    "class_type": "T5TokenizerOptions",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "min_padding": 0,
+      "min_length": 0
+    }
+  },
+  "unet_base": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "Chroma\\Chroma1-HD-fp8mixed.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "unet": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "unet_base",
+        0
+      ],
+      "shift": 1.0
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip_t5",
+        0
+      ],
+      "text": "A detective in a soaked neon alley at night, slow push-in, rain, distant traffic"
+    }
+  },
+  "neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip_t5",
+        0
+      ],
+      "text": "low quality, ugly, unfinished, out of focus, deformed, disfigure, blurry, smudged, restricted palette, flat colors"
+    }
+  },
+  "amostra": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "latent_image": [
+        "latente",
+        0
+      ],
+      "seed": 1,
+      "steps": 26,
+      "cfg": 3.5,
+      "sampler_name": "euler",
+      "scheduler": "beta",
+      "denoise": 1.0
+    }
+  },
+  "decodifica": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "amostra",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "salva": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decodifica",
+        0
+      ],
+      "filename_prefix": "saida"
+    }
+  }
+}

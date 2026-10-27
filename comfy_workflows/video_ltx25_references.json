@@ -1,0 +1,472 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "LTX\\2.5\\ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "Gemma\\gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    }
+  },
+  "vae_v": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "LTX\\2.5\\ltx-2.5-video-vae-bf16.safetensors"
+    }
+  },
+  "upsampler": {
+    "class_type": "LatentUpscaleModelLoader",
+    "inputs": {
+      "model_name": "LTX\\2.5\\ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors"
+    }
+  },
+  "msr_lora": {
+    "class_type": "ComfyUILTX25MSRICLoRALoader",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "lora_name": "LTX\\2.5\\LTX-2.5-Licon-MSR-V1.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "pic1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "ref1.png"
+    }
+  },
+  "pic2": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "ref2.png"
+    }
+  },
+  "fundo": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "background.png"
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "@image1 and @image2 walk together. A detective in a soaked neon alley at night, slow push-in, rain, distant traffic"
+    }
+  },
+  "neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "pc game, console game, video game, cartoon, childish, ugly, deformed, distorted, blurry, low quality, watermark, text"
+    }
+  },
+  "cond": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "frame_rate": 24
+    }
+  },
+  "vae_a": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "LTX\\2.5\\ltx-2.5-audio-vae-bf16.safetensors"
+    }
+  },
+  "vazio": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": 640,
+      "height": 352,
+      "length": 121,
+      "batch_size": 1
+    }
+  },
+  "msr1": {
+    "class_type": "ComfyUILTX25MSRMultiReferenceGuide",
+    "inputs": {
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "vae": [
+        "vae_v",
+        0
+      ],
+      "latent": [
+        "vazio",
+        0
+      ],
+      "strength": 1.0,
+      "reference_frames": "33",
+      "use_tiled_encode": true,
+      "tile_size": 256,
+      "tile_overlap": 64,
+      "msr_parameters": [
+        "msr_lora",
+        1
+      ],
+      "pic1": [
+        "pic1",
+        0
+      ],
+      "pic2": [
+        "pic2",
+        0
+      ],
+      "background": [
+        "fundo",
+        0
+      ]
+    }
+  },
+  "amostrador": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    }
+  },
+  "sig1": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    }
+  },
+  "sig2": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    }
+  },
+  "ruido1": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 1
+    }
+  },
+  "guia1": {
+    "class_type": "LTXVDualCFGGuider",
+    "inputs": {
+      "model": [
+        "msr_lora",
+        0
+      ],
+      "positive": [
+        "msr1",
+        0
+      ],
+      "negative": [
+        "msr1",
+        1
+      ],
+      "video_cfg": 1.0,
+      "audio_cfg": 1.0
+    }
+  },
+  "audio_vazio": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "audio_vae": [
+        "vae_a",
+        0
+      ],
+      "frames_number": 121,
+      "frame_rate": 24,
+      "batch_size": 1
+    }
+  },
+  "junta1": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "msr1",
+        2
+      ],
+      "audio_latent": [
+        "audio_vazio",
+        0
+      ]
+    }
+  },
+  "passo1": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "ruido1",
+        0
+      ],
+      "guider": [
+        "guia1",
+        0
+      ],
+      "sampler": [
+        "amostrador",
+        0
+      ],
+      "sigmas": [
+        "sig1",
+        0
+      ],
+      "latent_image": [
+        "junta1",
+        0
+      ]
+    }
+  },
+  "separa1": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "passo1",
+        0
+      ]
+    }
+  },
+  "corta1": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "msr1",
+        0
+      ],
+      "negative": [
+        "msr1",
+        1
+      ],
+      "latent": [
+        "separa1",
+        0
+      ]
+    }
+  },
+  "sobe": {
+    "class_type": "LTXVLatentUpsampler",
+    "inputs": {
+      "samples": [
+        "corta1",
+        2
+      ],
+      "upscale_model": [
+        "upsampler",
+        0
+      ],
+      "vae": [
+        "vae_v",
+        0
+      ]
+    }
+  },
+  "msr2": {
+    "class_type": "ComfyUILTX25MSRMultiReferenceGuide",
+    "inputs": {
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "vae": [
+        "vae_v",
+        0
+      ],
+      "latent": [
+        "sobe",
+        0
+      ],
+      "strength": 1.0,
+      "reference_frames": "33",
+      "use_tiled_encode": true,
+      "tile_size": 256,
+      "tile_overlap": 64,
+      "msr_parameters": [
+        "msr_lora",
+        1
+      ],
+      "pic1": [
+        "pic1",
+        0
+      ],
+      "pic2": [
+        "pic2",
+        0
+      ],
+      "background": [
+        "fundo",
+        0
+      ]
+    }
+  },
+  "junta2": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "msr2",
+        2
+      ],
+      "audio_latent": [
+        "separa1",
+        1
+      ]
+    }
+  },
+  "ruido2": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "guia2": {
+    "class_type": "LTXVDualCFGGuider",
+    "inputs": {
+      "model": [
+        "msr_lora",
+        0
+      ],
+      "positive": [
+        "msr2",
+        0
+      ],
+      "negative": [
+        "msr2",
+        1
+      ],
+      "video_cfg": 1.0,
+      "audio_cfg": 1.0
+    }
+  },
+  "passo2": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "ruido2",
+        0
+      ],
+      "guider": [
+        "guia2",
+        0
+      ],
+      "sampler": [
+        "amostrador",
+        0
+      ],
+      "sigmas": [
+        "sig2",
+        0
+      ],
+      "latent_image": [
+        "junta2",
+        0
+      ]
+    }
+  },
+  "separa2": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "passo2",
+        0
+      ]
+    }
+  },
+  "corta2": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "msr2",
+        0
+      ],
+      "negative": [
+        "msr2",
+        1
+      ],
+      "latent": [
+        "separa2",
+        0
+      ]
+    }
+  },
+  "decodifica": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "corta2",
+        2
+      ],
+      "vae": [
+        "vae_v",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 192,
+      "temporal_overlap": 48
+    }
+  },
+  "som": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": {
+      "samples": [
+        "separa2",
+        1
+      ],
+      "audio_vae": [
+        "vae_a",
+        0
+      ]
+    }
+  },
+  "monta": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "decodifica",
+        0
+      ],
+      "fps": 24,
+      "audio": [
+        "som",
+        0
+      ]
+    }
+  },
+  "salva": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "monta",
+        0
+      ],
+      "filename_prefix": "video",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

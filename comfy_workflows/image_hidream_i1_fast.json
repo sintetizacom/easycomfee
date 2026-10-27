@@ -1,0 +1,112 @@
+{
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "AE\\ae.safetensors"
+    }
+  },
+  "latente": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "clip": {
+    "class_type": "QuadrupleCLIPLoader",
+    "inputs": {
+      "clip_name1": "HiDream\\clip_l_hidream.safetensors",
+      "clip_name2": "HiDream\\clip_g_hidream.safetensors",
+      "clip_name3": "T5\\t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "clip_name4": "HiDream\\llama_3.1_8b_instruct_fp8_scaled.safetensors"
+    }
+  },
+  "unet_base": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "HiDream\\hidream_i1_fast_fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "unet": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "unet_base",
+        0
+      ],
+      "shift": 3.0
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "A detective in a soaked neon alley at night, slow push-in, rain, distant traffic"
+    }
+  },
+  "neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "bad ugly jpeg artifacts"
+    }
+  },
+  "amostra": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "latent_image": [
+        "latente",
+        0
+      ],
+      "seed": 1,
+      "steps": 16,
+      "cfg": 1.0,
+      "sampler_name": "lcm",
+      "scheduler": "normal",
+      "denoise": 1.0
+    }
+  },
+  "decodifica": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "amostra",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "salva": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decodifica",
+        0
+      ],
+      "filename_prefix": "saida"
+    }
+  }
+}

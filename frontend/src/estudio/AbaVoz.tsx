@@ -1,0 +1,155 @@
+import { useState } from 'react'
+import { api } from '../api'
+import { GruposAbertos, useEscolha } from './motor'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria } from './comum'
+
+// Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
+// on Comfy Cloud, where OmniVoice is missing, Qwen3-TTS (voz.grafo_nuvem),
+// which also brings a set of ready speakers.
+
+const MODOS = [
+  { id: 'narrar', rotulo: 'Narrate', icone: '🗣', frase: 'Read your text with a ready voice.' },
+  { id: 'criar', rotulo: 'Design a voice', icone: '✨', frase: 'Describe a voice and hear it say your text.' },
+  { id: 'clonar', rotulo: 'Clone a voice', icone: '🎙', frase: 'Copy a voice from a short recording.' },
+]
+// Exemplos de voz para o modo "Design a voice": um clique preenche a descricao.
+const VOZES_PRONTAS = [
+  { rotulo: 'Warm narrator', texto: 'Warm middle-aged male narrator, deep and calm, documentary style' },
+  { rotulo: 'Movie trailer', texto: 'Powerful deep male voice, dramatic movie trailer delivery, slow and intense' },
+  { rotulo: 'Bright host', texto: 'Young energetic female host, bright and friendly, fast pace' },
+  { rotulo: 'Soft whisper', texto: 'Soft gentle female voice, close whisper, calm and intimate' },
+  { rotulo: 'Old storyteller', texto: 'Elderly man with a raspy voice, slow storyteller, slight British accent' },
+]
+// Fala comum: ~15 caracteres por segundo. Serve para avisar do limite do Lip Sync.
+const segundosDe = (texto: string) => Math.round(texto.trim().length / 15)
+const IDIOMAS = ['English', 'Portuguese', 'Spanish', 'French', 'German', 'Italian', 'Japanese', 'Chinese', 'Korean']
+const FALANTES = ['Ryan', 'Aiden', 'Dylan', 'Eric', 'Serena', 'Vivian', 'Ono_anna', 'Sohee', 'Uncle_fu']
+
+export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
+  const tarefas = useTarefas()
+  const [modo, setModo] = useState('narrar')
+  const [texto, setTexto] = useState('')
+  const [idioma, setIdioma] = useState('English')
+  const [falante, setFalante] = useState('Ryan')
+  const [instrucao, setInstrucao] = useState('')
+  const [ref, setRef] = useState<{ nome: string; url: string } | null>(null)
+  const [transcricao, setTranscricao] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  // The model follows the engine: OmniVoice on your GPU, Qwen3-TTS on Comfy Cloud.
+  // Picking the other one in the menu switches the engine.
+  const escolher = useEscolha(() => {})
+
+  const pedido = {
+    modelo: 'voz', modo_voz: modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
+    falante_voz: falante, instrucao_voz: instrucao.trim(),
+    referencia_voz: modo === 'clonar' ? ref?.nome ?? '' : '', transcricao_voz: modo === 'clonar' ? transcricao.trim() : '',
+  }
+  const custo = useCusto(pedido)
+  const pronto = !!texto.trim() && (modo !== 'criar' || !!instrucao.trim())
+    && (modo !== 'clonar' || (!!ref && (naNuvem || !!transcricao.trim())))
+
+  const enviar = async (f: File) => {
+    setEnviando(true); setErro(null)
+    try { setRef({ nome: (await api.enviarAudio(f)).nome, url: URL.createObjectURL(f) }) }
+    catch (e) { setErro(mensagem(e)) } finally { setEnviando(false) }
+  }
+
+  const gerar = async () => {
+    setErro(null)
+    try {
+      const r = await fetch('/api/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...pedido, prompt: texto.trim() }) })
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Could not start the voice.')
+    } catch (e) { setErro(mensagem(e)) }
+  }
+
+  const minhas = tarefas.filter((t) => t.modelo === 'voz')
+
+  return (
+    <div className="hf-aba">
+      <div className="hf-heroi">
+        <span className="hf-sobretitulo">VOICE · {naNuvem ? 'QWEN3-TTS' : 'OMNIVOICE'} · OPEN WEIGHTS</span>
+        <h1>Give it a voice</h1>
+        <p className="hf-dica">Narration, a voice made from a description, or a clone of a recording. Use it in Lip Sync next.</p>
+      </div>
+
+      <div className="hf-vz-modos" role="radiogroup" aria-label="Mode">
+        {MODOS.map((m) => (
+          <button key={m.id} type="button" role="radio" aria-checked={modo === m.id} className="hf-vz-modo"
+            data-ativo={modo === m.id} onClick={() => setModo(m.id)}>
+            <span aria-hidden>{m.icone}</span><b>{m.rotulo}</b><small>{m.frase}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="hf-barra-prompt">
+        <div className="hf-vz-corpo">
+          <section className="hf-vz-coluna">
+            <span className="hf-grupo-rotulo">The voice</span>
+            {modo === 'narrar' && (naNuvem ? (
+              <>
+                <Chips rotulo="Speaker" opcoes={FALANTES.map((f) => ({ id: f, rotulo: f.replace('_', ' ') }))} valor={falante} aoMudar={setFalante} />
+                <input className="hf-campo" value={instrucao} onChange={(e) => setInstrucao(e.target.value)}
+                  placeholder="Optional: how to say it, e.g. excited, whispering, sad" />
+              </>
+            ) : (
+              <p className="hf-dica">OmniVoice picks a natural voice for the language. Want a specific one? Use <b>Design a voice</b> or <b>Clone a voice</b>.</p>
+            ))}
+            {modo === 'criar' && (
+              <>
+                <textarea className="hf-vz-caixa" value={instrucao} onChange={(e) => setInstrucao(e.target.value)} rows={4}
+                  placeholder="Describe the voice: age, tone, pace, accent… e.g. warm elderly man, deep and slow, slight British accent" />
+                <div className="hf-vz-exemplos">
+                  {VOZES_PRONTAS.map((v) => (
+                    <button key={v.rotulo} type="button" className="hf-botao-sec" onClick={() => setInstrucao(v.texto)}>{v.rotulo}</button>
+                  ))}
+                </div>
+              </>
+            )}
+            {modo === 'clonar' && (
+              <>
+                <label className="hf-slot hf-vz-amostra" data-cheio={!!ref}>
+                  {ref
+                    ? <span className="hf-fala"><audio src={ref.url} controls onClick={(e) => e.preventDefault()} /></span>
+                    : <span>{enviando ? 'Uploading…' : '+ Voice sample'}<small>5–20 s, one speaker, no music</small></span>}
+                  <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" hidden
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) enviar(f) }} />
+                </label>
+                {ref && <button type="button" className="hf-botao-sec" onClick={() => setRef(null)}>Remove sample</button>}
+                <textarea className="hf-vz-caixa" value={transcricao} onChange={(e) => setTranscricao(e.target.value)} rows={3}
+                  placeholder={naNuvem ? 'Optional: what is said in the sample, word for word (better clone)' : 'What is said in the sample, word for word'} />
+              </>
+            )}
+          </section>
+
+          <section className="hf-vz-coluna hf-vz-texto">
+            <span className="hf-grupo-rotulo">What to say</span>
+            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} placeholder="The text to speak…" />
+            <span className="hf-dica">
+              {texto.length} characters · about {segundosDe(texto)} s of speech
+              {segundosDe(texto) > 30 && <b className="hf-vz-longo"> · over 30 s: too long for Lip Sync</b>}
+            </span>
+          </section>
+        </div>
+
+        <div className="hf-linha-controles">
+          <select className="hf-select" value={naNuvem ? 'nuvem:qwen3tts' : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+            <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true }, { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true }]} />
+          </select>
+          <select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
+            {IDIOMAS.map((i) => <option key={i}>{i}</option>)}
+          </select>
+          <span className="hf-espaco" />
+          <BotaoGerar est={custo} desligado={!pronto} aoClicar={gerar} />
+        </div>
+        {erro && <p className="hf-erro">{erro}</p>}
+      </div>
+
+      <Galeria tipo="audio">
+        {minhas.map((t) => <CartaoTarefa key={t.id} t={t} />)}
+        {minhas.length === 0 && <p className="hf-vazio">Your voices will appear here.</p>}
+      </Galeria>
+    </div>
+  )
+}

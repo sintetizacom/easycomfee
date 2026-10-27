@@ -1,0 +1,49 @@
+# Dependencias: reinstalaveis, 306 MB dos 314 MB do projeto.
+backend/.venv/
+frontend/node_modules/
+scripts/.diagnostico-pyspy/
+__pycache__/
+*.pyc
+
+# Caches gerados pelo proprio programa. Se sumirem, refazem-se sozinhos.
+backend/cache_miniaturas/
+backend/cache_luz/
+frontend/dist/
+logs/
+
+# Dados do usuario. Ficam fora do historico porque sao binarios que mudam a
+# cada geracao; o snapshot .zip e que os guarda.
+backend/galeria.db
+
+# CHAVES DE API. Nunca versionar. Ver README.
+backend/.env
+backend/chaves.json
+
+# Saidas binarias das analises. O `resultados.json` de cada rodada FICA — e
+# texto, e e nele que estao os numeros: tempo, pico de memoria, seed e prompt
+# de cada caso. Os videos, quadros e folhas de contato ficam de fora pela
+# mesma razao da galeria.db: binario que muda a cada geracao incha o historico
+# para sempre e nao se le num `git diff`.
+analises/**/*.mp4
+analises/**/*.png
+analises/**/*.jpg
+analises/**/*.jpeg
+analises/**/*.webp
+analises/**/*.flac
+analises/**/*.wav
+analises/**/*-teste-id.txt
+analises/**/*-testes-ids.json
+analises/ace-guia-teste.json
+backend/finalizacoes_musica/
+exportacoes/*.zip
+vendor/plenio-frontend/node_modules/
+config.json
+backend/preferencias.json
+backend/maquina.json
+
+# Workflows de terceiros (conteudo pago/autoral, ex.: MDMZ no Patreon).
+# Ficam so nesta maquina; o app os le se existirem. Nunca publicar.
+backend/terceiros/
+
+# Gerado pelo botao Update
+atualizar.bat

@@ -1,0 +1,232 @@
+{
+  "imagem": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "first.png"
+    }
+  },
+  "unet_alto": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "Wan22\\wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "lora_alto": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet_alto",
+        0
+      ],
+      "lora_name": "Wan22\\wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "shift_alto": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "lora_alto",
+        0
+      ],
+      "shift": 5.0
+    }
+  },
+  "unet_baixo": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "Wan22\\wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "lora_baixo": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet_baixo",
+        0
+      ],
+      "lora_name": "Wan22\\wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "shift_baixo": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "lora_baixo",
+        0
+      ],
+      "shift": 5.0
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "Wan\\umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "Wan21\\wan_2.1_vae.safetensors"
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "A detective in a soaked neon alley at night, slow push-in, rain, distant traffic"
+    }
+  },
+  "neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+    }
+  },
+  "fim": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "last.png"
+    }
+  },
+  "cond": {
+    "class_type": "WanFirstLastFrameToVideo",
+    "inputs": {
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "width": 832,
+      "height": 480,
+      "length": 81,
+      "batch_size": 1,
+      "start_image": [
+        "imagem",
+        0
+      ],
+      "end_image": [
+        "fim",
+        0
+      ]
+    }
+  },
+  "amostra_alto": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "steps": 4,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "model": [
+        "shift_alto",
+        0
+      ],
+      "latent_image": [
+        "cond",
+        2
+      ],
+      "add_noise": "enable",
+      "noise_seed": 1,
+      "start_at_step": 0,
+      "end_at_step": 2,
+      "return_with_leftover_noise": "enable"
+    }
+  },
+  "amostra": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "steps": 4,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "model": [
+        "shift_baixo",
+        0
+      ],
+      "latent_image": [
+        "amostra_alto",
+        0
+      ],
+      "add_noise": "disable",
+      "noise_seed": 0,
+      "start_at_step": 2,
+      "end_at_step": 10000,
+      "return_with_leftover_noise": "disable"
+    }
+  },
+  "decodifica": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "amostra",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "monta": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "decodifica",
+        0
+      ],
+      "fps": 16
+    }
+  },
+  "salva": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "monta",
+        0
+      ],
+      "filename_prefix": "video",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

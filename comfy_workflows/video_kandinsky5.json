@@ -1,0 +1,141 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "Kandinsky5\\kandinsky5lite_t2v_sft_5s.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "shift": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "shift": 5.0
+    }
+  },
+  "clip": {
+    "class_type": "DualCLIPLoader",
+    "inputs": {
+      "clip_name1": "Qwen\\qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "clip_name2": "CLIP\\clip_l.safetensors",
+      "type": "kandinsky5",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "HunyuanVideo\\hunyuan_video_vae_bf16.safetensors"
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "A detective in a soaked neon alley at night, slow push-in, rain, distant traffic"
+    }
+  },
+  "neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": ""
+    }
+  },
+  "cond": {
+    "class_type": "Kandinsky5ImageToVideo",
+    "inputs": {
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "width": 768,
+      "height": 512,
+      "length": 121,
+      "batch_size": 1
+    }
+  },
+  "amostra": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "shift",
+        0
+      ],
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "latent_image": [
+        "cond",
+        2
+      ],
+      "seed": 1,
+      "steps": 50,
+      "cfg": 5.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "beta",
+      "denoise": 1.0
+    }
+  },
+  "decodifica": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "amostra",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "monta": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "decodifica",
+        0
+      ],
+      "fps": 24
+    }
+  },
+  "salva": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "monta",
+        0
+      ],
+      "filename_prefix": "video",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

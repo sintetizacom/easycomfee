@@ -1,0 +1,95 @@
+{
+  "carga": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "input_video.mp4"
+    }
+  },
+  "partes": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "carga",
+        0
+      ]
+    }
+  },
+  "dmodelo": {
+    "class_type": "LoadVideoDepthAnythingModel",
+    "inputs": {
+      "model": "video_depth_anything_vits.pth"
+    }
+  },
+  "corte": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "partes",
+        0
+      ],
+      "batch_index": 0,
+      "length": 121
+    }
+  },
+  "dproc": {
+    "class_type": "VideoDepthAnythingProcess",
+    "inputs": {
+      "vda_model": [
+        "dmodelo",
+        0
+      ],
+      "images": [
+        "corte",
+        0
+      ],
+      "input_size": 518,
+      "max_res": 1280,
+      "precision": "fp16"
+    }
+  },
+  "mapa": {
+    "class_type": "VideoDepthAnythingOutput",
+    "inputs": {
+      "depths": [
+        "dproc",
+        0
+      ],
+      "colormap": "gray"
+    }
+  },
+  "video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "mapa",
+        0
+      ],
+      "fps": [
+        "partes",
+        2
+      ]
+    }
+  },
+  "salva": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "video",
+        0
+      ],
+      "filename_prefix": "editor/video_profundidade",
+      "format": "auto",
+      "codec": "auto"
+    }
+  },
+  "exr": {
+    "class_type": "VideoDepthAnythingSaveEXR",
+    "inputs": {
+      "depths": [
+        "dproc",
+        0
+      ],
+      "folder_name": "depth_exr"
+    }
+  }
+}

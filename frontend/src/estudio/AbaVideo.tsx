@@ -1,0 +1,208 @@
+import { useState } from 'react'
+import { useReusarPrompt } from './Visualizador'
+import { GruposAbertos, useEscolha, useValor } from './motor'
+import { api, type GeradorVideo, type Referencia } from '../api'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
+
+// Video tab: LTX 2.5 or the open-weight MiniMax H3, plus the API generators.
+// "References" puts the people and objects of your images into the shot:
+// LTX 2.5 MSR on your GPU (up to 4, plus an optional background; its custom
+// node is not on Comfy Cloud), and the API generators MiniMax H3 MultiRef (9),
+// Kling Omni (7), Seedance 2.5 Reference (9) and Wan 3.0 (10).
+// Ingredients and keyframes stay in Advanced.
+
+type Modo = 'texto' | 'imagem' | 'primeiro_ultimo' | 'referencia' | 'chaves'
+
+const MODOS: { id: Modo; rotulo: string }[] = [
+  { id: 'texto', rotulo: 'Text → Video' },
+  { id: 'imagem', rotulo: 'Image → Video' },
+  { id: 'primeiro_ultimo', rotulo: 'First & last frame' },
+  { id: 'referencia', rotulo: 'References → Video' },
+  // LTX 2.5 only (local or Comfy Cloud): 2 to 8 images, each at its own moment of the clip.
+  { id: 'chaves', rotulo: 'Keyframes → Video' },
+]
+
+// Outros geradores abertos (backend videos_leves.py e FastH3): modos,
+// resolucoes, duracao maxima e se existem na Comfy Cloud (conferido no
+// object_info da nuvem em 27/10/2026: LTX 2.3, os Wan, HunyuanVideo 1.5 e Kandinsky 5 sim; LTX-Video 2B e FastH3 nao).
+const LEVES: Record<string, { rotulo: string; modos: Modo[]; resolucoes: string[]; max: number; nuvem: boolean }> = {
+  ltx23: { rotulo: 'LTX 2.3', modos: ['imagem', 'primeiro_ultimo'], resolucoes: ['480p', '720p'], max: 30, nuvem: true },
+  fasth3: { rotulo: 'FastH3 (MiniMax H3 distilled)', modos: ['texto', 'imagem', 'primeiro_ultimo'], resolucoes: ['480p', '720p'], max: 15, nuvem: false },
+  wan22_14b: { rotulo: 'Wan 2.2 14B', modos: ['texto', 'imagem', 'primeiro_ultimo'], resolucoes: ['480p', '720p'], max: 5, nuvem: true },
+  hunyuan15: { rotulo: 'HunyuanVideo 1.5', modos: ['texto', 'imagem'], resolucoes: ['480p', '720p'], max: 5, nuvem: true },
+  kandinsky5: { rotulo: 'Kandinsky 5 Lite', modos: ['texto'], resolucoes: ['480p'], max: 5, nuvem: true },
+  ltxv2b: { rotulo: 'LTX-Video 2B (light)', modos: ['texto', 'imagem'], resolucoes: ['480p', '720p'], max: 10, nuvem: false },
+  wan22_5b: { rotulo: 'Wan 2.2 5B (light)', modos: ['texto', 'imagem'], resolucoes: ['720p'], max: 5, nuvem: true },
+  wan21_13b: { rotulo: 'Wan 2.1 1.3B (light)', modos: ['texto'], resolucoes: ['480p'], max: 5, nuvem: true },
+}
+
+type Chave = { id: number; img: Referencia | null; seg: number }
+let proximaChave = 3
+
+export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGeradores?: GeradorVideo[]; naNuvem?: boolean }) {
+  const tarefas = useTarefas()
+  const [motor, setMotor] = useState<string>(() => parteDoHash(2) || 'ltx')
+  const escolher = useEscolha(setMotor)
+  const valorSelect = useValor(motor, apiGeradores.some((g) => g.id === motor))
+  const [turbo, setTurbo] = useState(true)
+  const [modo, setModo] = useState<Modo>(() => {
+    const destino = parteDoHash(1)
+    return MODOS.some((item) => item.id === destino) ? destino as Modo : 'texto'
+  })
+  const [prompt, setPrompt] = useState('')
+  // "Reuse prompt" in the viewer fills this tab's text.
+  useReusarPrompt(setPrompt)
+  const [proporcao, setProporcao] = useState('16:9')
+  const [resolucao, setResolucao] = useState('720p')
+  const [duracao, setDuracao] = useState(5)
+  const [audio, setAudio] = useState(true)
+  const [inicio, setInicio] = useState<Referencia | null>(null)
+  const [fim, setFim] = useState<Referencia | null>(null)
+  const [refs, setRefs] = useState<Referencia[]>([])
+  const [fundo, setFundo] = useState<Referencia | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  // Keyframes: each image and the second it appears (counted from 0).
+  const [chaves, setChaves] = useState<Chave[]>([{ id: 1, img: null, seg: 0 }, { id: 2, img: null, seg: 5 }])
+  const [forcaChaves, setForcaChaves] = useState(0.7)
+
+  // Geradores de API (MiniMax H3 API, Wan 3.0): cada um traz os proprios limites.
+  const gApi = apiGeradores.find((g) => g.id === motor)
+  // Open models: only LTX 2.5 takes references, and only locally (MSR).
+  // MiniMax H3 MultiRef is a paid API node, listed with the API generators.
+  const leve = LEVES[motor]
+  const modos = gApi ? MODOS.filter((m) => gApi.modos.includes(m.id))
+    : leve ? MODOS.filter((m) => leve.modos.includes(m.id))
+    : motor === 'ltx' ? MODOS.filter((m) => !naNuvem || m.id !== 'referencia')
+      : MODOS.filter((m) => m.id !== 'referencia' && m.id !== 'chaves')
+  const maxRefs = gApi ? (gApi.max_referencias ?? 1) : 4
+  const modoOk = modos.some((m) => m.id === modo) ? modo : modos[0]?.id ?? 'texto'
+  const proporcoes = gApi ? (gApi.proporcoes ?? []).filter((p) => p !== 'adaptive') : ['16:9', '9:16', '1:1']
+  const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
+  const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
+  const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]
+  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? 15
+  const duracaoOk = Math.max(dMin, Math.min(dMax, duracao))
+
+  const refsOk = refs.slice(0, maxRefs)
+  const ehChaves = modoOk === 'chaves'
+  // Keyframes in time order, only the ones with an image, inside the clip length.
+  const chavesOk = chaves.filter((c) => c.img).map((c) => ({ ...c, seg: Math.min(c.seg, duracaoOk) })).sort((x, y) => x.seg - y.seg)
+  const ehRef = modoOk === 'referencia'
+  const faltaImagem = ehChaves ? chavesOk.length < 2 : ehRef ? refsOk.length === 0
+    : (modoOk !== 'texto' && !inicio) || (modoOk === 'primeiro_ultimo' && !fim)
+  const motorPedido = motor
+  const nomesRefs = ehRef ? refsOk.map((r) => r.nome)
+    : [inicio, fim].filter((r): r is Referencia => !!r && modoOk !== 'texto').map((r) => r.nome)
+      .slice(0, modoOk === 'primeiro_ultimo' ? 2 : 1)
+
+  // Para o preco, imagem que ainda falta vira um nome qualquer: so os campos contam.
+  const custo = useCusto({
+    modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt: prompt || 'x', proporcao: '1:1',
+    proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
+    referencias: modoOk === 'texto' ? [] : ehRef ? (nomesRefs.length ? nomesRefs : ['a.png']) : [inicio?.nome ?? 'a.png', fim?.nome ?? 'b.png'],
+  })
+
+  const gerar = async () => {
+    setErro(null)
+    try {
+      await api.gerar({
+        modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt, proporcao: '1:1',
+        proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
+        referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
+        ...(ehRef && motor === 'ltx' && fundo ? { fundo_referencia: fundo.nome } : {}),
+        ...(ehChaves ? { quadros_referencias: chavesOk.map((c) => Math.round(c.seg * 24) + 1), forca_chaves: forcaChaves } : {}),
+      } as Parameters<typeof api.gerar>[0])
+    } catch (e) { setErro(mensagem(e)) }
+  }
+
+  const minhas = tarefas.filter((t) => t.modelo === 'video')
+
+  return (
+    <div className="hf-aba">
+      <div className="hf-heroi">
+        <span className="hf-sobretitulo">VIDEO · {gApi ? gApi.rotulo.replace(' (nuvem)', '').toUpperCase() + ' · API' : leve ? leve.rotulo.replace(/ \(.*\)$/, '').toUpperCase() : motor === 'ltx' ? 'LTX 2.5' : 'MINIMAX H3'}</span>
+        <h1>Video with sound, from a line or a frame</h1>
+      </div>
+
+      <div className="hf-barra-prompt">
+        <div className="hf-linha-controles">
+          <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+            <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' },
+              ...Object.entries(LEVES).map(([id, l]) => ({ id, rotulo: l.rotulo, soLocal: !l.nuvem }))]} api={apiGeradores} />
+          </select>
+          {motor === 'minimax' && (
+            <Chips rotulo="Speed" opcoes={[{ id: 1, rotulo: 'Turbo · 8 steps' }, { id: 0, rotulo: 'Quality · 40 steps' }]}
+              valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
+          )}
+        </div>
+        {motor === 'minimax' && <p className="hf-dica">MiniMax H3 is heavy: on a 16 GB card it only fits at low resolution. Best on Comfy Cloud or a 32 GB+ GPU.</p>}
+        <Chips rotulo="Mode" opcoes={modos} valor={modoOk} aoMudar={setModo} />
+        {ehRef && (
+          <>
+            <div className="hf-slots">
+              {refsOk.map((r, i) => (
+                <SlotImagem key={r.nome + i} rotulo={`Image ${i + 1}`} valor={r}
+                  aoMudar={(n) => setRefs((a) => n ? a.map((x, j) => (j === i ? n : x)) : a.filter((_, j) => j !== i))} />
+              ))}
+              {refsOk.length < maxRefs && (
+                <SlotImagem key={`novo${refsOk.length}`} rotulo={refsOk.length ? `Image ${refsOk.length + 1}` : 'Person or object'}
+                  valor={null} aoMudar={(n) => n && setRefs((a) => [...a.slice(0, maxRefs), n])} />
+              )}
+              {motor === 'ltx' && <SlotImagem rotulo="Background (optional)" valor={fundo} aoMudar={setFundo} />}
+            </div>
+            <p className="hf-dica">Up to {maxRefs} people or objects, each on its own image. Refer to them in the prompt as @image1, @image2…
+              {motor === 'ltx' ? ' The place tends to come from the photos: add a background image to choose it.' : ''}</p>
+          </>
+        )}
+        {ehChaves && (
+          <div className="hf-chaves-video">
+            {chaves.map((c, i) => (
+              <div key={c.id} className="hf-chave">
+                <SlotImagem rotulo={`Keyframe ${i + 1}`} valor={c.img}
+                  aoMudar={(img) => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, img } : x)))} />
+                <label className="hf-ctrl"><small>At second</small>
+                  <input className="hf-campo" type="number" min={0} max={duracaoOk} step={0.5} value={c.seg} style={{ width: 80 }}
+                    onChange={(e) => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, seg: Math.max(0, Number(e.target.value)) } : x)))} />
+                </label>
+                {chaves.length > 2 && <button type="button" className="hf-botao-sec hf-x" onClick={() => setChaves((a) => a.filter((x) => x.id !== c.id))}>×</button>}
+              </div>
+            ))}
+            <div className="hf-linha-controles">
+              {chaves.length < 8 && <button type="button" className="hf-botao-sec"
+                onClick={() => setChaves((a) => [...a, { id: proximaChave++, img: null, seg: Math.min(duracaoOk, (a.at(-1)?.seg ?? 0) + 2) }])}>+ Add keyframe</button>}
+              <label className="hf-ctrl hf-ctrl-largo" title="How strictly the video matches each image. Lower lets the motion flow more freely between them.">
+                <small>Keyframe strength · {Math.round(forcaChaves * 100)}%</small>
+                <input type="range" min={0.3} max={1} step={0.05} value={forcaChaves} onChange={(e) => setForcaChaves(Number(e.target.value))} />
+              </label>
+            </div>
+            <p className="hf-dica">2 to 8 images, each at the second it should appear (the model places them on steps of 1/3 s). Up to 15 s. The text says what happens between them.</p>
+          </div>
+        )}
+        {modoOk !== 'texto' && !ehRef && !ehChaves && (
+          <div className="hf-slots">
+            <SlotImagem rotulo={modoOk === 'primeiro_ultimo' ? 'First frame' : 'Start image'} valor={inicio} aoMudar={setInicio} />
+            {modoOk === 'primeiro_ultimo' && <SlotImagem rotulo="Last frame" valor={fim} aoMudar={setFim} />}
+          </div>
+        )}
+        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+          placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
+        <div className="hf-linha-controles">
+          <Chips rotulo="Aspect ratio" opcoes={proporcoes.map((p) => ({ id: p, rotulo: p }))} valor={proporcaoOk} aoMudar={setProporcao} />
+          <Chips rotulo="Resolution" opcoes={resolucoes.map((r) => ({ id: r, rotulo: r }))} valor={resolucaoOk} aoMudar={setResolucao} />
+          <label className="hf-duracao">
+            {duracaoOk}s
+            <input type="range" min={dMin} max={dMax} value={duracaoOk} onChange={(e) => setDuracao(Number(e.target.value))} />
+          </label>
+          <label className="hf-toggle" style={(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? { display: 'none' } : undefined}><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
+          <BotaoGerar est={custo} desligado={!prompt.trim() || faltaImagem} aoClicar={gerar} />
+        </div>
+        {erro && <p className="hf-erro">{erro}</p>}
+      </div>
+
+      <Galeria tipo="video">
+        {minhas.map((t) => <CartaoTarefa key={t.id} t={t} />)}
+        {minhas.length === 0 && <p className="hf-vazio">Your videos will appear here.</p>}
+      </Galeria>
+    </div>
+  )
+}

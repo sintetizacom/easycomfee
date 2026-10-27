@@ -1,0 +1,22 @@
+{
+ "versao": 1,
+ "nota": "Nos extras do ComfyUI. 'registro' baixa a versao fixa do registro da Comfy (o mesmo do ComfyUI-Manager); 'github' baixa o zip do commit fixo; 'projeto' copia uma pasta deste repositorio. 'pacotes' diz com quais pacotes de modelo o no e instalado; 'base' entra com qualquer um.",
+ "nos": [
+  {"pasta": "comfyui-kjnodes", "nome": "KJNodes", "fonte": "registro", "id": "comfyui-kjnodes", "versao": "1.5.2", "repo": "https://github.com/kijai/ComfyUI-KJNodes", "pacotes": ["base"]},
+  {"pasta": "comfyui-videohelpersuite", "nome": "Video Helper Suite", "fonte": "registro", "id": "comfyui-videohelpersuite", "versao": "1.7.9", "repo": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite", "pacotes": ["base"]},
+  {"pasta": "comfyui_essentials", "nome": "ComfyUI Essentials", "fonte": "registro", "id": "comfyui_essentials", "versao": "1.1.0", "repo": "https://github.com/cubiq/ComfyUI_essentials", "pacotes": ["base"]},
+  {"pasta": "comfyui_layerstyle", "nome": "LayerStyle", "fonte": "registro", "id": "comfyui_layerstyle", "versao": "2.0.40", "repo": "https://github.com/chflame163/ComfyUI_LayerStyle", "pacotes": ["base"]},
+  {"pasta": "comfyui-various", "nome": "comfyui-various", "fonte": "github", "repo": "https://github.com/jamesWalker55/comfyui-various", "commit": "5bd85aaf7616878471469c4ec7e11bbd0cef3bf2", "pacotes": ["base"]},
+  {"pasta": "comfyui-advancedliveportrait", "nome": "Advanced LivePortrait", "fonte": "registro", "id": "comfyui-advancedliveportrait", "versao": "1.0.0", "repo": "https://github.com/PowerHouseMan/ComfyUI-AdvancedLivePortrait", "pacotes": ["base"]},
+  {"pasta": "ltx2.5-msr", "nome": "LTX 2.5 MSR", "fonte": "registro", "id": "ltx2.5-msr", "versao": "1.0.0", "repo": "https://github.com/liconstudio/ComfyUI-LTX2.5-MSR", "pacotes": ["ltx25"]},
+  {"pasta": "plaguekind-nodes", "nome": "PlagueKind (LTX upscale)", "fonte": "registro", "id": "plaguekind-nodes", "versao": "1.4.8", "repo": "https://github.com/PlagueKind/ComfyUI-PlagueKind-Nodes", "pacotes": ["ltx25"]},
+  {"pasta": "ComfyUI-Video-Depth-Anything", "nome": "Video Depth Anything", "fonte": "github", "repo": "https://github.com/yuvraj108c/ComfyUI-Video-Depth-Anything", "commit": "a0db08e63d1ea571601c45cde4aaee0acdd0544d", "pacotes": ["ltx23", "profundidade"], "motor": "segundo"},
+  {"pasta": "comfyui-krea2edit", "nome": "Krea2 Edit", "fonte": "registro", "id": "comfyui-krea2edit", "versao": "1.2.2", "repo": "https://github.com/lbouaraba/comfyui-krea2edit", "pacotes": ["krea2"]},
+  {"pasta": "krea2-anygles", "nome": "Krea2 Anygles", "fonte": "github", "repo": "https://github.com/alexw5702-afk/krea2-anygles", "commit": "7ac6c5c667174eefe3084a48f4d0110c1041b0c4", "pacotes": ["krea2"]},
+  {"pasta": "krea2-anygles-nativo", "nome": "Krea2 Anygles (native camera)", "fonte": "projeto", "origem": "no-anygles", "pacotes": ["krea2"]},
+  {"pasta": "comfyui_controlnet_aux", "nome": "ControlNet Aux", "fonte": "registro", "id": "comfyui_controlnet_aux", "versao": "1.1.5", "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux", "pacotes": ["zimage"]},
+  {"pasta": "seedvr2_videoupscaler", "nome": "SeedVR2 Video Upscaler", "fonte": "registro", "id": "seedvr2_videoupscaler", "versao": "2.5.24", "repo": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler", "pacotes": ["upscale"]},
+  {"pasta": "ComfyUI-WanVideoWrapper", "nome": "WanVideoWrapper", "fonte": "github", "repo": "https://github.com/kijai/ComfyUI-WanVideoWrapper", "commit": "088128b224242e110d3906c6750e9a3a348a659b", "pacotes": ["avatar"]},
+  {"pasta": "Plenio-Music-Production-System", "nome": "Plenio Music Production", "fonte": "github", "repo": "https://github.com/jplenio/Plenio-Music-Production-System", "commit": "930382dc230b01af6f21ddea2586c8607965c44c", "pacotes": ["musica"], "motor": "segundo"}
+ ]
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127 146" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Símbolo monocromático da EasyComfee</title>
+  <desc id="descricao">Versão monocromática do portal da EasyComfee.</desc>
+  <path
+    fill="#F4F0E8"
+    fill-rule="evenodd"
+    d="M0 146V63C0 28.2 28.4 0 63.5 0S127 28.2 127 63v83h-23V70c0-22.6-18.4-41-41-41S23 47.4 23 70v76H0Z"
+  />
+</svg>

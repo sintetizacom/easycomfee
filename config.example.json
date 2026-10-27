@@ -1,0 +1,11 @@
+{
+  "comfy_url": "http://127.0.0.1:8188",
+  "comfy_dir": "C:/ComfyUI",
+  "comfy_codigo_dir": "",
+  "comfy_entrada": "",
+  "comfy_saida": "",
+  "app_porta": 8600,
+  "modelos_dir": "",
+  "so_modelos_abertos": true,
+  "link_recarga": "https://cloud.comfy.org"
+}

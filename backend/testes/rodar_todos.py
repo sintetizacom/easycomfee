@@ -1,0 +1,42 @@
+# -*- coding: utf-8 -*-
+"""Executa testes puros e, opcionalmente, o que depende de coisa no ar.
+
+    (sem bandeira)   so contratos puros — nao precisa de nada rodando
+    --site           + confere o SITE no ar contra o codigo-fonte (rapido)
+    --integracao     + monta os grafos e confere contra o ComfyUI vivo
+    --smoke          + tudo acima, mais inferencias reais na placa
+
+`--site` existe desde 22/09/2026 e e barato: sobe nada, so pergunta. Ver o
+cabecalho de vivo_site.py para a historia de por que ele foi preciso.
+"""
+import pathlib
+import subprocess
+import sys
+
+
+def main():
+    pasta = pathlib.Path(__file__).resolve().parent
+    testes = sorted(pasta.glob("test_*.py"))
+    # Vem ANTES dos pesados: se o site no ar estiver defasado, saber disso
+    # custa um segundo e muda o que os outros resultados significam.
+    if "--site" in sys.argv or "--smoke" in sys.argv:
+        testes.append(pasta / "vivo_site.py")
+    if "--integracao" in sys.argv or "--smoke" in sys.argv:
+        testes.append(pasta / "integracao_comfy.py")
+    if "--smoke" in sys.argv:
+        testes.append(pasta / "smoke_comfy.py")
+    falhas = []
+    for teste in testes:
+        print(f"\n== {teste.name} ==", flush=True)
+        resultado = subprocess.run([sys.executable, str(teste)], check=False)
+        if resultado.returncode:
+            falhas.append(teste.name)
+    if falhas:
+        print("\nFalharam:", ", ".join(falhas))
+        return 1
+    print(f"\n{len(testes)} arquivos de teste passaram")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
