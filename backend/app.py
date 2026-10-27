@@ -2476,6 +2476,30 @@ async def instalar_pacote(id_pacote: str, pedido: PedidoInstalar):
         raise HTTPException(409, str(e))
 
 
+@app.get("/api/pacotes/{id_pacote}/remover")
+async def plano_remocao(id_pacote: str):
+    """O que o botao Remove tiraria do disco (sem mexer em nada). Ver remocao.py."""
+    import remocao
+    try:
+        return await asyncio.to_thread(remocao.plano, id_pacote)
+    except KeyError:
+        raise HTTPException(404, "Pacote desconhecido.")
+
+
+@app.post("/api/pacotes/{id_pacote}/remover")
+async def remover_pacote(id_pacote: str):
+    """Manda para a Lixeira os arquivos que so este pacote usa. Nunca durante uma geracao."""
+    import remocao
+    if any(t.estado in ("na_fila", "preparando", "submetendo", "executando") for t in TAREFAS.values()):
+        raise HTTPException(409, "Wait for the current generation to finish.")
+    try:
+        return await asyncio.to_thread(remocao.remover, id_pacote)
+    except KeyError:
+        raise HTTPException(404, "Pacote desconhecido.")
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+
+
 @app.get("/api/pacotes/progresso")
 async def progresso_instalacao():
     import instalador

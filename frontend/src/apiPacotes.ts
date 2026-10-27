@@ -64,6 +64,13 @@ async function pedir<T>(caminho: string, opcoes?: RequestInit): Promise<T> {
   return r.json() as Promise<T>
 }
 
+// O que o botao Remove tira do disco: "sai" vai para a Lixeira; "fica" e usado por outro pacote.
+export type PlanoRemocao = {
+  pacote: string; libera: number
+  sai: { rotulo: string; arquivo: string; tamanho: number }[]
+  fica: { rotulo: string; arquivo: string; tamanho: number; usado_por: string[] }[]
+}
+
 export const apiPacotes = {
   listar: () => pedir<{ motor_respondendo: boolean; pacotes: Pacote[]; maquina: PerfilMaquina | null }>('/api/pacotes'),
   maquina: () => pedir<{ detectado: Detectado; salvo: PerfilMaquina | null }>('/api/maquina'),
@@ -75,6 +82,8 @@ export const apiPacotes = {
       body: JSON.stringify({ opcionais }),
     }),
   progresso: () => pedir<ProgressoInstalacao>('/api/pacotes/progresso'),
+  planoRemocao: (id: string) => pedir<PlanoRemocao>(`/api/pacotes/${id}/remover`),
+  remover: (id: string) => pedir<PlanoRemocao>(`/api/pacotes/${id}/remover`, { method: 'POST' }),
   token: () => pedir<{ configurado: boolean; final: string | null }>('/api/pacotes/token'),
   salvarToken: (token: string) =>
     pedir<{ configurado: boolean; final: string | null }>('/api/pacotes/token', {

@@ -189,6 +189,29 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
     return () => { vivo = false; clearTimeout(t) }
   }, [])
 
+  // Remove: mostra o plano (o que sai, o que fica por ser de outro pacote) e so
+  // entao manda os arquivos para a Lixeira.
+  const remover = async (p: Pacote) => {
+    setErro(null)
+    try {
+      const plano = await apiPacotes.planoRemocao(p.id)
+      if (!plano.sai.length) {
+        alert(`Nothing to remove: every file of ${p.nome} is also used by another installed package.`)
+        return
+      }
+      const sai = plano.sai.map((f) => `• ${f.rotulo} (${gb(f.tamanho)})`).join('\n')
+      const fica = plano.fica.length
+        ? '\n\nKept (used by another installed package):\n'
+          + plano.fica.map((f) => `• ${f.rotulo} (${f.usado_por.join(', ')})`).join('\n')
+        : ''
+      if (!confirm(`Remove ${p.nome}? Frees ${gb(plano.libera)}.\n\nGoes to the Recycle Bin:\n${sai}${fica}`)) return
+      await apiPacotes.remover(p.id)
+      recarregar()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const instalar = async (p: Pacote) => {
     setErro(null)
     try {
@@ -281,6 +304,9 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
                       title={bloqueado ? avaliacao.motivo : undefined} onClick={() => instalar(p)}>
                       ⤓ Download {aBaixar > 0 ? `(${gb(aBaixar)})` : 'nodes'}
                     </button>
+                  )}
+                  {!baixando && pronto && (
+                    <button className="mq-remover" disabled={!!prog?.ativo || !!nos?.ativo} onClick={() => remover(p)}>Remove</button>
                   )}
                   {temOpcional && !baixando && (
                     <label className="mq-opc">

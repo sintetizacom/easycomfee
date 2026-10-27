@@ -682,3 +682,7 @@ html .mq-componentes li { background: #241B2C; }
 html .mq-estado { color: #888095; }
 html .mq { color: #F4F0E8; }
 html .mq-aviso-amd { margin: 0 0 12px; color: #F4F0E8; background: #34331F; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.4; }
+/* Botao Remove do Config Models: discreto, abaixo de Installed/Download. */
+html .mq-remover { background: none; border: 0; color: #888095; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0 0; }
+html .mq-remover:hover { color: #F4F0E8; }
+html .mq-remover:disabled { opacity: .5; cursor: default; }
