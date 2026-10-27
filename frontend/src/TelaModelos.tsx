@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   apiPacotes, type Detectado, type Pacote, type PerfilMaquina, type ProgressoInstalacao,
 } from './apiPacotes'
@@ -159,23 +159,34 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
 
   useEffect(() => { recarregar(); apiPacotes.token().then(setToken).catch(() => {}) }, [])
 
-  // Download and node progress, once a second; when something finishes, re-check.
+  // Download and node progress: once a second while something installs, every
+  // 10 s when idle (each poll is a line in the server window). When something
+  // finishes, re-check. Installing calls lerAgora so the bar shows at once.
+  const lerAgora = useRef<() => void>(() => {})
   useEffect(() => {
     let vivo = true
     let estavaAtivo = false
+    let t: ReturnType<typeof setTimeout>
     const ler = async () => {
-      const p = await apiPacotes.progresso().catch(() => null)
-      const n = await apiPacotes.progressoNos().catch(() => null)
-      if (!vivo) return
-      if (p) setProg(p)
-      if (n) setNos(n.progresso)
-      const ativo = !!(p?.ativo || n?.progresso.ativo)
-      if (estavaAtivo && !ativo) recarregar()
-      estavaAtivo = ativo
+      clearTimeout(t)
+      let ativo = false
+      try {
+        const p = await apiPacotes.progresso().catch(() => null)
+        const n = await apiPacotes.progressoNos().catch(() => null)
+        if (!vivo) return
+        if (p) setProg(p)
+        if (n?.progresso) setNos(n.progresso)
+        ativo = !!(p?.ativo || n?.progresso?.ativo)
+        if (estavaAtivo && !ativo) recarregar()
+        estavaAtivo = ativo
+      } finally {
+        // Agenda a proxima leitura mesmo se uma resposta vier fora do esperado.
+        if (vivo) t = setTimeout(ler, ativo ? 1000 : 10000)
+      }
     }
+    lerAgora.current = () => { ler() }
     ler()
-    const t = setInterval(ler, 1000)
-    return () => { vivo = false; clearInterval(t) }
+    return () => { vivo = false; clearTimeout(t) }
   }, [])
 
   const instalar = async (p: Pacote) => {
@@ -183,6 +194,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
     try {
       if (p.nos.some((n) => n.instalado === false)) await apiPacotes.instalarNos(p.id).catch(() => {})
       await apiPacotes.instalar(p.id, !!opcionais[p.id])
+      lerAgora.current()
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e))
     }

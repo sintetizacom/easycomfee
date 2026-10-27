@@ -7,4 +7,5 @@ for /f %%p in ('backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert
 REM "start.bat noopen" (usado pelo Update) nao abre outra aba: a pagina aberta se recarrega sozinha.
 if /i not "%~1"=="noopen" start "" http://127.0.0.1:%PORT%
 cd backend
-.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port %PORT%
+REM Sem uma linha por pedido de rotina (o Config Models consulta o progresso); erros continuam aparecendo.
+.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port %PORT% --no-access-log

@@ -2401,7 +2401,7 @@ async def baixar_exr(tarefa_id: str):
         "Content-Disposition": f'attachment; filename="depth_exr_{tarefa_id[:8]}.zip"'})
 
 
-@app.get("/api/nos")
+@app.get("/api/nos/editor")
 async def editor_de_nos():
     """Enderecos dos ComfyUI locais para a aba Advanced (editor de nodes).
     Sempre os locais, mesmo com a nuvem escolhida nos menus."""

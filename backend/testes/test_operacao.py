@@ -184,3 +184,11 @@ def test_interface_nao_sai_da_pasta():
                 assert "Servidor do Editor" not in r.text, caminho
     if A.ESTATICOS.exists():
         asyncio.run(rodar())
+
+
+def test_rotas_get_nao_se_repetem():
+    # Duas rotas GET com o mesmo endereco: so a primeira responde (o progresso dos
+    # nos do Config Models ficou mudo assim, 27/10/2026).
+    from collections import Counter
+    rotas = Counter((r.path, m) for r in A.app.routes for m in getattr(r, "methods", ()) or ())
+    assert not [k for k, n in rotas.items() if n > 1]

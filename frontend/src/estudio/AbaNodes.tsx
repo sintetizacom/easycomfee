@@ -11,7 +11,7 @@ export default function AbaNodes() {
   const [escolhido, setEscolhido] = useState('principal')
   const [versao, setVersao] = useState(0)
 
-  const carregar = () => fetch('/api/nos').then((r) => r.json())
+  const carregar = () => fetch('/api/nos/editor').then((r) => r.json())
     .then((d) => setMotores(d.motores)).catch(() => setMotores([]))
   useEffect(() => { carregar() }, [])
 
