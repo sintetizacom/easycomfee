@@ -55,8 +55,9 @@ ATENCAO = "sageattn"
 MASCARA_REFERENCIA = 0
 
 # Sem isto a camera passeia: afasta, aproxima, a cabeca encosta no topo.
-CAMERA_FIXA = ("Static camera, locked-off tripod shot: the camera does not move, "
-               "zoom or pan, and the framing does not change.")
+# Sem "tripod": no Cinema o LTX chegou a desenhar um tripe na cena (27/10/2026).
+CAMERA_FIXA = ("Static shot with fixed framing: the view does not move, zoom or pan, "
+               "and the framing does not change.")
 CENA_PADRAO = "A person speaks naturally to the camera"
 NEGATIVO = (
     "Close-up, bright tones, overexposed, static, blurred details, subtitles, style, "

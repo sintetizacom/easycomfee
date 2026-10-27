@@ -1,7 +1,8 @@
-import { Children, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Children, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api, ouvirTarefas, referenciaDaGaleria, urlImagem, type Referencia, type Tarefa } from '../api'
 import { abrirVisualizador, reusarPrompt } from './Visualizador'
 import { emIngles } from '../PainelAndamento'
+import { MotorCtx } from './motor'
 
 // Shared pieces of the new studio: live jobs, result tiles, upload slots.
 
@@ -349,6 +350,9 @@ export type Estimativa = { tipo: 'gratis' | 'api' | 'gpu' | 'desconhecido'; min?
  *  Comfy Cloud are GPU time; local runs are free. */
 export function useCusto(pedido: Record<string, unknown> | null) {
   const [est, setEst] = useState<Estimativa | null>(null)
+  // O motor entra na chave: "local:klein" e "nuvem:klein" mandam o mesmo pedido, e
+  // sem isto o botao seguia dizendo "Free" com a nuvem escolhida (27/10/2026).
+  const { naNuvem } = useContext(MotorCtx)
   const chave = pedido ? JSON.stringify(pedido) : ''
   useEffect(() => {
     if (!chave) { setEst(null); return }
@@ -357,7 +361,7 @@ export function useCusto(pedido: Record<string, unknown> | null) {
         .then((r) => r.json()).then(setEst).catch(() => setEst(null))
     }, 350)
     return () => clearTimeout(t)
-  }, [chave])
+  }, [chave, naNuvem])
   return est
 }
 

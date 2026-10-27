@@ -40,7 +40,8 @@ export const ABERTURAS: Opcao[] = [
 // LTX follows camera directions written in the prompt; these are the phrasings
 // that move the camera reliably.
 export const MOVIMENTOS: Opcao[] = [
-  { id: 'estatica', rotulo: 'Static', texto: 'The camera is locked off on a tripod and does not move.' },
+  // Sem "tripod": o LTX desenhava um tripe na cena (27/10/2026).
+  { id: 'estatica', rotulo: 'Static', texto: 'Static shot with fixed framing: the view does not move, pan or zoom.' },
   { id: 'dolly_in', rotulo: 'Dolly in', texto: 'The camera slowly dollies in toward the subject.' },
   { id: 'dolly_out', rotulo: 'Dolly out', texto: 'The camera slowly dollies back, revealing more of the scene.' },
   { id: 'pan_esq', rotulo: 'Pan left', texto: 'The camera pans smoothly to the left.' },
