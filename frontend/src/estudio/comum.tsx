@@ -107,7 +107,8 @@ export function useSoltarNaCaixa() {
   }, [])
 }
 
-// Icones da barra de acoes (traco, herdam a cor do botao).
+// Icones da barra de acoes (traco, herdam a cor do botao). Os pontos do "mais" usam traco
+// mais grosso: com 2 sumiam ao lado dos outros icones.
 const ICONES: Record<string, string> = {
   mais: 'M12 5.5v.01M12 12v.01M12 18.5v.01',
   lixo: 'M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6',
@@ -115,7 +116,7 @@ const ICONES: Record<string, string> = {
   abrir: 'M14 4h6v6M10 14 20 4M20 14v6H4V4h6',
 }
 const Icone = ({ d }: { d: string }) => (
-  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth={d === 'mais' ? 3.2 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d={ICONES[d]} />
   </svg>
 )
@@ -185,7 +186,7 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
   ]
 
   return (
-    <div ref={caixa} className="hf-midia-caixa" data-midia data-nome={nome} data-subpasta={subpasta} data-menu={menu}
+    <div ref={caixa} className="hf-midia-caixa" data-midia data-nome={nome} data-subpasta={subpasta} data-menu={menu} data-audio={eAudio(nome) || undefined}
       draggable={imagem} onDragStart={(e) => {
         e.dataTransfer.setData(TIPO_GALERIA, JSON.stringify(arq))
         e.dataTransfer.effectAllowed = 'copy'

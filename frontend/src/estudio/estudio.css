@@ -686,3 +686,7 @@ html .mq-aviso-amd { margin: 0 0 12px; color: #F4F0E8; background: #34331F; bord
 html .mq-remover { background: none; border: 0; color: #888095; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0 0; }
 html .mq-remover:hover { color: #F4F0E8; }
 html .mq-remover:disabled { opacity: .5; cursor: default; }
+/* Audio: os icones nao ficam por cima do player (cobriam o tempo e o volume);
+   vao numa linha propria acima dele, sempre visiveis. */
+.hf-midia-caixa[data-audio] .hf-acoes-topo { position: static; opacity: 1; justify-content: flex-end; margin-top: 8px; }
+.hf-midia-caixa[data-audio] .hf-audio { margin-top: 6px; }
