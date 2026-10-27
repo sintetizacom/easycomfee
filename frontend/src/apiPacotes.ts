@@ -13,6 +13,8 @@ export type ArquivoPacote = {
   opcional: boolean
   /** null quando o motor nao respondeu e nao da para saber. */
   instalado: boolean | null
+  /** Achado no ComfyUI da pessoa em outra subpasta (pasta/arquivo); usado sem baixar de novo. */
+  encontrado?: string
   url: string
 }
 

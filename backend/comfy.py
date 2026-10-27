@@ -130,6 +130,10 @@ async def enfileirar(grafo: dict) -> str:
         if fechados:
             raise ErroComfy("Este modo usa um serviço fechado (" + ", ".join(fechados) +
                             ") e a versão de modelos abertos não o envia.")
+    if not na_nuvem():
+        # Modelo que a pessoa ja tinha em outra subpasta: o grafo pede o lugar real.
+        import pacotes
+        grafo = await pacotes.ajustar_grafo(grafo)
     if na_nuvem():
         import nuvem
         try:

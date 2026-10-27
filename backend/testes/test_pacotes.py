@@ -32,7 +32,8 @@ def teste_situacao_marca_o_que_falta(monkeypatch):
         # O ComfyUI no Windows devolve barra invertida.
         nomes = [pacotes.relativo(a).replace("/", "\\") for a in ltx["arquivos"]
                  if a["pasta"] == pasta and a["arquivo"] in presente]
-        # Arquivo certo na subpasta errada nao conta como instalado.
+        # Arquivo certo em outra subpasta (quem ja usava ComfyUI) conta: o grafo
+        # passa a pedir o lugar real (pacotes.ajustar_grafo).
         nomes += [a["arquivo"] for a in ltx["arquivos"] if a["pasta"] == pasta and a["opcional"]]
         return httpx.Response(200, json=nomes)
 
@@ -42,7 +43,9 @@ def teste_situacao_marca_o_que_falta(monkeypatch):
     s = asyncio.run(pacotes.situacao())
     p = s["pacotes"][0]
     assert s["motor_respondendo"] and p["pronto"]
-    assert p["tamanho_faltando"] == sum(a["tamanho"] for a in ltx["arquivos"] if a["opcional"])
+    assert p["tamanho_faltando"] == 0
+    opcionais = [a for a in p["arquivos"] if a["opcional"]]
+    assert opcionais and all(a["instalado"] and a["encontrado"] == a["arquivo"] for a in opcionais)
 
 
 def teste_motor_fora_do_ar_nao_inventa_estado(monkeypatch):
