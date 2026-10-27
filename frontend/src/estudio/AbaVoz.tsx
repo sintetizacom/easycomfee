@@ -20,6 +20,21 @@ const VOZES_PRONTAS = [
   { rotulo: 'Soft whisper', texto: 'Soft gentle female voice, close whisper, calm and intimate' },
   { rotulo: 'Old storyteller', texto: 'Elderly man with a raspy voice, slow storyteller, slight British accent' },
 ]
+// Vozes prontas do Narrate local: o OmniVoice nao tem lista de falantes, entao cada
+// uma e um Voice Design com as tags que ele entende (genero, idade, tom, whisper)
+// e seed fixa, para soar igual de um texto para outro. Medidas em 27/10/2026:
+// homens 100-180 Hz, mulheres 240-350 Hz, em ingles e em portugues.
+const VOZES_LOCAIS = [
+  { id: '', rotulo: 'Auto', tags: '', seed: 0 },
+  { id: 'warm', rotulo: 'Warm narrator', tags: 'male, middle-aged, low pitch', seed: 1101 },
+  { id: 'bright', rotulo: 'Bright host', tags: 'female, young adult, high pitch', seed: 1102 },
+  { id: 'trailer', rotulo: 'Movie trailer', tags: 'male, middle-aged, very low pitch', seed: 1103 },
+  { id: 'storyteller', rotulo: 'Storyteller', tags: 'male, elderly, low pitch', seed: 1104 },
+  { id: 'grandma', rotulo: 'Grandma', tags: 'female, elderly, moderate pitch', seed: 1105 },
+  { id: 'whisper', rotulo: 'Soft whisper', tags: 'female, young adult, moderate pitch, whisper', seed: 1106 },
+  { id: 'casual', rotulo: 'Young casual', tags: 'male, young adult, moderate pitch', seed: 1107 },
+  { id: 'calm', rotulo: 'Calm presenter', tags: 'female, middle-aged, moderate pitch', seed: 1108 },
+]
 // Fala comum: ~15 caracteres por segundo. Serve para avisar do limite do Lip Sync.
 const segundosDe = (texto: string) => Math.round(texto.trim().length / 15)
 const IDIOMAS = ['English', 'Portuguese', 'Spanish', 'French', 'German', 'Italian', 'Japanese', 'Chinese', 'Korean']
@@ -31,6 +46,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const [texto, setTexto] = useState('')
   const [idioma, setIdioma] = useState('English')
   const [falante, setFalante] = useState('Ryan')
+  const [vozLocal, setVozLocal] = useState('')
   const [instrucao, setInstrucao] = useState('')
   const [ref, setRef] = useState<{ nome: string; url: string } | null>(null)
   const [transcricao, setTranscricao] = useState('')
@@ -40,9 +56,11 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   // Picking the other one in the menu switches the engine.
   const escolher = useEscolha(() => {})
 
+  // Narrate local com voz pronta = Voice Design com as tags e a seed dela.
+  const pronta = modo === 'narrar' && !naNuvem ? VOZES_LOCAIS.find((v) => v.id === vozLocal && v.tags) : undefined
   const pedido = {
-    modelo: 'voz', modo_voz: modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
-    falante_voz: falante, instrucao_voz: instrucao.trim(),
+    modelo: 'voz', modo_voz: pronta ? 'criar' : modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
+    falante_voz: falante, instrucao_voz: pronta ? pronta.tags : instrucao.trim(), ...(pronta ? { seed: pronta.seed } : {}),
     referencia_voz: modo === 'clonar' ? ref?.nome ?? '' : '', transcricao_voz: modo === 'clonar' ? transcricao.trim() : '',
   }
   const custo = useCusto(pedido)
@@ -94,7 +112,10 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
                   placeholder="Optional: how to say it, e.g. excited, whispering, sad" />
               </>
             ) : (
-              <p className="hf-dica">OmniVoice picks a natural voice for the language. Want a specific one? Use <b>Design a voice</b> or <b>Clone a voice</b>.</p>
+              <>
+                <Chips rotulo="Voice" opcoes={VOZES_LOCAIS.map((v) => ({ id: v.id, rotulo: v.rotulo }))} valor={vozLocal} aoMudar={setVozLocal} />
+                <p className="hf-dica">{vozLocal ? 'The same voice in any language.' : 'Auto: OmniVoice picks a natural voice for the language.'} Want your own? Use <b>Design a voice</b> or <b>Clone a voice</b>.</p>
+              </>
             ))}
             {modo === 'criar' && (
               <>
