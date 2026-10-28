@@ -1,0 +1,2 @@
+# Arquivos .bat precisam de CRLF no Windows, em qualquer configuracao de git de quem clona.
+*.bat text eol=crlf
