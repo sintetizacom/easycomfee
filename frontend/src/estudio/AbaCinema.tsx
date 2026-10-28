@@ -7,7 +7,7 @@ import {
 } from './cinema'
 import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas } from './comum'
 import { IconeCamera } from './IconesCamera'
-import { GruposAbertos, useEscolha, useValor } from './motor'
+import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 
 // Cinema Studio, one box. The Image | Video switch changes the whole box: the
 // model menu (image models or video models) and the controls at the bottom.
@@ -41,7 +41,7 @@ const foto = (grupo: string, id: string) => `/cinema/${grupo}/${id}.webp?v=${VER
 function Cartao({ grupo, o, ativo, aoEscolher }: { grupo: string; o: Cor; ativo: boolean; aoEscolher: () => void }) {
   const [semFoto, setSemFoto] = useState(false)
   return (
-    <button type="button" className="hf-cartao-op" data-ativo={ativo} onClick={aoEscolher}>
+    <button type="button" className="hf-cartao-op" data-ativo={ativo} aria-pressed={ativo} onClick={aoEscolher}>
       {semFoto && o.cores ? <span className="hf-paleta">{o.cores.map((c) => <i key={c} style={{ background: c }} />)}</span>
         : semFoto ? <span className="hf-cartao-vazio">{o.rotulo}</span>
           : <img src={foto(grupo, o.id)} alt="" loading="lazy" onError={() => setSemFoto(true)} />}
@@ -132,6 +132,11 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const escolherVid = useEscolha(setMotorVideo)
   const gApi = geradores.find((g) => g.id === motorVideo)
   const valorVid = useValor(motorVideo, !!gApi)
+  const faltaInstalar = useFaltaInstalar()
+  // Rotulo do modelo escolhido que falta instalar neste computador ('' se nada falta).
+  const naoInstalado = video
+    ? (faltaInstalar(motorVideo, !!gApi) ? (motorVideo === 'ltx' ? 'LTX 2.5' : 'MiniMax H3') : '')
+    : (faltaInstalar(modelo, !!apiAtual) ? (modelos.find((m) => m.id === modelo)?.rotulo ?? modelo) : '')
   const proporcoesVideo = gApi ? (gApi.proporcoes ?? ['16:9']).filter((x) => x !== 'adaptive') : ['16:9', '9:16', '1:1']
   const resolucoesVideo = gApi ? (gApi.resolucoes ?? ['720p']) : motorVideo === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   // Every whole second the model takes (the open LTX goes to 15 s, as in the Video tab).
@@ -212,8 +217,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
       <div className="hf-barra-prompt hf-cinema">
         <div className="hf-linha-controles hf-cinema-topo">
           <div className="hf-tipo" role="tablist">
-            <button role="tab" data-ativo={!video} onClick={() => setTipo('imagem')}>Image</button>
-            <button role="tab" data-ativo={video} onClick={() => setTipo('video')}>Video</button>
+            <button role="tab" data-ativo={!video} aria-selected={!video} onClick={() => setTipo('imagem')}>Image</button>
+            <button role="tab" data-ativo={video} aria-selected={video} onClick={() => setTipo('video')}>Video</button>
           </div>
           {video ? (
             <select className="hf-select" value={valorVid} onChange={(e) => escolherVid(e.target.value)} aria-label="Video model">
@@ -229,7 +234,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
           </label>
         </div>
 
-        <textarea className="hf-cinema-texto" value={cena} onChange={(e) => setCena(e.target.value)} rows={3}
+        <textarea aria-label="Scene description" className="hf-cinema-texto" value={cena} onChange={(e) => setCena(e.target.value)} rows={3}
           placeholder={castOk.length > 1 ? 'e.g. @image1 and @image2 argue in a rain-soaked neon alley at night…'
             : 'Who, where, what is happening: a detective in a rain-soaked neon alley at night…'} />
         {maxCast > 0 ? (
@@ -258,7 +263,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                 <div key={c}>
                   <span className="hf-grupo-rotulo">{r}</span>
                   {l.map((o) => (
-                    <button key={o.id} type="button" className="hf-cartao-op hf-cartao-icone" data-ativo={d[c] === o.id}
+                    <button key={o.id} type="button" className="hf-cartao-op hf-cartao-icone" data-ativo={d[c] === o.id} aria-pressed={d[c] === o.id}
                       onClick={() => mudar(c)(o.id)} title={o.texto}>
                       <IconeCamera grupo={c} id={o.id} /><b>{o.rotulo}</b>
                     </button>
@@ -288,7 +293,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
           return (
             <div key={p.id} className="hf-plano">
               <div className="hf-plano-quadro">
-                {t ? <CartaoTarefa t={t} /> : <img src={foto('enquadramento', p.enquadramento)} alt="" />}
+                {t ? <CartaoTarefa t={t} /> : <img src={foto('enquadramento', p.enquadramento)} alt={`Shot ${i + 1}: ${rot(ENQUADRAMENTOS, p.enquadramento)}`} />}
               </div>
               <div className="hf-plano-campos">
                 <div className="hf-linha-controles">
@@ -303,7 +308,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                       {MOVIMENTOS.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
                     </select>
                   )}
-                  {planos.length > 1 && <button type="button" className="hf-botao-sec hf-x" onClick={() => setPlanos((a) => a.filter((x) => x.id !== p.id))}>×</button>}
+                  {planos.length > 1 && <button type="button" className="hf-botao-sec hf-x" aria-label={`Remove shot ${i + 1}`} title={`Remove shot ${i + 1}`}
+                    onClick={() => setPlanos((a) => a.filter((x) => x.id !== p.id))}>×</button>}
                 </div>
                 {enqAberto === p.id && (
                   <div className="hf-painel-op hf-painel-enq">
@@ -314,7 +320,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                 <input className="hf-campo" value={p.acao} onChange={(e) => mudarPlano(p.id, { acao: e.target.value })}
                   placeholder="What happens in this shot (optional): he lights a cigarette…" />
                 <div className="hf-linha-controles">
-                  <button type="button" className="hf-botao-sec" disabled={!cena.trim() || !!trabalhando}
+                  <button type="button" className="hf-botao-sec" disabled={!cena.trim() || !!trabalhando || !!naoInstalado}
                     onClick={async () => { setErro(null); try { await gerarPlano(p) } catch (e) { setErro(mensagem(e)) } }}>
                     {t ? '↻ Reshoot' : 'Shoot this one'}
                   </button>
@@ -323,10 +329,11 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             </div>
           )
         })}
-        {planos.length < 8 && (
+        {/* Teto de 8 planos: o botao da lugar a uma nota (antes sumia sem dizer por que). */}
+        {planos.length < 8 ? (
           <button type="button" className="hf-botao-sec hf-mais-plano"
             onClick={() => setPlanos((a) => [...a, { id: proximoPlano++, enquadramento: 'medio', acao: '', movimento: 'estatica' }])}>+ Add shot</button>
-        )}
+        ) : <p className="hf-dica">Up to 8 shots per scene. Remove one to add another.</p>}
 
         <div className="hf-cinema-rodape">
           <Controle icone="▭" rotulo="Aspect" valor={escolherDe(proporcoes, proporcao)} aoMudar={setProporcao}
@@ -339,7 +346,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             {(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? (
               <span className="hf-ctrl hf-ctrl-fixo" title="This model makes silent video"><small>Sound</small><b>🔇 None</b></span>
             ) : (
-              <button type="button" className="hf-ctrl hf-ctrl-som" data-ativo={audio} onClick={() => setAudio((a) => !a)}
+              <button type="button" className="hf-ctrl hf-ctrl-som" data-ativo={audio} aria-pressed={audio} onClick={() => setAudio((a) => !a)}
                 title="Generate sound with the video (ambience, effects, speech)">
                 <small>Sound</small><b>{audio ? '🔊 On' : '🔇 Off'}</b>
               </button>
@@ -348,9 +355,10 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             <Controle icone="▦" rotulo="Takes per shot" valor={String(lote)} aoMudar={(v) => setLote(Number(v))}
               opcoes={[1, 2, 4].map((n) => ({ id: String(n), rotulo: `${n}` }))} />
           )}
-          <BotaoGerar rotulo={trabalhando || `Shoot ${planos.length} ${video ? 'clips' : 'stills'} ✦`}
-            est={custoTotal} desligado={!cena.trim() || !!trabalhando} aoClicar={gerarTodos} />
+          <BotaoGerar rotulo={trabalhando || `Shoot ${planos.length} ${video ? 'clip' : 'still'}${planos.length === 1 ? '' : 's'} ✦`}
+            est={custoTotal} desligado={!!naoInstalado || !cena.trim() || !!trabalhando} aoClicar={gerarTodos} />
         </div>
+        {naoInstalado && <AvisoInstalar rotulo={naoInstalado} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
     </div>

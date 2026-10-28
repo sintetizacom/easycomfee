@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 
 // Where generations run, shared by every model menu. There is no Local / Cloud
 // switch in the top bar any more: each menu has a "Local" group (open models
@@ -75,14 +75,30 @@ export function GruposAbertos({ itens, api = [] }: { itens: Item[]; api?: { id: 
 
 /** The handler for a model select: switches the engine when an open model of the other group is picked. */
 export function useEscolha(aoMudar: (id: string) => void) {
-  const { naNuvem } = useContext(MotorCtx)
+  const { naNuvem, temChave } = useContext(MotorCtx)
   return async (v: string) => {
     const [motor, id] = v.includes(':') ? (v.split(':', 2) as [Motor, string]) : [null, v]
-    aoMudar(id)
     if (motor && (motor === 'nuvem') !== naNuvem) {
-      try { await trocarMotor(motor) } catch (e) { alert(String(e instanceof Error ? e.message : e)) }
+      // Sem chave a troca nem e tentada: o aviso leva direto a tela da chave.
+      if (motor === 'nuvem' && !temChave) {
+        avisarMotor('Add your Comfy Cloud API key to run models on the cloud.', true)
+        return
+      }
+      // Troca primeiro: se o servidor recusar, o modelo escolhido continua o de antes.
+      try { await trocarMotor(motor) } catch (e) {
+        avisarMotor(String(e instanceof Error ? e.message : e))
+        return
+      }
     }
+    aoMudar(id)
   }
+}
+
+/** Aviso na tela quando a troca de motor nao acontece (antes era um alert() do
+ *  navegador, ou nada). O Estudio mostra; `chave` poe o botao da chave da nuvem. */
+export const EVENTO_AVISO_MOTOR = 'easycomfee:aviso-motor'
+export function avisarMotor(texto: string, chave = false) {
+  window.dispatchEvent(new CustomEvent(EVENTO_AVISO_MOTOR, { detail: { texto, chave } }))
 }
 
 /** The select value: open models carry the engine, API models their own id. */
@@ -97,16 +113,44 @@ export function useInstalado() {
   return (id: string) => !instalados || ([] as string[]).concat(PACOTE[id] ?? []).every((p) => instalados.has(p))
 }
 
+/** Modelo aberto escolhido para rodar NESTE computador sem o pacote instalado:
+ *  o Generate fica desligado e a aba mostra <AvisoInstalar> (a Music ja fazia). */
+export function useFaltaInstalar() {
+  const { naNuvem } = useContext(MotorCtx)
+  const instalado = useInstalado()
+  return (id: string, ehApi = false) => !naNuvem && !ehApi && !instalado(id)
+}
+
+export function AvisoInstalar({ rotulo }: { rotulo: string }) {
+  return <p className="hf-erro" role="alert">{rotulo} is not installed on this computer. Install it in Config Models, or pick a Comfy Cloud model in the menu.</p>
+}
+
 /** Etiqueta "Your GPU" / "Cloud" dentro de um cartao de modelo: escolhe o modelo
- *  JA no motor indicado (o cartao em si e um botao, por isso isto e um span). */
+ *  JA no motor indicado. E um botao de verdade: o cartao (CartaoModelo) e um div
+ *  com o seu proprio botao, porque botao dentro de botao e HTML invalido. */
 export function Onde({ onde, ativo, falta, aoEscolher }: { onde: 'local' | 'nuvem'; ativo: boolean; falta?: boolean; aoEscolher: () => void }) {
   return (
-    <span role="button" tabIndex={0} className="hf-onde" data-onde={onde} data-ativo={ativo} data-falta={!!falta}
+    <button type="button" className="hf-onde" data-onde={onde} data-ativo={ativo} aria-pressed={ativo} data-falta={!!falta}
       title={onde === 'local' ? (falta ? 'Not installed: install it in Config Models' : 'Run it on your GPU (free)') : 'Run it on Comfy Cloud (credits)'}
-      onClick={(e) => { e.stopPropagation(); aoEscolher() }}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); aoEscolher() } }}>
+      onClick={(e) => { e.stopPropagation(); aoEscolher() }}>
       {onde === 'local' ? (falta ? 'Your GPU · not installed' : 'Your GPU') : 'Cloud'}
-    </span>
+    </button>
+  )
+}
+
+/** Cartao de modelo (Music, Genjutsu): o cartao todo responde ao clique, mas o
+ *  controle para teclado e leitor de tela e o botao com o nome; as etiquetas
+ *  Your GPU / Cloud (LinhaOnde) ficam ao lado dele, nao dentro. */
+export function CartaoModelo({ ativo, aoEscolher, title, children, rodape }: {
+  ativo: boolean; aoEscolher: () => void; title?: string; children: ReactNode; rodape?: ReactNode
+}) {
+  return (
+    <div className="hf-mu-modelo" data-ativo={ativo} onClick={aoEscolher} title={title}>
+      <button type="button" className="hf-mu-escolher" aria-pressed={ativo} onClick={(e) => { e.stopPropagation(); aoEscolher() }}>
+        {children}
+      </button>
+      {rodape}
+    </div>
   )
 }
 

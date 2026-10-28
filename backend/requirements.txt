@@ -4,7 +4,9 @@ httpx==0.28.1
 websockets==14.1
 pydantic==2.10.4
 pillow==12.3.0
-numpy==2.5.3
+# numpy 2.5 exige Python 3.12+; no 3.11 fica a ultima que o suporta.
+numpy==2.5.3; python_version >= "3.12"
+numpy==2.4.6; python_version < "3.12"
 opencv-python-headless==4.14.0.94
 python-multipart==0.0.32
 

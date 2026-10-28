@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api'
 import { GruposAbertos, useEscolha } from './motor'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, teclasRadio, useCusto, useTarefas, Galeria } from './comum'
 
 // Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
 // on Comfy Cloud, where OmniVoice is missing, Qwen3-TTS (voz.grafo_nuvem),
@@ -37,6 +37,9 @@ const VOZES_LOCAIS = [
 ]
 // Fala comum: ~15 caracteres por segundo. Serve para avisar do limite do Lip Sync.
 const segundosDe = (texto: string) => Math.round(texto.trim().length / 15)
+// O mesmo teto do servidor (12.000 caracteres, uns 13 min de fala): antes a caixa
+// aceitava qualquer tamanho e so o Generate falhava.
+const MAX_TEXTO = 12000
 const IDIOMAS = ['English', 'Portuguese', 'Spanish', 'French', 'German', 'Italian', 'Japanese', 'Chinese', 'Korean']
 const FALANTES = ['Ryan', 'Aiden', 'Dylan', 'Eric', 'Serena', 'Vivian', 'Ono_anna', 'Sohee', 'Uncle_fu']
 
@@ -92,9 +95,9 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
         <p className="hf-dica">Narration, a voice made from a description, or a clone of a recording. Use it in Lip Sync next.</p>
       </div>
 
-      <div className="hf-vz-modos" role="radiogroup" aria-label="Mode">
+      <div className="hf-vz-modos" role="radiogroup" aria-label="Mode" onKeyDown={teclasRadio}>
         {MODOS.map((m) => (
-          <button key={m.id} type="button" role="radio" aria-checked={modo === m.id} className="hf-vz-modo"
+          <button key={m.id} type="button" role="radio" aria-checked={modo === m.id} tabIndex={modo === m.id ? 0 : -1} className="hf-vz-modo"
             data-ativo={modo === m.id} onClick={() => setModo(m.id)}>
             <span aria-hidden>{m.icone}</span><b>{m.rotulo}</b><small>{m.frase}</small>
           </button>
@@ -119,7 +122,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
             ))}
             {modo === 'criar' && (
               <>
-                <textarea className="hf-vz-caixa" value={instrucao} onChange={(e) => setInstrucao(e.target.value)} rows={4}
+                <textarea aria-label="Voice description" className="hf-vz-caixa" value={instrucao} onChange={(e) => setInstrucao(e.target.value)} rows={4}
                   placeholder="Describe the voice: age, tone, pace, accent… e.g. warm elderly man, deep and slow, slight British accent" />
                 <div className="hf-vz-exemplos">
                   {VOZES_PRONTAS.map((v) => (
@@ -134,11 +137,11 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
                   {ref
                     ? <span className="hf-fala"><audio src={ref.url} controls onClick={(e) => e.preventDefault()} /></span>
                     : <span>{enviando ? 'Uploading…' : '+ Voice sample'}<small>5–20 s, one speaker, no music</small></span>}
-                  <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" hidden
+                  <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" className="hf-arquivo"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) enviar(f) }} />
                 </label>
                 {ref && <button type="button" className="hf-botao-sec" onClick={() => setRef(null)}>Remove sample</button>}
-                <textarea className="hf-vz-caixa" value={transcricao} onChange={(e) => setTranscricao(e.target.value)} rows={3}
+                <textarea aria-label="What the sample says" className="hf-vz-caixa" value={transcricao} onChange={(e) => setTranscricao(e.target.value)} rows={3}
                   placeholder={naNuvem ? 'Optional: what is said in the sample, word for word (better clone)' : 'What is said in the sample, word for word'} />
               </>
             )}
@@ -146,10 +149,13 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
 
           <section className="hf-vz-coluna hf-vz-texto">
             <span className="hf-grupo-rotulo">What to say</span>
-            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} placeholder="The text to speak…" />
+            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} maxLength={MAX_TEXTO}
+              placeholder="The text to speak…" aria-label="The text to speak" />
             <span className="hf-dica">
-              {texto.length} characters · about {segundosDe(texto)} s of speech
-              {segundosDe(texto) > 30 && <b className="hf-vz-longo"> · over 30 s: too long for Lip Sync</b>}
+              {texto.length.toLocaleString('en-US')} / {MAX_TEXTO.toLocaleString('en-US')} characters · about {segundosDe(texto)} s of speech
+              {/* Narracao longa e valida; so o Lip Sync aceita ate 30 s de fala. */}
+              {segundosDe(texto) > 30 && <b className="hf-vz-longo"> · fine for narration, but over the 30 s that Lip Sync takes</b>}
+              {texto.length >= MAX_TEXTO && <b className="hf-vz-longo"> · limit reached</b>}
             </span>
           </section>
         </div>

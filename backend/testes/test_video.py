@@ -294,8 +294,10 @@ def teste_chaves_720p_com_recorte_e_decode_estavel():
             conferir("recorte final", (corte["width"], corte["height"]), alvo)
             conferir("video usa recorte", g["video"]["inputs"]["images"], ["recorte_saida", 0])
             conferir("audio opcional", "audio" in g["video"]["inputs"], audio)
+            # O video inteiro no tempo (W.TEMPORAL_LTX, desde 23/10/2026): em pedacos
+            # a nitidez caia a cada 56 quadros. 192/48 ficou so no LTX References (MSR).
             conferir("decode temporal", (g["dec"]["inputs"]["temporal_size"],
-                                          g["dec"]["inputs"]["temporal_overlap"]), (192, 48))
+                                          g["dec"]["inputs"]["temporal_overlap"]), W.TEMPORAL_LTX)
             for etapa in (1, 2):
                 conferir("referencia preservada", g[f"guia1_{etapa}"]["inputs"]["frame_idx"], 304)
 

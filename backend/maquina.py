@@ -4,6 +4,7 @@ Detecta sozinho e guarda o que a pessoa confirmou (ou corrigiu) em
 maquina.json. E com esse perfil que a tela de modelos diz, para cada pacote,
 se ele roda bem, roda limitado ou nao roda aqui, antes de baixar dezenas de GB.
 """
+import asyncio
 import ctypes
 import json
 import shutil
@@ -74,7 +75,9 @@ async def detectar() -> dict:
         d["ram_gb"] = s.get("system", {}).get("ram_total", 0) / GB or d["ram_gb"]
     except Exception:
         pass
-    if d["vram_gb"] is None and (smi := _nvidia_smi()):
+    # nvidia-smi pode levar segundos (ou travar ate o timeout): fora do laco de
+    # eventos, para o servidor seguir atendendo as outras abas.
+    if d["vram_gb"] is None and (smi := await asyncio.to_thread(_nvidia_smi)):
         d.update(gpu=smi[0], vram_gb=smi[1], fonte="nvidia-smi")
     for k in ("vram_gb", "ram_gb", "disco_livre_gb"):
         if d[k] is not None:

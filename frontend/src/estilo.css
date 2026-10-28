@@ -32,7 +32,9 @@ button {
   cursor: pointer;
   transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
 }
-button:hover:not(:disabled) { background: #263653; border-color: #6077aa; }
+/* So no editor antigo: no estudio novo (.hf) cada botao tem o seu hover, e este
+   azul passava por cima (a linha "Camera" da Cinema ficava com contraste 3,2:1). */
+button:hover:not(:disabled):not(.hf *) { background: #263653; border-color: #6077aa; }
 button:focus-visible { outline: 2px solid var(--realce); outline-offset: 2px; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 

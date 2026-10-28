@@ -133,7 +133,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
                   <small>{fala.segundos.toFixed(1)} s of {LIMITE} s</small>
                 </span>
               ) : <span>+ Voice track<small>WAV, MP3, FLAC, M4A or OGG</small></span>}
-              <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) enviarFala(f) }} />
+              <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" className="hf-arquivo" onChange={(e) => { const f = e.target.files?.[0]; if (f) enviarFala(f) }} />
             </label>
             {fala && <button type="button" className="hf-botao-sec" onClick={() => setFala(null)}>Remove voice</button>}
             <p className="hf-dica">Up to {LIMITE} s with this model. No recording? <a href="#voice">Create one in the Voice tab</a>.</p>
@@ -141,7 +141,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
 
           <section className="hf-ls-cartao hf-ls-cena">
             <header><b>3</b> Describe the scene <small>optional</small></header>
-            <textarea value={cena} onChange={(e) => setCena(e.target.value)} rows={4}
+            <textarea aria-label="Scene description" value={cena} onChange={(e) => setCena(e.target.value)} rows={4}
               placeholder="e.g. a news anchor in a bright studio, speaking with confidence" />
             <p className="hf-dica">How the person behaves while talking: mood, setting, gestures.</p>
           </section>

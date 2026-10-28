@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { api, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
-import { GruposAbertos, useEscolha, useValor, valorAberto } from './motor'
+import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -58,14 +58,22 @@ const REFERENCIAS: Record<string, { modo: string; max: number; uso: string; base
 const NUVEM_SEM_REF = new Set(['krea', 'kroma', 'qwen21', 'flux3'])
 const REF_NUVEM = { modo: 'qwen', max: 3, base: true, uso: 'On Comfy Cloud, images go through Qwen Image Edit. Image 1 is the base; add people or objects as image 2, 3.' }
 
-export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: Modelo[]; apiModelos: ModeloNuvem[]; naNuvem: boolean }) {
+export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuvem }: { modelos: Modelo[]; apiModelos: ModeloNuvem[]; apiOcultos?: ModeloNuvem[]; naNuvem: boolean }) {
   const tarefas = useTarefas()
   const [prompt, setPrompt] = useState('')
   const [look, setLook] = useState('')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
-  const [modelo, setModelo] = useState(() => parteDoHash(1) || 'krea')
+  const [escolhido, setModelo] = useState(() => parteDoHash(1) || 'krea')
+  // O que aparece, o que o preco mostra e o que vai no pedido sao o MESMO modelo:
+  // um id que o menu nao tem (API oculta em "so abertos", link inventado) vira o padrao.
+  // Enquanto o catalogo carrega (listas vazias) fica o escolhido, para nao perde-lo.
+  const carregado = modelos.length > 0
+  const modelo = !carregado || modelos.some((m) => m.id === escolhido) || apiModelos.some((m) => m.id === escolhido)
+    ? escolhido : (modelos.find((m) => m.id === 'krea') ?? modelos[0]).id
+  const apiOculta = modelo !== escolhido ? apiOcultos.find((m) => m.id === escolhido) : undefined
   const escolher = useEscolha(setModelo)
+  const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(modelo, apiModelos.some((m) => m.id === modelo))
   const [proporcao, setProporcao] = useState('1:1')
   const [lote, setLote] = useState(1)
@@ -81,6 +89,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
   const atual = modelos.find((m) => m.id === modelo)
   // Modelos de API (Nano Banana, GPT Image): rodam pelos creditos da conta Comfy.
   const apiAtual = apiModelos.find((m) => m.id === modelo)
+  const naoInstalado = faltaInstalar(modelo, !!apiAtual)
   const niveis = apiAtual ? (apiAtual.resolucoes ?? apiAtual.niveis ?? ['1K']) : []
   const [nivel, setNivel] = useState('1K')
   const nivelOk = niveis.includes(nivel) ? nivel : niveis[0]
@@ -159,12 +168,12 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
           <div className="hf-looks">
             <span className="hf-grupo-rotulo">One-tap looks</span>
             {/* Cartoes com miniatura: cada uma e uma amostra real do look (Flux 3 Klein). */}
-            <div className="hf-looks-grade" role="radiogroup" aria-label="One-tap looks">
-              <button type="button" role="radio" aria-checked={look === ''} className="hf-look" data-ativo={look === ''} onClick={() => setLook('')}>
+            <div className="hf-looks-grade" role="radiogroup" aria-label="One-tap looks" onKeyDown={teclasRadio}>
+              <button type="button" role="radio" aria-checked={look === ''} tabIndex={look === '' || !lookAtual ? 0 : -1} className="hf-look" data-ativo={look === ''} onClick={() => setLook('')}>
                 <span className="hf-look-nada" aria-hidden>⊘</span><span>None</span>
               </button>
               {LOOKS.filter((l) => !comRefs || l.comImagem).map((l) => (
-                <button key={l.id} type="button" role="radio" aria-checked={look === l.id} className="hf-look" data-ativo={look === l.id}
+                <button key={l.id} type="button" role="radio" aria-checked={look === l.id} tabIndex={look === l.id ? 0 : -1} className="hf-look" data-ativo={look === l.id}
                   onClick={() => escolherLook(l)} title={`${l.rotulo}: e.g. ${l.exemplo}`}>
                   <img src={`/looks/${l.id}.webp`} alt="" /><span>{l.rotulo}</span>
                 </button>
@@ -184,7 +193,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
             )}
           </div>
         )}
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
             : faltaFoto ? 'Add your photo in the box above (+ Character), then press Generate. Optional: extra direction here.'
             : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
@@ -198,7 +207,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
           {apiAtual && niveis.length > 1 && (
             <Chips rotulo="Resolution" opcoes={niveis.map((n) => ({ id: n, rotulo: n }))} valor={nivelOk} aoMudar={setNivel} />
           )}
-          <BotaoGerar est={custo} desligado={faltaFoto || (!prompt.trim() && !lookAtual)} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={naoInstalado || faltaFoto || (!prompt.trim() && !lookAtual)} aoClicar={gerar} />
         </div>
         {ehIdeogram && (
           <div className="hf-linha-controles">
@@ -214,6 +223,8 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
         {atual && <p className="hf-dica">{DESCRICOES[atual.id] ?? atual.descricao}
           {usoRefs ? ` With images: ${usoRefs.uso}` : ''}</p>}
         {apiAtual && <p className="hf-dica">Paid API model, runs on your Comfy account credits{preco !== null ? ` · about $${preco.toFixed(2)} per run` : ''}.</p>}
+        {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing {atual?.rotulo ?? 'another model'} instead.</p>}
+        {naoInstalado && <AvisoInstalar rotulo={atual?.rotulo ?? modelo} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

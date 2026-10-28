@@ -59,7 +59,7 @@ export default function MenuEstudios({ aba, ir }: { aba: string; ir: (id: string
         <div className="hf-est-veu" aria-hidden onClick={() => setAberto(false)} />
         <div ref={janela} className="hf-est-janela" role="dialog" aria-label="Studios" style={{ left: pos.x, top: pos.y }}>
           {ESTUDIOS.map((e) => (
-            <button key={e.id} type="button" className="hf-est-cartao" data-ativo={e.id === aba}
+            <button key={e.id} type="button" className="hf-est-cartao" data-ativo={e.id === aba} aria-current={e.id === aba ? 'page' : undefined}
               onClick={() => { setAberto(false); ir(e.id) }}>
               <img src={`/studios/${e.id}.webp`} alt="" />
               <span><b>{e.rotulo}</b><small>{e.frase}</small></span>

@@ -13,6 +13,7 @@ import time
 import httpx
 
 import chaves
+import comfy
 import config
 import pacotes
 
@@ -141,6 +142,7 @@ async def _instalar(lista: list[dict]):
         ESTADO["erro"] = str(e)
     finally:
         ESTADO.update(ativo=False, arquivo=None, terminado_em=time.time())
+        comfy.esquecer_info()
 
 
 async def iniciar(id_pacote: str, opcionais: bool) -> dict:

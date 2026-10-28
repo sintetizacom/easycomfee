@@ -18,11 +18,12 @@ import uuid
 from urllib.parse import urlsplit
 
 import httpx
-from fastapi import (FastAPI, File, HTTPException, Request, UploadFile, WebSocket,
+from fastapi import (FastAPI, File, HTTPException, Query, Request, UploadFile, WebSocket,
                      WebSocketDisconnect)
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import atualizacao
 import biblioteca
@@ -81,6 +82,15 @@ async def somente_interface_local(request: Request, proximo):
     # Confere Host tambem para bloquear DNS rebinding: o processo so escuta
     # em 127.0.0.1, mas um nome externo pode apontar para esse endereco.
     host = request.headers.get("host", "").split(":", 1)[0].lower()
+    # Envio anunciado maior que o limite (com folga para o envelope multipart):
+    # recusa antes de receber o corpo, que iria inteiro para um arquivo temporario.
+    if request.url.path in ("/api/referencia", "/api/referencia-audio"):
+        try:
+            tamanho = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            tamanho = 0
+        if tamanho > 40 * 1024 * 1024 + 64 * 1024:
+            return JSONResponse({"detail": "file above 40 MB"}, status_code=413)
     if (host not in {"127.0.0.1", "localhost"}
             or not _origem_permitida(request.headers.get("origin"))
             or request.headers.get("sec-fetch-site") == "cross-site"):
@@ -88,9 +98,40 @@ async def somente_interface_local(request: Request, proximo):
     return await proximo(request)
 
 
+class HeadComoGet:
+    """HEAD responde como o GET da mesma rota (sem corpo: o uvicorn ve que o
+    pedido original era HEAD e nao o envia). As rotas do FastAPI so aceitam
+    GET, e HEAD / dava 405, o que derruba verificacoes de "o site esta no ar"."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] == "HEAD":
+            scope = dict(scope, method="GET")
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(HeadComoGet)
+
+
+@app.exception_handler(RequestValidationError)
+async def pedido_invalido(request: Request, erro: RequestValidationError):
+    # O 422 padrao repete o valor recebido; um NaN ali nao vira JSON e o erro
+    # de validacao acabava em 500. So o lugar e o motivo bastam.
+    return JSONResponse({"detail": [{"loc": e.get("loc"), "msg": e.get("msg"), "type": e.get("type")}
+                                    for e in erro.errors()]}, status_code=422)
+
+
 # ---------------------------------------------------------------- modelos de dados
 
-class PedidoGeracao(BaseModel):
+class Pedido(BaseModel):
+    """Base dos corpos de pedido. O JSON do Python aceita NaN e Infinity; sem
+    isto eles passavam pela validacao e estouravam la dentro como erro 500."""
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
+class PedidoGeracao(Pedido):
     encerramento_musica: str = Field("original", pattern="^(original|natural|fade)$")
     margem_musica: float = Field(10.0, ge=0, le=10)
     modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover)$")
@@ -336,7 +377,7 @@ class PedidoGeracao(BaseModel):
     mascara_suavizar: int = Field(12, ge=0, le=128)
 
 
-class PedidoTexto(BaseModel):
+class PedidoTexto(Pedido):
     ideia: str
     proporcao: str = "1:1"
     # Foto de fundo, quando houver. Sem ela a sugestao de layout e cega —
@@ -2210,7 +2251,8 @@ async def limpar_motores():
 
 def _geracao_em_andamento() -> bool:
     return FILA.qsize() > 0 or any(
-        t.estado in ("na_fila", "preparando", "executando") for t in TAREFAS.values())
+        t.estado in ("na_fila", "preparando", "submetendo", "executando")
+        for t in TAREFAS.values())
 
 
 @app.post("/api/liberar-memoria")
@@ -2269,7 +2311,7 @@ def _metodos(cfg: dict) -> list[dict]:
             for k, v in cfg["metodos"].items()]
 
 
-class PedidoMotor(BaseModel):
+class PedidoMotor(Pedido):
     modo: str
 
 
@@ -2301,7 +2343,9 @@ async def estimar(p: PedidoGeracao):
             # Higgsfield e Aleph2 cobram por segundo do video de origem.
             try:
                 caminho = _video_de_referencia(p.referencias[0])
-                dur = miniaturas.dados_do_video(pathlib.Path(caminho).read_bytes())["duracao"] or 5
+                # Fora do laco de eventos: ler e analisar um video grande travaria o servidor.
+                dur = (await asyncio.to_thread(
+                    lambda: miniaturas.dados_do_video(pathlib.Path(caminho).read_bytes())))["duracao"] or 5
             except Exception:
                 dur = 5.0
             dur = min(dur, genjutsu.MODELOS[p.modelo_genjutsu]["max_segundos"])
@@ -2343,7 +2387,7 @@ async def estimar(p: PedidoGeracao):
         caminho = _video_de_referencia(p.referencias[0]) if p.referencias else None
         dur = 5.0
         try:
-            d = await asyncio.to_thread(miniaturas.dados_do_video, pathlib.Path(caminho).read_bytes())
+            d = await asyncio.to_thread(lambda: miniaturas.dados_do_video(pathlib.Path(caminho).read_bytes()))
             dur = d["duracao"] or dur
         except Exception:
             pass
@@ -2418,15 +2462,27 @@ async def editor_de_nos():
                 return (await c.get(f"{url}/system_stats")).status_code == 200
         except Exception:
             return False
-    motores_nos = [{"id": "principal", "rotulo": "Main engine", "url": config.COMFY_URL,
-                    "vivo": await de_pe(config.COMFY_URL)}]
+    async def estrito(url: str) -> bool:
+        # ComfyUI sem --enable-cors-header recusa (403) pagina que o navegador
+        # chama de "cross-site", e o quadro da aba fica em branco sem aviso.
+        try:
+            async with httpx.AsyncClient(timeout=3) as c:
+                return (await c.get(f"{url}/", headers={"Sec-Fetch-Site": "cross-site"})).status_code == 403
+        except Exception:
+            return False
+
+    async def motor(ident, rotulo, url):
+        vivo = await de_pe(url)
+        return {"id": ident, "rotulo": rotulo, "url": url, "vivo": vivo,
+                "estrito": vivo and await estrito(url)}
+
+    motores_nos = [await motor("principal", "Main engine", config.COMFY_URL)]
     if not motor_flux3.UNICO and motor_flux3.instalado():
-        motores_nos.append({"id": "video", "rotulo": "Video engine (LTX, YuE2)",
-                            "url": config.COMFY_URL_FLUX3, "vivo": await de_pe(config.COMFY_URL_FLUX3)})
+        motores_nos.append(await motor("video", "Video engine (LTX, YuE2)", config.COMFY_URL_FLUX3))
     return {"motores": motores_nos}
 
 
-class PedidoAbertos(BaseModel):
+class PedidoAbertos(Pedido):
     valor: bool
 
 
@@ -2440,9 +2496,12 @@ async def trocar_abertos(pedido: PedidoAbertos):
 @app.post("/api/motor")
 async def trocar_motor(pedido: PedidoMotor):
     if pedido.modo == "nuvem" and not chaves.chave():
-        raise HTTPException(400, "Configure a chave da Comfy Cloud antes de usar a nuvem.")
-    if any(t.estado in ("submetendo", "executando") for t in TAREFAS.values()):
-        raise HTTPException(409, "Espere a geração atual terminar para trocar de motor.")
+        raise HTTPException(400, "Add your Comfy Cloud API key to run models on the cloud.")
+    # A tarefa nao guarda o motor: roda no que estiver escolhido quando chega a
+    # vez. Trocar com pedido na fila mandaria um pedido "gratis" para a nuvem
+    # (gastando creditos) ou um da nuvem para a placa local.
+    if _geracao_em_andamento():
+        raise HTTPException(409, "Wait for the queued generations to finish before switching between your GPU and Comfy Cloud.")
     try:
         comfy.escolher_motor(pedido.modo)
     except ValueError:
@@ -2468,7 +2527,7 @@ async def listar_pacotes():
     return await pacotes.situacao()
 
 
-class PedidoInstalar(BaseModel):
+class PedidoInstalar(Pedido):
     opcionais: bool = False
 
 
@@ -2500,6 +2559,7 @@ async def remover_pacote(id_pacote: str):
     if any(t.estado in ("na_fila", "preparando", "submetendo", "executando") for t in TAREFAS.values()):
         raise HTTPException(409, "Wait for the current generation to finish.")
     try:
+        comfy.esquecer_info()
         return await asyncio.to_thread(remocao.remover, id_pacote)
     except KeyError:
         raise HTTPException(404, "Pacote desconhecido.")
@@ -2513,7 +2573,7 @@ async def progresso_instalacao():
     return instalador.ESTADO
 
 
-class PedidoTokenHF(BaseModel):
+class PedidoTokenHF(Pedido):
     token: str = ""
 
 
@@ -2528,7 +2588,7 @@ async def salvar_token_hf(pedido: PedidoTokenHF):
     return chaves.situacao_hf()
 
 
-class PedidoNos(BaseModel):
+class PedidoNos(Pedido):
     pacote: str | None = None
 
 
@@ -3019,14 +3079,14 @@ async def _modelos_base():
             } if motor_flux3.instalado() else None)}
 
 
-class PedidoChave(BaseModel):
+class PedidoChave(Pedido):
     chave: str = Field("", max_length=400)
 
 
 @app.post("/api/nuvem/chave")
 async def nuvem_chave(pedido: PedidoChave):
-    """A chave que o usuario digitou. A resposta nunca a devolve: so se ha
-    chave e os 4 ultimos caracteres (chaves.situacao)."""
+    """A chave que o usuario digitou. A resposta nunca a devolve, nem o
+    final dela: so se ha chave (chaves.situacao)."""
     chaves.salvar_chave(pedido.chave)
     if not chaves.chave() and comfy.na_nuvem():
         comfy.escolher_motor("local")
@@ -3044,12 +3104,27 @@ async def nuvem_saldo(forcar: bool = False):
     return {**s, "gasto": biblioteca.gasto_total()}
 
 
+LIMITE_ENVIO = 40 * 1024 * 1024
+
+
+async def _ler_ate_o_limite(arquivo: UploadFile, aviso: str) -> bytes:
+    """Le o envio em pedacos e para assim que passa do limite: antes o arquivo
+    inteiro ia para a memoria e so depois o tamanho era conferido."""
+    if arquivo.size is not None and arquivo.size > LIMITE_ENVIO:
+        raise HTTPException(413, aviso)
+    partes, total = [], 0
+    while pedaco := await arquivo.read(1024 * 1024):
+        total += len(pedaco)
+        if total > LIMITE_ENVIO:
+            raise HTTPException(413, aviso)
+        partes.append(pedaco)
+    return b"".join(partes)
+
+
 @app.post("/api/referencia")
 async def referencia(arquivo: UploadFile = File(...)):
     """Sobe uma imagem de referencia para a pasta input do motor."""
-    dados = await arquivo.read()
-    if len(dados) > 40 * 1024 * 1024:
-        raise HTTPException(413, "imagem acima de 40 MB")
+    dados = await _ler_ate_o_limite(arquivo, "imagem acima de 40 MB")
     # Prefixo proprio para nao colidir com o que ja existe na pasta do motor.
     nome = f"ref_{uuid.uuid4().hex[:12]}_{pathlib.Path(arquivo.filename or 'ref.png').name}"
     try:
@@ -3071,9 +3146,7 @@ async def referencia_audio(arquivo: UploadFile = File(...)):
     permitidas = {".wav", ".mp3", ".flac", ".m4a", ".ogg"}
     if extensao not in permitidas:
         raise HTTPException(415, "use WAV, MP3, FLAC, M4A ou OGG")
-    dados = await arquivo.read()
-    if len(dados) > 40 * 1024 * 1024:
-        raise HTTPException(413, "áudio acima de 40 MB")
+    dados = await _ler_ate_o_limite(arquivo, "áudio acima de 40 MB")
     # O /view do ComfyUI bloqueia ".." inclusive em nomes comuns.
     # Um identificador sem o nome original evita essa rejeição e caracteres especiais.
     nome = f"refaudio_{uuid.uuid4().hex[:12]}{extensao}"
@@ -3084,7 +3157,7 @@ async def referencia_audio(arquivo: UploadFile = File(...)):
     return {"nome": gravado}
 
 
-class PedidoQuadro(BaseModel):
+class PedidoQuadro(Pedido):
     video: str
 
 
@@ -3276,7 +3349,7 @@ async def gerar(pedido: PedidoGeracao):
 
     if pedido.modelo == "voz":
         if len(pedido.prompt) > 12000:
-            raise HTTPException(400, "Use até 12.000 caracteres por narração.")
+            raise HTTPException(400, "Use up to 12,000 characters per narration.")
         if pedido.modo_voz == "clonar" and (not pedido.referencia_voz
                                             or (not pedido.transcricao_voz.strip() and not comfy.na_nuvem())):
             raise HTTPException(400, "Envie a referência de voz e sua transcrição.")
@@ -3295,7 +3368,7 @@ async def gerar(pedido: PedidoGeracao):
     return tarefa.como_dict()
 
 
-class PedidoTranscricao(BaseModel):
+class PedidoTranscricao(Pedido):
     referencia: str
     idioma: str = Field("Portuguese", pattern="^(Portuguese|English|Spanish|German|French|Japanese)$")
 
@@ -3330,7 +3403,18 @@ async def modelos_musica():
 # chamando /plenio/... — aqui, /api/plenio/... repassado ao v0.41.
 @app.api_route("/api/plenio/{caminho:path}", methods=["GET", "POST"])
 async def ponte_plenio(caminho: str, request: Request):
+    # So rotas do proprio Plenio: ".." (mesmo vindo como %2F..) sairia do
+    # prefixo e alcancaria qualquer rota do motor (/system_stats, /free...).
+    partes = caminho.split("/")
+    if (not caminho or "\\" in caminho or any(p in ("", ".", "..") for p in partes)
+            or not all(re.fullmatch(r"[\w.\-]+", p) for p in partes)):
+        raise HTTPException(404, "rota do Plenio desconhecida")
     if not await motor_flux3.vivo():
+        # Subir o segundo motor descarrega o principal: no meio de uma geracao
+        # isso a derrubaria (a fila do app sobe o motor sozinha quando e a vez).
+        if _geracao_em_andamento():
+            raise HTTPException(409, "Wait for the current generation to finish "
+                                     "to open the score editor.")
         await motor_flux3.garantir()
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.request(request.method, f"{comfy.BASE_FLUX3}/plenio/{caminho}",
@@ -3391,7 +3475,7 @@ async def estado_avatar():
     return await avatar.capacidades()
 
 
-class PedidoRecorteAvatar(BaseModel):
+class PedidoRecorteAvatar(Pedido):
     foto: str
     vertical: bool = False
 
@@ -3415,7 +3499,7 @@ async def tarefas():
     return [t.como_dict() for t in recentes]
 
 
-class PedidoPrevia(BaseModel):
+class PedidoPrevia(Pedido):
     referencia: str
 
 
@@ -3502,7 +3586,7 @@ async def expandir(pedido: PedidoTexto):
     return {"prompt": await prompting.expandir(pedido.ideia)}
 
 
-class PedidoDiretor(BaseModel):
+class PedidoDiretor(Pedido):
     cena: str = Field(..., min_length=1, max_length=2000)
     enquadramento: str = Field("", max_length=300)
     visual: str = Field("", max_length=2000)
@@ -3601,8 +3685,10 @@ async def previa_controle(pedido: PedidoGeracao):
 
 
 @app.get("/api/luz/mapa")
-async def mapa_de_luz(azimute: float = -45, elevacao: float = 25,
-                      intensidade: float = 1.0, temperatura: str = "neutra"):
+async def mapa_de_luz(azimute: float = Query(-45, ge=-720, le=720, allow_inf_nan=False),
+                      elevacao: float = Query(25, ge=-180, le=180, allow_inf_nan=False),
+                      intensidade: float = Query(1.0, ge=0, le=10, allow_inf_nan=False),
+                      temperatura: str = "neutra"):
     """A esfera iluminada que o widget mostra — e a mesma imagem que vai ao modelo."""
     dados = luz.desenhar(azimute, elevacao, intensidade, temperatura)
     return Response(dados, media_type="image/png",
@@ -3626,6 +3712,17 @@ def _tipo_mime(nome: str) -> str:
     return _MIME.get(pathlib.Path(nome).suffix.lower(), "image/png")
 
 
+def _falha_ao_ler(erro: Exception) -> HTTPException:
+    """Arquivo que nao existe e 404; motor fora do ar ou lento e 503. Antes tudo
+    virava "imagem nao encontrada" e a galeria parecia ter perdido os arquivos."""
+    if isinstance(erro, (httpx.ConnectError, httpx.TimeoutException)):
+        return HTTPException(503, "ComfyUI is not responding; the file could not be read.")
+    if isinstance(erro, FileNotFoundError) or (
+            isinstance(erro, httpx.HTTPStatusError) and erro.response.status_code < 500):
+        return HTTPException(404, "imagem não encontrada")
+    return HTTPException(502, "ComfyUI could not deliver the file.")
+
+
 @app.get("/api/imagem")
 async def imagem(nome: str, subpasta: str = "", tipo: str = "output"):
     if subpasta == "finalizacoes_musica":
@@ -3636,8 +3733,8 @@ async def imagem(nome: str, subpasta: str = "", tipo: str = "output"):
         return FileResponse(arquivo, media_type="audio/flac")
     try:
         dados = await comfy.imagem(nome, subpasta, tipo)
-    except Exception:
-        raise HTTPException(404, "imagem não encontrada")
+    except Exception as e:
+        raise _falha_ao_ler(e)
     # O tipo tem que casar com o arquivo. Servindo um mp4 como image/png o
     # navegador se recusa a toca-lo, e o <video> fica preto sem dizer por que.
     return Response(dados, media_type=_tipo_mime(nome),
@@ -3649,15 +3746,16 @@ async def imagem(nome: str, subpasta: str = "", tipo: str = "output"):
 async def miniatura(nome: str, subpasta: str = "", tipo: str = "output"):
     try:
         dados = await miniaturas.obter(nome, subpasta, tipo)
-    except Exception:
-        raise HTTPException(404, "imagem não encontrada")
+    except Exception as e:
+        raise _falha_ao_ler(e)
     # O arquivo de saida nunca muda de conteudo, entao pode ficar no cache.
     return Response(dados, media_type="image/webp",
                     headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/api/galeria")
-async def galeria(limite: int = 60, antes: float | None = None,
+async def galeria(limite: int = Query(60, ge=1, le=5000),
+                  antes: float | None = Query(None, allow_inf_nan=False),
                   com_testes: bool = False):
     """As imagens de teste ficam guardadas, mas fora da vista por padrão."""
     return biblioteca.listar(limite, antes, com_testes)
@@ -3691,7 +3789,7 @@ async def contar_testes():
             "total": len(todas)}
 
 
-class PedidoArquivo(BaseModel):
+class PedidoArquivo(Pedido):
     subpasta: str
     nome: str
 
@@ -3760,6 +3858,10 @@ if ESTATICOS.exists():
 
     @app.get("/{caminho:path}")
     async def spa(caminho: str):
+        # Rota da API que nao existe e erro, nao a pagina: com 200 + index.html
+        # um nome errado no frontend ou num script parecia funcionar.
+        if caminho == "api" or caminho.startswith("api/"):
+            raise HTTPException(404, "Not found")
         # So arquivos de dentro da pasta da interface: "../" (ou %2e%2e, barra
         # invertida) nao pode sair dela e entregar, por exemplo, chaves.json.
         alvo = (ESTATICOS / caminho).resolve()

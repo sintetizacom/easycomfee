@@ -10,17 +10,14 @@ async def capacidades():
         # nao esta la. Os tres modos existem; a transcricao automatica nao.
         return {"disponivel": True, "motivo": "", "transcricao": False, "design": True}
     try:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.get(f"{comfy.BASE_PRINCIPAL}/object_info")
-            r.raise_for_status()
-        info = r.json()
+        info = await comfy.info_nos(comfy.BASE_PRINCIPAL)
         necessarios = ["OmniVoiceEngineNode", "UnifiedTTSTextNode", "CharacterVoicesNode", "LoadAudio", "SaveAudio", "PreviewAny"]
         faltam = [n for n in necessarios if n not in info]
         return {"disponivel": not faltam, "motivo": "Nós ausentes: " + ", ".join(faltam) if faltam else "",
                 "transcricao": all(n in info for n in ("GraniteASREngineNode", "UnifiedASRTranscribeNode", "LoadAudio", "PreviewAny")),
                 "design": "UnifiedVoiceDesignerNode" in info}
-    except Exception:
-        return {"disponivel": False, "design": False, "motivo": "O ComfyUI não está respondendo."}
+    except Exception as e:
+        return {"disponivel": False, "design": False, "motivo": comfy.motivo_sem_info(e)}
 
 
 def grafo_transcricao(referencia, idioma="Portuguese"):

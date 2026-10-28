@@ -122,7 +122,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
 
       <div className="hf-apps">
         {APPS.map((a) => (
-          <button key={a.id} className="hf-app" data-ativo={app?.id === a.id} onClick={() => abrir(a)}>
+          <button key={a.id} className="hf-app" data-ativo={app?.id === a.id} aria-pressed={app?.id === a.id} onClick={() => abrir(a)}>
             <video src={`/exemplos/${a.id}.mp4?v=5`} muted loop autoPlay playsInline
               onError={(e) => { (e.currentTarget as HTMLVideoElement).style.visibility = 'hidden' }} />
             <b>{a.nome}{naNuvem && SO_LOCAL.has(a.id) && <small> · local GPU only</small>}</b>
@@ -138,7 +138,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
             {precisaVideo && (
               <label className="hf-slot" data-cheio={!!video}>
                 {video ? <video src={urlEntrada(video.nome)} muted /> : <span>{enviando ? 'Uploading…' : '+ Video'}</span>}
-                <input type="file" accept="video/*" hidden onChange={async (e) => {
+                <input type="file" accept="video/*" className="hf-arquivo" onChange={async (e) => {
                   const f = e.target.files?.[0]
                   if (!f) return
                   setEnviando(true); setErro(null)
@@ -184,7 +184,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                 restyle it in the Image tab (Flux 3 with the captured frame as the base) and drop it here. 24 frames = 1 s, counted from 1 as in Blender.</p>
             </div>
           )}
-          {!ehMapa && <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
+          {!ehMapa && <textarea aria-label="Prompt" value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
             placeholder="Optional: describe what you want to see…" />}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           <div className="hf-linha-controles">

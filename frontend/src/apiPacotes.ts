@@ -86,9 +86,9 @@ export const apiPacotes = {
   progresso: () => pedir<ProgressoInstalacao>('/api/pacotes/progresso'),
   planoRemocao: (id: string) => pedir<PlanoRemocao>(`/api/pacotes/${id}/remover`),
   remover: (id: string) => pedir<PlanoRemocao>(`/api/pacotes/${id}/remover`, { method: 'POST' }),
-  token: () => pedir<{ configurado: boolean; final: string | null }>('/api/pacotes/token'),
+  token: () => pedir<{ configurado: boolean }>('/api/pacotes/token'),
   salvarToken: (token: string) =>
-    pedir<{ configurado: boolean; final: string | null }>('/api/pacotes/token', {
+    pedir<{ configurado: boolean }>('/api/pacotes/token', {
       method: 'POST',
       body: JSON.stringify({ token }),
     }),

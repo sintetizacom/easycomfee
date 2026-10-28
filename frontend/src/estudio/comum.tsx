@@ -1,4 +1,4 @@
-import { Children, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Children, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { api, ouvirTarefas, referenciaDaGaleria, urlImagem, type Referencia, type Tarefa } from '../api'
 import { abrirVisualizador, reusarPrompt } from './Visualizador'
 import { emIngles } from '../PainelAndamento'
@@ -9,6 +9,20 @@ import { MotorCtx } from './motor'
 /** Jobs of this session, kept current by the backend WebSocket. */
 /** Parte n do endereco depois do #: "#video/imagem/minimax" -> 0 video, 1 imagem, 2 minimax.
  *  Os atalhos dos estudios (LTX, MiniMax H3, FLUX 3) abrem a aba ja com o modo e o modelo. */
+/** Setas num role="radiogroup" (padrao ARIA): escolhem e focam a opcao vizinha;
+ *  Home/End vao as pontas. Com tabIndex so na opcao marcada, o Tab entra e sai do
+ *  grupo de uma vez em vez de parar em cada opcao. */
+export function teclasRadio(e: KeyboardEvent<HTMLElement>) {
+  const radios = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')]
+  const i = radios.indexOf(document.activeElement as HTMLElement)
+  const passo = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key]
+  if (i < 0 || (!passo && e.key !== 'Home' && e.key !== 'End')) return
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? radios.length - 1 : (i + passo + radios.length) % radios.length
+  e.preventDefault()
+  radios[j].focus()
+  radios[j].click()
+}
+
 export function parteDoHash(n: number): string {
   return decodeURIComponent(location.hash.replace(/^#/, '').split('/')[n] ?? '')
 }
@@ -337,7 +351,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
       }}>
       {valor ? <img src={valor.url} alt="" /> : <span>{enviando ? 'Uploading…' : `+ ${rotulo}`}</span>}
       {valor && <button type="button" className="hf-slot-x" onClick={(e) => { e.preventDefault(); aoMudar(null) }}>×</button>}
-      <input type="file" accept="image/*" hidden onChange={async (e) => {
+      <input type="file" accept="image/*" className="hf-arquivo" onChange={async (e) => {
         const f = e.target.files?.[0]
         if (!f) return
         setEnviando(true); setErro(null)
@@ -354,7 +368,7 @@ export function Chips<T extends string | number>({ opcoes, valor, aoMudar, rotul
   return (
     <div className="hf-chips" role="group" aria-label={rotulo}>
       {opcoes.map((o) => (
-        <button key={String(o.id)} type="button" data-ativo={o.id === valor} disabled={o.desligado}
+        <button key={String(o.id)} type="button" data-ativo={o.id === valor} aria-pressed={o.id === valor} disabled={o.desligado}
           title={o.dica} onClick={() => aoMudar(o.id)}>{o.rotulo}</button>
       ))}
     </div>

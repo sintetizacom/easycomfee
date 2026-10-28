@@ -191,9 +191,9 @@ export default function Visualizador() {
           {origem && <>
             <span className="hf-vis-titulo">Then &amp; Now</span>
             <div className="hf-tn-botoes">
-              <button className="hf-vis-botao" data-ativo={comparar === ''} onClick={() => setComparar('')}>Result</button>
-              <button className="hf-vis-botao" data-ativo={comparar === 'lado'} onClick={() => setComparar('lado')}>◧ Split</button>
-              <button className="hf-vis-botao" data-ativo={comparar === 'cortina'} onClick={() => setComparar('cortina')}>⇹ Slide</button>
+              <button className="hf-vis-botao" data-ativo={comparar === ''} aria-pressed={comparar === ''} onClick={() => setComparar('')}>Result</button>
+              <button className="hf-vis-botao" data-ativo={comparar === 'lado'} aria-pressed={comparar === 'lado'} onClick={() => setComparar('lado')}>◧ Split</button>
+              <button className="hf-vis-botao" data-ativo={comparar === 'cortina'} aria-pressed={comparar === 'cortina'} onClick={() => setComparar('cortina')}>⇹ Slide</button>
             </div>
           </>}
           <div className="hf-vis-acoes">

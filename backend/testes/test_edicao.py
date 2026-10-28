@@ -60,19 +60,28 @@ def teste_catalogo_expoe_todas_as_ferramentas():
         # com o arquivo no disco.
         return {"Minimax/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors"}
 
+    # A escolha "so modelos abertos" do usuario muda o catalogo (o Recorte usa
+    # o Recraft, pago): o teste fixa os dois lados em vez de depender dela.
+    abertos = A.comfy.MODO["abertos"]
     try:
         A.comfy.unets_disponiveis = com_fasth3
+        A.comfy.MODO["abertos"] = False
         catalogo = asyncio.run(A.modelos())
+        A.comfy.MODO["abertos"] = True
+        so_abertos = asyncio.run(A.modelos())
     finally:
         A.comfy.unets_disponiveis = original
+        A.comfy.MODO["abertos"] = abertos
 
     ids = [item["id"] for item in catalogo["edicao"]]
     esperados = set(P.EDICAO) | {
         "personagem", "controle", "ampliar", "angulo", "reluz", "rosto",
         "recorte",
     }
-    conferir("12 ferramentas no catalogo", set(ids), esperados)
+    conferir(f"{len(esperados)} ferramentas no catalogo", set(ids), esperados)
     conferir("sem ferramenta duplicada", len(ids), len(set(ids)))
+    conferir_que("so abertos: sem o Recorte pago",
+                 "recorte" not in {item["id"] for item in so_abertos["edicao"]})
     grupos = {g["id"] for g in catalogo["grupos_edicao"]}
     conferir_que("todas as ferramentas tem grupo valido",
                  all(i["grupo"] in grupos for i in catalogo["edicao"]))

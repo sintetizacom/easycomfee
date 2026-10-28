@@ -74,8 +74,8 @@ def situacao() -> dict:
     if k is None:
         return {"tem_chave": False, "arquivo": str(ARQUIVO),
                 "existe_arquivo": ARQUIVO.exists()}
-    return {"tem_chave": True, "arquivo": str(ARQUIVO), "existe_arquivo": True,
-            "tamanho": len(k), "final": k[-4:]}
+    # Nem o final da chave sai daqui: a interface so precisa saber que ha uma.
+    return {"tem_chave": True, "arquivo": str(ARQUIVO), "existe_arquivo": True}
 
 
 def salvar_chave(k: str) -> None:
@@ -228,4 +228,4 @@ def salvar_hf_token(token: str) -> None:
 
 def situacao_hf() -> dict:
     t = hf_token()
-    return {"configurado": bool(t), "final": t[-4:] if t else None}
+    return {"configurado": bool(t)}

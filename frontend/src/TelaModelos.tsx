@@ -151,7 +151,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
   const [nos, setNos] = useState<Nos | null>(null)
   const [opcionais, setOpcionais] = useState<Record<string, boolean>>({})
   const [erro, setErro] = useState<string | null>(null)
-  const [token, setToken] = useState<{ configurado: boolean; final: string | null } | null>(null)
+  const [token, setToken] = useState<{ configurado: boolean } | null>(null)
   const [novoToken, setNovoToken] = useState('')
 
   const recarregar = () =>
@@ -227,12 +227,35 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
 
   const precisaToken = pacotes?.some((p) => p.arquivos.some((a) => a.requer_aceite && a.instalado !== true))
 
+  // Janela modal de verdade: o foco entra nela ao abrir, Tab fica dentro dela,
+  // Esc fecha e o foco volta para o botao que a abriu.
+  const janela = useRef<HTMLDivElement>(null)
+  const fecharAgora = useRef(fechar)
+  fecharAgora.current = fechar
+  useEffect(() => {
+    const antes = document.activeElement as HTMLElement | null
+    janela.current?.focus()
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); fecharAgora.current(); return }
+      if (e.key !== 'Tab' || !janela.current) return
+      const focaveis = [...janela.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      if (!focaveis.length) return
+      const primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1]
+      if (e.shiftKey && (document.activeElement === primeiro || document.activeElement === janela.current)) { e.preventDefault(); ultimo.focus() }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus() }
+    }
+    document.addEventListener('keydown', tecla)
+    return () => { document.removeEventListener('keydown', tecla); antes?.focus?.() }
+  }, [])
+
   return (
     <div className="modelos-fundo" onClick={fechar}>
-      <div className="modelos-janela mq" role="dialog" aria-label="Config Models" onClick={(e) => e.stopPropagation()}>
+      <div className="modelos-janela mq" role="dialog" aria-modal="true" aria-labelledby="mq-titulo" tabIndex={-1} ref={janela}
+        onClick={(e) => e.stopPropagation()}>
         <div className="mq-topo">
           <div>
-            <h2>{conta ? 'Config Models' : 'Local models'}</h2>
+            <h2 id="mq-titulo">{conta ? 'Config Models' : 'Local models'}</h2>
             <p className="mq-sub">{aba === 'api' ? 'Comfy Cloud GPUs and paid API models, with your Comfy credits.'
               : 'Stored in your ComfyUI models folder. Everything here is open weights.'}</p>
           </div>
@@ -265,8 +288,8 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
               It stays on this computer.
             </p>
             <div className="mq-acoes">
-              <input className="mq-token" type="password" autoComplete="off" value={novoToken}
-                placeholder={token?.configurado ? `token saved (…${token.final})` : 'hf_…'}
+              <input className="mq-token" type="password" autoComplete="off" value={novoToken} aria-label="Hugging Face token"
+                placeholder={token?.configurado ? 'token saved' : 'hf_…'}
                 onChange={(e) => setNovoToken(e.target.value)} />
               <button className="mq-botao" disabled={!novoToken.trim()}
                 onClick={async () => { setToken(await apiPacotes.salvarToken(novoToken)); setNovoToken('') }}>Save</button>

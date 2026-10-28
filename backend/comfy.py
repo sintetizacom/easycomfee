@@ -6,6 +6,7 @@ import contextvars
 import json
 import os
 import pathlib
+import time
 import uuid
 
 import httpx
@@ -80,6 +81,48 @@ def _cliente(timeout: float) -> httpx.AsyncClient:
         return httpx.AsyncClient(timeout=timeout, headers={"X-API-Key": chaves.chave() or ""},
                                  verify=config.ssl_sistema(), follow_redirects=True)
     return httpx.AsyncClient(timeout=timeout)
+
+
+# /object_info: a lista de nos e modelos do motor. Em alguns PCs ela leva quase
+# um minuto, e as abas (Music, Voice, Lip Sync) a pediam varias vezes cada.
+# Agora e uma busca por motor de cada vez, guardada uns minutos; instalar ou
+# remover pacote ou no a esquece (esquecer_info), para o menu ver o novo.
+_INFO: dict[str, tuple[float, dict]] = {}
+_INFO_TRAVAS: dict[tuple, asyncio.Lock] = {}
+INFO_VALIDADE = 300
+
+
+async def info_nos(base: str | None = None, timeout: float = 120) -> dict:
+    base = base or _base()
+
+    def guardado():
+        g = _INFO.get(base)
+        return g[1] if g and time.monotonic() - g[0] < INFO_VALIDADE else None
+
+    if (info := guardado()) is not None:
+        return info
+    # Quem chega enquanto a busca anda espera por ela, em vez de pedir de novo.
+    trava = _INFO_TRAVAS.setdefault((base, asyncio.get_running_loop()), asyncio.Lock())
+    async with trava:
+        if (info := guardado()) is not None:
+            return info
+        cliente = _cliente(timeout) if base == NUVEM else httpx.AsyncClient(timeout=timeout)
+        async with cliente as c:
+            r = await c.get(f"{base}/object_info")
+            r.raise_for_status()
+        _INFO[base] = (time.monotonic(), r.json())
+        return _INFO[base][1]
+
+
+def esquecer_info() -> None:
+    _INFO.clear()
+
+
+def motivo_sem_info(erro: Exception) -> str:
+    """Por que a lista de nos nao veio: lento nao e o mesmo que fora do ar."""
+    if isinstance(erro, httpx.TimeoutException):
+        return "O ComfyUI está demorando para responder (pode estar carregando). Tente de novo em um minuto."
+    return "O ComfyUI não está respondendo."
 
 
 _parceiros: dict[str, set[str]] = {}
@@ -256,7 +299,10 @@ def _local(nome: str, subpasta: str, tipo: str) -> pathlib.Path | None:
     trazidas e entradas enviadas (que so sobem para a nuvem ao gerar)."""
     if na_nuvem() and tipo in ("output", "input"):
         pasta = config.COMFY_SAIDA if tipo == "output" else config.COMFY_ENTRADA
-        caminho = pasta / subpasta / nome
+        caminho = (pasta / subpasta / nome).resolve()
+        # ".." ou caminho absoluto no nome nao podem sair da pasta (ex.: chaves.json).
+        if not caminho.is_relative_to(pasta.resolve()):
+            return None
         if caminho.is_file():
             return caminho
     return None

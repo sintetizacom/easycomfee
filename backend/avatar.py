@@ -159,12 +159,9 @@ def grafo_api(p, seed: int, prefixo: str):
 
 async def capacidades():
     try:
-        async with httpx.AsyncClient(timeout=15) as c:
-            r = await c.get(f"{comfy.BASE_PRINCIPAL}/object_info")
-            r.raise_for_status()
-        info = r.json()
-    except Exception:
-        return {"disponivel": False, "motivo": "O ComfyUI não está respondendo.", "modelos": []}
+        info = await comfy.info_nos(comfy.BASE_PRINCIPAL)
+    except Exception as e:
+        return {"disponivel": False, "motivo": comfy.motivo_sem_info(e), "modelos": []}
 
     def estado(nos, checar):
         faltam = [n for n in nos if n not in info]
@@ -209,6 +206,9 @@ def grafo_ltx23(p, seed: int, duracao: float, prefixo: str, vertical: bool = Fal
 async def duracao_audio(nome: str) -> float:
     # O arquivo foi enviado para a pasta input DESTA maquina; na Comfy Cloud ele
     # so sobe na hora de gerar, entao perguntar ao motor da nuvem nao acharia.
+    # So um nome simples da pasta input: "C:\...", "/..." ou ".." leriam fora dela.
+    if not nome or pathlib.PurePath(nome).name != nome or "\\" in nome or "/" in nome or nome in (".", ".."):
+        raise ValueError("nome de áudio inválido")
     local = config.COMFY_ENTRADA / nome
     dados = (await asyncio.to_thread(local.read_bytes) if local.is_file()
              else await comfy.imagem(nome, "", "input"))

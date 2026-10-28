@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AbaNodes from './AbaNodes'
 import PainelAndamento from '../PainelAndamento'
 import { useSoltarNaCaixa, useTarefas } from './comum'
@@ -18,7 +18,7 @@ import { AbaFlux3, AbaH3, AbaWan } from './EstudiosModelo'
 import AbaMusica from './AbaMusica'
 import AbaVideo from './AbaVideo'
 import AbaVoz from './AbaVoz'
-import { CHAVE_OCULTAR, MotorCtx } from './motor'
+import { CHAVE_OCULTAR, EVENTO_AVISO_MOTOR, MotorCtx } from './motor'
 import ContaApi from './ContaApi'
 import PainelConta from './PainelConta'
 import Visualizador from './Visualizador'
@@ -52,6 +52,43 @@ function lerAba(): Aba {
   return ABAS.some((a) => a.id === h) ? h : 'image'
 }
 
+/** Barra de abas que rola de lado: esmaece a borda onde ha mais abas e traz
+ *  a aba ativa para a vista (antes "Advanced" ficava cortado sem nenhum sinal,
+ *  e a aba ativa podia ficar fora da tela). */
+function useBarraRolavel(ativa: string) {
+  const ref = useRef<HTMLElement>(null)
+  const marcar = () => {
+    const nav = ref.current
+    if (!nav) return
+    nav.dataset.maisEsquerda = String(nav.scrollLeft > 1)
+    nav.dataset.maisDireita = String(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1)
+  }
+  const trazerAtiva = () => {
+    const nav = ref.current
+    const botao = nav?.querySelector<HTMLElement>('button[data-ativo="true"]')
+    if (!nav || !botao) { marcar(); return }
+    // 40 px: a faixa esmaecida da borda tambem conta como fora da vista.
+    const n = nav.getBoundingClientRect(), b = botao.getBoundingClientRect()
+    const esq = nav.scrollLeft > 1 ? 40 : 0, dir = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1 ? 40 : 0
+    if (b.left < n.left + esq) nav.scrollLeft -= n.left + esq - b.left + 8
+    else if (b.right > n.right - dir) nav.scrollLeft += b.right - (n.right - dir) + 8
+    marcar()
+  }
+  useEffect(() => {
+    const nav = ref.current
+    if (!nav) return
+    marcar()
+    nav.addEventListener('scroll', marcar, { passive: true })
+    // Mudou de tamanho (janela, fontes carregando): a ativa volta para a vista.
+    const obs = new ResizeObserver(trazerAtiva)
+    obs.observe(nav)
+    document.fonts?.ready.then(trazerAtiva)
+    return () => { nav.removeEventListener('scroll', marcar); obs.disconnect() }
+  }, [])
+  useEffect(trazerAtiva, [ativa])
+  return ref
+}
+
 export default function Estudio() {
   const [aba, setAba] = useState<Aba>(lerAba)
   const [modelos, setModelos] = useState<Modelo[]>([])
@@ -71,10 +108,33 @@ export default function Estudio() {
   const mudarOcultar = (v: boolean) => { setOcultar(v); try { localStorage.setItem(CHAVE_OCULTAR, v ? '1' : '0') } catch { /* private window */ } }
   const [linkRecarga, setLinkRecarga] = useState<string | undefined>()
 
+  // Rota profunda nova ("#video/imagem/wan22_14b") com a aba ja aberta: as abas
+  // so leem o modelo e o modo do endereco ao montar, entao ela monta de novo.
+  // Trocar so de aba (#video) nao conta: o que a pessoa escreveu fica.
+  const [rota, setRota] = useState(0)
   useEffect(() => {
-    const ao = () => setAba(lerAba())
+    let anterior = location.hash
+    const ao = () => {
+      setAba(lerAba())
+      if (location.hash !== anterior && location.hash.replace('#', '').includes('/')) setRota((r) => r + 1)
+      anterior = location.hash
+    }
     window.addEventListener('hashchange', ao)
     return () => window.removeEventListener('hashchange', ao)
+  }, [])
+  const chave = `${versao}.${rota}`
+
+  // Troca de motor que nao aconteceu (sem chave, geracao na fila...): aviso na tela.
+  const [avisoMotor, setAvisoMotor] = useState<{ texto: string; chave: boolean } | null>(null)
+  useEffect(() => {
+    let timer: number | undefined
+    const ao = (e: Event) => {
+      setAvisoMotor((e as CustomEvent).detail)
+      clearTimeout(timer)
+      timer = window.setTimeout(() => setAvisoMotor(null), 12000)
+    }
+    window.addEventListener(EVENTO_AVISO_MOTOR, ao)
+    return () => { window.removeEventListener(EVENTO_AVISO_MOTOR, ao); clearTimeout(timer) }
   }, [])
 
   useEffect(() => {
@@ -108,6 +168,7 @@ export default function Estudio() {
   const ATIVOS = ['preparando', 'submetendo', 'executando']
   const ativa = tarefas.find((t) => ATIVOS.includes(t.estado)) ?? tarefas.find((t) => t.estado === 'na_fila')
   const ir = (a: Aba) => { location.hash = a; setAba(a) }
+  const barra = useBarraRolavel(aba)
 
   return (
     <MotorCtx.Provider value={{ naNuvem, temChave, instalados, ocultarNaoInstalados: ocultar }}>
@@ -122,11 +183,11 @@ export default function Estudio() {
           </a>
           <MedidorRecursos />
         </div>
-        <nav className="hf-nav">
+        <nav className="hf-nav" ref={barra} aria-label="Tabs">
           {/* Os estudios ficam no botao Studios (MenuEstudios), logo depois de Video. */}
           {ABAS.filter((a) => !ESTUDIOS.some((e) => e.id === a.id)).map((a) => (
             <span key={a.id} style={{ display: 'contents' }}>
-              <button data-ativo={aba === a.id} onClick={() => ir(a.id)}>
+              <button data-ativo={aba === a.id} aria-current={aba === a.id ? 'page' : undefined} onClick={() => ir(a.id)}>
                 {a.rotulo}{a.breve && <sup>soon</sup>}
               </button>
               {a.id === 'video' && <MenuEstudios aba={aba} ir={(id) => ir(id as Aba)} />}
@@ -143,24 +204,31 @@ export default function Estudio() {
       </header>
 
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
-        {aba === 'image' && <AbaImagem key={versao} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} naNuvem={naNuvem} />}
-        {aba === 'video' && <AbaVideo key={versao} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} naNuvem={naNuvem} />}
+        {aba === 'image' && <AbaImagem key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} apiOcultos={soAbertos ? apiImagem : []} naNuvem={naNuvem} />}
+        {aba === 'video' && <AbaVideo key={chave} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} apiOcultos={soAbertos ? geradores.filter((g) => g.nuvem) : []} naNuvem={naNuvem} />}
         {aba === 'ltx' && <AbaLTX />}
         {aba === 'h3' && <AbaH3 />}
         {aba === 'wan' && <AbaWan />}
         {aba === 'flux3' && <AbaFlux3 />}
-        {aba === 'cinema' && <AbaCinema key={versao} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem}
+        {aba === 'cinema' && <AbaCinema key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem}
           apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} naNuvem={naNuvem} />}
-        {aba === 'genjutsu' && <AbaGenjutsu key={versao} apiLiberado={!soAbertos} />}
-        {aba === 'apps' && <AbaApps key={versao} naNuvem={naNuvem} />}
-        {aba === 'lipsync' && <AbaLipSync key={versao} apiModelos={soAbertos ? [] : lipsyncApi} />}
-        {aba === 'music' && <AbaMusica key={versao} />}
-        {aba === 'voice' && <AbaVoz key={versao} naNuvem={naNuvem} />}
+        {aba === 'genjutsu' && <AbaGenjutsu key={chave} apiLiberado={!soAbertos} />}
+        {aba === 'apps' && <AbaApps key={chave} naNuvem={naNuvem} />}
+        {aba === 'lipsync' && <AbaLipSync key={chave} apiModelos={soAbertos ? [] : lipsyncApi} />}
+        {aba === 'music' && <AbaMusica key={chave} />}
+        {aba === 'voice' && <AbaVoz key={chave} naNuvem={naNuvem} />}
         {aba === 'assets' && <AbaAssets />}
         {aba === 'advanced' && <AbaNodes />}
       </main>
 
       <Visualizador />
+      {avisoMotor && (
+        <div className="hf-aviso-motor" role="alert">
+          <span>{avisoMotor.texto}</span>
+          {avisoMotor.chave && <button type="button" className="hf-botao-sec" onClick={() => { setVerModelos('api'); setAvisoMotor(null) }}>Add key</button>}
+          <button type="button" className="hf-link" onClick={() => setAvisoMotor(null)} aria-label="Close">✕</button>
+        </div>
+      )}
       {verModelos && <TelaModelos abaInicial={verModelos}
         topoLocais={<label className="mq-check"><input type="checkbox" checked={ocultar} onChange={(e) => mudarOcultar(e.target.checked)} />
           <span>Hide the models that are not installed from the model menus (otherwise they show greyed out).</span></label>} fechar={() => { setVerModelos(false); setVersao((v) => v + 1) }}

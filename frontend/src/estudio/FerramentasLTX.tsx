@@ -137,7 +137,7 @@ function Keyframes() {
           <p className="hf-dica">Neighbouring images should share a similar point of view; very different ones blend into each other.</p>
         </div>
 
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder="What happens between the images: motion, camera, sound…" />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={['16:9', '9:16', '1:1'].map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
@@ -171,6 +171,11 @@ function Ingredientes() {
 
   // Na folha, 2 imagens ficam em "left/right"; 3 ou 4 usam as posicoes do meio.
   const posicoes = (POSICOES[proporcao] ?? POSICOES['16:9'])
+  // Em pe (9:16) a folha empilha as imagens: a dica e o exemplo falam de
+  // top/bottom, como as etiquetas de cada imagem (antes diziam left/right).
+  const emPe = proporcao === '9:16'
+  const [lado1, lado2] = emPe ? ['top', 'bottom'] : ['left', 'right']
+  const [doLado1, noLado2] = emPe ? ['from the top', 'at the bottom'] : ['from the left', 'on the right']
   const ondeFica = (i: number) => imgs.length <= 2 ? [posicoes[0], posicoes[3]][i] ?? posicoes[0] : imgs.length === 3 ? [posicoes[0], 'center', posicoes[3]][i] : posicoes[i]
 
   const pedido = {
@@ -208,9 +213,9 @@ function Ingredientes() {
               valor={null} aoMudar={(n) => n && setImgs((a) => [...a, n])} />
           )}
         </div>
-        <p className="hf-dica">Name each image by its place on the sheet, in English — e.g. “the woman from the left of the reference sheet walks along the street shown on the right of the sheet”. Writing “image 1” makes the model animate the sheet itself.</p>
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
-          placeholder="the man from the left of the reference sheet rides the red bike from the right of the sheet…" />
+        <p className="hf-dica">Name each image by its place on the sheet ({lado1} to {lado2}), in English — e.g. “the woman {doLado1} of the reference sheet walks along the street shown {noLado2} of the sheet”. Writing “image 1” makes the model animate the sheet itself.</p>
+        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+          placeholder={`the man ${doLado1} of the reference sheet rides the red bike shown ${noLado2} of the sheet…`} />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={['16:9', '9:16'].map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           <label className="hf-duracao">{duracao}s
@@ -268,7 +273,7 @@ function Ampliar() {
           <label className="hf-slot" data-cheio={!!video}>
             {video ? <video src={video.url} muted loop autoPlay playsInline /> : <span>{enviando ? 'Uploading…' : '+ Upload video'}</span>}
             {video && <button type="button" className="hf-slot-x" onClick={(e) => { e.preventDefault(); setVideo(null) }}>×</button>}
-            <input type="file" accept="video/*" hidden onChange={async (e) => {
+            <input type="file" accept="video/*" className="hf-arquivo" onChange={async (e) => {
               const f = e.target.files?.[0]
               if (!f) return
               setEnviando(true); setErro(null)
@@ -284,7 +289,7 @@ function Ampliar() {
               {recentes.map((a) => {
                 const ref = `${a.subpasta}/${a.nome}`
                 return (
-                  <button key={ref} type="button" data-ativo={video?.ref === ref}
+                  <button key={ref} type="button" data-ativo={video?.ref === ref} aria-pressed={video?.ref === ref}
                     onClick={() => setVideo({ ref, url: urlImagem(a), rotulo: a.t.prompt })}>
                     <video src={urlImagem(a)} muted preload="metadata" />
                   </button>

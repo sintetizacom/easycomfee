@@ -163,7 +163,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
       <span className="hf-passo">{ordem.indexOf('partitura') + 1} · Score</span>
       <p className="hf-dica">{cover ? 'Melody and chords transcribed from the recording (SheetSage2)' : `“${docs.title ?? ''}”`}
         {' '}· about {segundos ? minutos(segundos) : '—'}. In ABC notation; “Open the full editor” shows it as a score, piano roll, chords and MIDI.</p>
-      <textarea rows={16} spellCheck={false} className="hf-abc" value={docs.score ?? ''} disabled={fase !== 'partitura'}
+      <textarea aria-label="Score in ABC notation" rows={16} spellCheck={false} className="hf-abc" value={docs.score ?? ''} disabled={fase !== 'partitura'}
         onChange={(e) => setDocs((d) => ({ ...d, score: e.target.value }))} />
       {errosFolha.map((x) => <p key={x} className="hf-erro">{x}</p>)}
       <div className="hf-linha-controles">
@@ -186,7 +186,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
       {cover && (
         <label className="hf-slot hf-slot-audio" data-cheio={!!origem} title="WAV, MP3, FLAC or OGG, 10 to 600 s, up to 40 MB.">
           {origem ? <audio src={origem.url} controls /> : <span>{subindo ? 'Uploading…' : '+ Source recording'}</span>}
-          <input type="file" accept="audio/*" hidden disabled={ocupado} onChange={async (e) => {
+          <input type="file" accept="audio/*" className="hf-arquivo" disabled={ocupado} onChange={async (e) => {
             const f = e.target.files?.[0]
             if (!f) return
             setSubindo(true); setErro(null)

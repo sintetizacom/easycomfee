@@ -16,7 +16,7 @@
 .hf {
   /* Paleta do GUIA-DE-MARCA-EASYCOMFEE.md: aubergine, chartreuse, branco quente, cinza-lilas. */
   --hf-fundo: #1E1724; --hf-cartao: #261D2E; --hf-linha: #382D42; --hf-texto: #F4F0E8;
-  --hf-apagado: #888095; --hf-neon: #F2FF3D; --hf-neon-escuro: #34331F;
+  --hf-apagado: #9A93A6; /* era #888095: 4,3:1 nos cartoes, abaixo dos 4,5:1 do AA */ --hf-neon: #F2FF3D; --hf-neon-escuro: #34331F;
   min-height: 100vh; background: var(--hf-fundo); color: var(--hf-texto);
   font-family: 'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -72,6 +72,11 @@
 .hf-barra-prompt textarea::placeholder { color: #6B6178; }
 .hf-linha-controles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .hf-select { background: #2A2133; color: var(--hf-texto); border: 1px solid var(--hf-linha); border-radius: 10px; padding: 8px 10px; }
+/* Nome de modelo longo ("... (install it in Config Models)"): o menu encolhe e
+   corta o texto em vez de alargar a caixa alem da tela (375 px virava 417). */
+.hf-select { max-width: 100%; min-width: 0; text-overflow: ellipsis; }
+.hf-barra-prompt { grid-template-columns: minmax(0, 1fr); }
+.hf-linha-controles { min-width: 0; }
 .hf-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .hf-chips button { background: #2A2133; border: 1px solid var(--hf-linha); color: #D8D2DF; border-radius: 10px; padding: 7px 12px;
   font-size: 13px; cursor: pointer; }
@@ -167,6 +172,7 @@
 .hf-direita .seletor-recarga { color: #191220; background: var(--hf-neon); border-radius: 8px; padding: 5px 10px; margin-left: 4px;
   font-size: 12px; font-weight: 700; text-decoration: none; align-self: center; }
 .hf-erro a { color: var(--hf-neon); }
+.hf-erro .hf-link { color: var(--hf-neon); font-size: inherit; }
 
 .hf-abertos { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--hf-apagado); white-space: nowrap; cursor: pointer; }
 .hf-abertos input { accent-color: var(--hf-neon); }
@@ -279,7 +285,7 @@
 .hf-onde button { flex: 1; background: #241B2C; border: 1px solid var(--hf-linha); color: var(--hf-apagado); border-radius: 8px; padding: 6px; font: inherit; font-size: 12px; cursor: pointer; }
 .hf-onde button[data-ativo="true"] { color: var(--hf-neon); border-color: var(--hf-neon); }
 .mq-abas { display: flex; gap: 6px; margin: 4px 0 12px; border-bottom: 1px solid var(--hf-linha, #382D42); }
-.mq-abas button { background: none; border: 0; border-bottom: 2px solid transparent; color: #888095; font: inherit; font-weight: 600;
+.mq-abas button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--hf-apagado); font: inherit; font-weight: 600;
   padding: 8px 12px; cursor: pointer; }
 .mq-abas button[data-ativo="true"] { color: #F4F0E8; border-bottom-color: #F2FF3D; }
 .mq-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; color: #D8D2DF; line-height: 1.4; }
@@ -460,6 +466,7 @@
 .hf-nodes-nuvem:hover { color: var(--hf-neon); }
 .hf-nodes-quadro { flex: 1; width: 100%; border: 0; background: #191220; }
 .hf-nodes-aviso { padding: 40px 16px; text-align: center; }
+.hf-nodes-nota { margin: 0; padding: 4px 16px; font-size: 12px; }
 
 /* Andamento da geracao no topo (PainelAndamento.tsx, vindo do editor antigo) */
 .hf .andamento-topo { --realce: var(--hf-neon); --apagado: var(--hf-apagado); --borda: #46443A; --texto: #F4F0E8; --ok: var(--hf-neon); }
@@ -507,6 +514,10 @@
 /* A barra de abas rola de lado sem mostrar a barrinha de rolagem */
 .hf-nav { scrollbar-width: none; }
 .hf-nav::-webkit-scrollbar { display: none; }
+/* Mais abas fora da vista: a borda daquele lado esmaece (a barra nao mostra rolagem). */
+.hf-nav[data-mais-direita='true'] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+.hf-nav[data-mais-esquerda='true'] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+.hf-nav[data-mais-esquerda='true'][data-mais-direita='true'] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
 
 /* Barra de acoes do arquivo (comum.tsx Midia): icones no alto, pilulas embaixo */
 .hf-expandir, .hf-usar { display: none; }
@@ -671,28 +682,28 @@
 /* Janela Config Models (estilos .mq do estilo.css) na paleta da marca. O estilo.css carrega DEPOIS deste
    arquivo, entao estas regras levam "html" na frente para vencer as antigas. */
 html .mq { --neon: #F2FF3D; --neon-escuro: #34331F; --cartao: #261D2E; --linha: #382D42; background: #1E1724; }
-html .mq-sub { color: #888095; }
-html .mq-rotulo { color: #888095; }
-html .mq-campos label { color: #888095; }
+html .mq-sub { color: var(--hf-apagado); }
+html .mq-rotulo { color: var(--hf-apagado); }
+html .mq-campos label { color: var(--hf-apagado); }
 html .mq-campos input, html .mq-campos select, html .mq-token { background: #2A2133; color: #F4F0E8; }
 html .mq-botao { color: #191220; }
 html .mq-botao-sec { background: #2A2133; color: #E4DEE8; }
 html .mq-destaque { border: 1px solid #5A5A2C; }
-html .mq-opc { color: #888095; }
+html .mq-opc { color: var(--hf-apagado); }
 html .mq-tag { color: #D8D2DF; background: #2A2133; }
 html .mq-tag.forte { border-color: #5A5A2C; }
 html .mq-selo.nuvem { color: #D3C8E3; }
 html .mq-selo.bem { color: #F2FF3D; }
 html .mq-medido { color: #7A7086; }
 html .mq-aviso { color: #D8D2DF; }
-html .mq-progresso { color: #888095; }
-html .mq-componentes summary { color: #888095; }
+html .mq-progresso { color: var(--hf-apagado); }
+html .mq-componentes summary { color: var(--hf-apagado); }
 html .mq-componentes li { background: #241B2C; }
-html .mq-estado { color: #888095; }
+html .mq-estado { color: var(--hf-apagado); }
 html .mq { color: #F4F0E8; }
 html .mq-aviso-amd { margin: 0 0 12px; color: #F4F0E8; background: #34331F; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.4; }
 /* Botao Remove do Config Models: discreto, abaixo de Installed/Download. */
-html .mq-remover { background: none; border: 0; color: #888095; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0 0; }
+html .mq-remover { background: none; border: 0; color: var(--hf-apagado); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0 0; }
 html .mq-remover:hover { color: #F4F0E8; }
 html .mq-remover:disabled { opacity: .5; cursor: default; }
 /* Audio: os icones nao ficam por cima do player (cobriam o tempo e o volume);
@@ -722,8 +733,8 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-look { flex: none; width: 92px; display: grid; gap: 5px; padding: 4px 4px 6px; border: 1px solid var(--hf-linha); border-radius: 12px;
   background: #241B2C; color: var(--hf-texto); font-size: 11.5px; font-weight: 600; text-align: center; cursor: pointer; line-height: 1.2; }
 .hf-look img, .hf-look-nada { width: 82px; height: 82px; border-radius: 9px; object-fit: cover; display: block; }
-.hf-look-nada { display: grid; place-items: center; font-size: 30px; color: #888095; background: #1E1724; }
-.hf-look:hover { border-color: #888095; }
+.hf-look-nada { display: grid; place-items: center; font-size: 30px; color: var(--hf-apagado); background: #1E1724; }
+.hf-look:hover { border-color: var(--hf-apagado); }
 .hf-look[data-ativo='true'] { border-color: var(--hf-neon); box-shadow: 0 0 0 1px var(--hf-neon) inset; }
 .hf-look[data-ativo='true'] span:last-child { color: var(--hf-neon); }
 /* Medidor de recursos (MedidorRecursos.tsx): RAM e VRAM com barrinhas na barra de cima. */
@@ -754,3 +765,25 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-est-veu { position: fixed; inset: 0; z-index: 59; background: rgba(12, 8, 16, .62); backdrop-filter: blur(2px); animation: hf-est-entra .15s ease-out; }
 .hf-est-janela { animation: hf-est-entra .15s ease-out; }
 @keyframes hf-est-entra { from { opacity: 0; } to { opacity: 1; } }
+
+/* Aviso de troca de motor que nao aconteceu (sem chave da nuvem, fila ocupada). */
+.hf-aviso-motor { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px;
+  max-width: calc(100vw - 32px); padding: 12px 16px; border-radius: 14px; background: #2A2133; border: 1px solid #f87171; color: var(--hf-texto);
+  font-size: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+.hf-aviso-motor .hf-link { font-size: 14px; }
+.hf-aviso-motor button { white-space: nowrap; flex: none; }
+
+/* Campo de arquivo dos slots: invisivel mas alcancavel pelo teclado (Tab foca o
+   slot, Enter ou espaco abre a escolha do arquivo). Com `hidden` nao dava. */
+.hf-arquivo { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; opacity: 0; }
+.hf-slot:has(.hf-arquivo:focus-visible) { outline: 2px solid var(--hf-neon); outline-offset: 3px; }
+
+/* Nota sob um controle (ex.: duracao pedida acima do teto do modelo de musica). */
+.hf-ctrl-nota { color: var(--hf-apagado); font-size: 11px; text-transform: none; letter-spacing: 0; }
+
+/* Cartao de modelo = div + botao com o nome (CartaoModelo): o botao herda o visual do cartao. */
+.hf-mu-escolher { all: unset; display: flex; flex-direction: column; gap: 6px; flex: 1; cursor: pointer; border-radius: 10px; }
+.hf-mu-escolher:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 4px; }
+button.hf-onde { font-family: inherit; line-height: inherit; }
+.hf-onde:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }

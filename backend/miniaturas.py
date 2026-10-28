@@ -22,8 +22,12 @@ LADO = 320  # cobre telas retina para uma miniatura de 96-160 px
 _trabalhando: dict[str, asyncio.Lock] = {}
 
 
-def _caminho(nome: str, subpasta: str) -> pathlib.Path:
-    chave = hashlib.sha1(f"{subpasta}/{nome}".encode()).hexdigest()
+def _caminho(nome: str, subpasta: str, tipo: str = "output") -> pathlib.Path:
+    # O tipo entra na chave: uma entrada e uma saida com o mesmo nome dividiam a
+    # miniatura (e o cache e de um ano). A saida fica com a chave de sempre, para
+    # nao perder as miniaturas ja feitas.
+    origem = f"{subpasta}/{nome}" if tipo == "output" else f"{tipo}:{subpasta}/{nome}"
+    chave = hashlib.sha1(origem.encode()).hexdigest()
     return CACHE / f"{chave}.webp"
 
 
@@ -151,7 +155,7 @@ def _reduzir(dados: bytes) -> bytes:
 
 
 async def obter(nome: str, subpasta: str = "", tipo: str = "output") -> bytes:
-    destino = _caminho(nome, subpasta)
+    destino = _caminho(nome, subpasta, tipo)
     if destino.exists():
         return destino.read_bytes()
 

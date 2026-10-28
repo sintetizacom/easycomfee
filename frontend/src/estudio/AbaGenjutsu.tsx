@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
+import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, type Referencia } from '../api'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash } from './comum'
 
@@ -77,14 +77,14 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
     escolher(`${m.id === 'wan_animate2' || naNuvem ? 'nuvem' : 'local'}:${m.id}`)
   }
   const cartao = (m: Modelo) => (
-    <button key={m.id} type="button" className="hf-mu-modelo" data-ativo={modelo === m.id} onClick={() => escolherModelo(m)} title={m.dica}>
+    <CartaoModelo key={m.id} ativo={modelo === m.id} aoEscolher={() => escolherModelo(m)} title={m.dica}
+      rodape={m.aberto && <LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local={m.id !== 'wan_animate2'} nuvem faltaLocal={!instalado(m.id)} />}>
       <b>{m.rotulo}</b>
       <span className="hf-mu-tags">
         <i data-onde={m.aberto ? 'local' : 'falta'}>{m.aberto ? 'Open weights' : 'API'}</i>
         {(ETIQUETAS[m.id] ?? []).filter((t) => t !== 'Cloud').map((t) => <i key={t}>{t}</i>)}
       </span>
-      {m.aberto && <LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local={m.id !== 'wan_animate2'} nuvem faltaLocal={!instalado(m.id)} />}
-    </button>
+    </CartaoModelo>
   )
   const imagens = refs.slice(0, cfg.refs.length).filter(Boolean) as Referencia[]
   const precisaRef = cfg.refs.length > 0 && !cfg.refs[0].includes('optional')
@@ -175,7 +175,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
             <label className="hf-slot hf-gj-video" data-cheio={!!video}>
               {video ? <video src={urlEntrada(video.nome)} muted loop autoPlay playsInline />
                 : <span>{enviando ? 'Uploading…' : '+ Your video'}<small>The motion, camera and timing come from here</small></span>}
-              <input type="file" accept="video/*" hidden onChange={async (e) => {
+              <input type="file" accept="video/*" className="hf-arquivo" onChange={async (e) => {
                 const f = e.target.files?.[0]
                 if (!f) return
                 setEnviando(true); setErro(null)
@@ -200,7 +200,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
 
           <section className="hf-ls-cartao hf-ls-cena">
             <header><b>3</b> Direction {(modelo === 'wan_animate2' || modelo === 'wan22_replace' || modelo === 'h3_swap') && <small>optional</small>}</header>
-            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
+            <textarea aria-label="Direction" value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
               placeholder={modelo === 'wan_animate2'
                 ? 'Describe the character and the background'
                 : modelo === 'h3_swap' ? 'e.g. the performer is singing; keep the original voice'

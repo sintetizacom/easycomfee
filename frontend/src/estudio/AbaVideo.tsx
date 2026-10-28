@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
-import { GruposAbertos, useEscolha, useValor } from './motor'
+import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
 import { api, type GeradorVideo, type Referencia } from '../api'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
 
@@ -39,16 +39,25 @@ const LEVES: Record<string, { rotulo: string; modos: Modo[]; resolucoes: string[
 type Chave = { id: number; img: Referencia | null; seg: number }
 let proximaChave = 3
 
-export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGeradores?: GeradorVideo[]; naNuvem?: boolean }) {
+export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem = false }: { apiGeradores?: GeradorVideo[]; apiOcultos?: GeradorVideo[]; naNuvem?: boolean }) {
   const tarefas = useTarefas()
-  const [motor, setMotor] = useState<string>(() => parteDoHash(2) || 'ltx')
+  const [escolhido, setMotor] = useState<string>(() => parteDoHash(2) || 'ltx')
+  // O que aparece, o que o preco mostra e o que vai no pedido sao o MESMO modelo:
+  // um id que o menu nao tem (API oculta em "so abertos", link inventado) vira LTX 2.5.
+  const motor = apiGeradores.some((g) => g.id === escolhido) || !!LEVES[escolhido]
+    || escolhido === 'ltx' || escolhido === 'minimax' ? escolhido : 'ltx'
+  const apiOculta = motor !== escolhido ? apiOcultos.find((g) => g.id === escolhido) : undefined
   const escolher = useEscolha(setMotor)
+  const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(motor, apiGeradores.some((g) => g.id === motor))
   const [turbo, setTurbo] = useState(true)
   const [modo, setModo] = useState<Modo>(() => {
     const destino = parteDoHash(1)
     return MODOS.some((item) => item.id === destino) ? destino as Modo : 'texto'
   })
+  // O modo que o link pediu (#video/chaves/minimax): se o modelo nao o tem, a aba
+  // avisa em vez de abrir outro modo calada.
+  const [modoDoLink] = useState(() => parteDoHash(1))
   const [prompt, setPrompt] = useState('')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
@@ -70,12 +79,20 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
   // Open models: only LTX 2.5 takes references, and only locally (MSR).
   // MiniMax H3 MultiRef is a paid API node, listed with the API generators.
   const leve = LEVES[motor]
+  const naoInstalado = faltaInstalar(motor, !!gApi)
+  const rotuloMotor = gApi ? gApi.rotulo : leve ? leve.rotulo : motor === 'ltx' ? 'LTX 2.5' : 'MiniMax H3'
   const modos = gApi ? MODOS.filter((m) => gApi.modos.includes(m.id))
     : leve ? MODOS.filter((m) => leve.modos.includes(m.id))
     : motor === 'ltx' ? MODOS.filter((m) => !naNuvem || m.id !== 'referencia')
       : MODOS.filter((m) => m.id !== 'referencia' && m.id !== 'chaves')
   const maxRefs = gApi ? (gApi.max_referencias ?? 1) : 4
   const modoOk = modos.some((m) => m.id === modo) ? modo : modos[0]?.id ?? 'texto'
+  // Some sozinho quando a pessoa troca o modo (ou o modelo passa a ter o modo).
+  const rotuloModo = (id: string) => MODOS.find((m) => m.id === id)?.rotulo
+  const avisoModo = !modoDoLink ? null
+    : !rotuloModo(modoDoLink) ? (modo === 'texto' ? `This link asks for an unknown mode ("${modoDoLink}"); showing ${rotuloModo(modoOk)}.` : null)
+    : modo === modoDoLink && modoOk !== modo ? `${rotuloModo(modo)} is not available with this model; showing ${rotuloModo(modoOk)}.`
+    : null
   const proporcoes = gApi ? (gApi.proporcoes ?? []).filter((p) => p !== 'adaptive') : ['16:9', '9:16', '1:1']
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
@@ -87,6 +104,8 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
   const ehChaves = modoOk === 'chaves'
   // Keyframes in time order, only the ones with an image, inside the clip length.
   const chavesOk = chaves.filter((c) => c.img).map((c) => ({ ...c, seg: Math.min(c.seg, duracaoOk) })).sort((x, y) => x.seg - y.seg)
+  // Duas imagens no mesmo quadro: o backend fica com uma so (como em FerramentasLTX).
+  const chavesRepetidas = ehChaves && chavesOk.some((c, i) => i > 0 && Math.round(c.seg * 24) === Math.round(chavesOk[i - 1].seg * 24))
   const ehRef = modoOk === 'referencia'
   const faltaImagem = ehChaves ? chavesOk.length < 2 : ehRef ? refsOk.length === 0
     : (modoOk !== 'texto' && !inicio) || (modoOk === 'primeiro_ultimo' && !fim)
@@ -135,6 +154,7 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
               valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
           )}
         </div>
+        {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
         {motor === 'minimax' && <p className="hf-dica">MiniMax H3 is heavy: on a 16 GB card it only fits at low resolution. Best on Comfy Cloud or a 32 GB+ GPU.</p>}
         <Chips rotulo="Mode" opcoes={modos} valor={modoOk} aoMudar={setModo} />
         {ehRef && (
@@ -162,12 +182,18 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
                   aoMudar={(img) => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, img } : x)))} />
                 <label className="hf-ctrl"><small>At second</small>
                   <input className="hf-campo" type="number" min={0} max={duracaoOk} step={0.5} value={c.seg} style={{ width: 80 }}
-                    onChange={(e) => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, seg: Math.max(0, Number(e.target.value)) } : x)))} />
+                    onChange={(e) => {
+                      // Dentro do video: o max do campo so vale para as setinhas, nao para o que se digita.
+                      const v = Number(e.target.value)
+                      const seg = Number.isFinite(v) ? Math.min(duracaoOk, Math.max(0, v)) : 0
+                      setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, seg } : x)))
+                    }} />
                 </label>
                 {chaves.length > 2 && <button type="button" className="hf-botao-sec hf-x" onClick={() => setChaves((a) => a.filter((x) => x.id !== c.id))}>×</button>}
               </div>
             ))}
             <div className="hf-linha-controles">
+              {chaves.length >= 8 && <span className="hf-dica">Up to 8 keyframes.</span>}
               {chaves.length < 8 && <button type="button" className="hf-botao-sec"
                 onClick={() => setChaves((a) => [...a, { id: proximaChave++, img: null, seg: Math.min(duracaoOk, (a.at(-1)?.seg ?? 0) + 2) }])}>+ Add keyframe</button>}
               <label className="hf-ctrl hf-ctrl-largo" title="How strictly the video matches each image. Lower lets the motion flow more freely between them.">
@@ -184,7 +210,7 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
             {modoOk === 'primeiro_ultimo' && <SlotImagem rotulo="Last frame" valor={fim} aoMudar={setFim} />}
           </div>
         )}
-        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={proporcoes.map((p) => ({ id: p, rotulo: p }))} valor={proporcaoOk} aoMudar={setProporcao} />
@@ -194,8 +220,11 @@ export default function AbaVideo({ apiGeradores = [], naNuvem = false }: { apiGe
             <input type="range" min={dMin} max={dMax} value={duracaoOk} onChange={(e) => setDuracao(Number(e.target.value))} />
           </label>
           <label className="hf-toggle" style={(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? { display: 'none' } : undefined}><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
-          <BotaoGerar est={custo} desligado={!prompt.trim() || faltaImagem} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={naoInstalado || !prompt.trim() || faltaImagem || chavesRepetidas} aoClicar={gerar} />
         </div>
+        {avisoModo && <p className="hf-dica" role="note">{avisoModo}</p>}
+        {chavesRepetidas && <p className="hf-erro">Two keyframes are at the same second: move one of them.</p>}
+        {naoInstalado && <AvisoInstalar rotulo={rotuloMotor} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

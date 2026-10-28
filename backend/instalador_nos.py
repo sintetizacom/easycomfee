@@ -20,6 +20,7 @@ import zipfile
 
 import httpx
 
+import comfy
 import config
 
 CATALOGO = config.RAIZ / "catalogo" / "nos.json"
@@ -100,13 +101,15 @@ async def instalar_um(c: httpx.AsyncClient, no: dict):
         return False
     with tempfile.TemporaryDirectory(dir=raiz) as tmp:
         temporaria = pathlib.Path(tmp) / no["pasta"]
+        # Copiar e extrair mexem em muitos arquivos: fora do laco de eventos,
+        # para o servidor nao parar de responder durante a instalacao.
         if no["fonte"] == "projeto":
-            shutil.copytree(config.RAIZ / no["origem"], temporaria)
+            await asyncio.to_thread(shutil.copytree, config.RAIZ / no["origem"], temporaria)
         else:
             r = await c.get(await _url_zip(c, no))
             r.raise_for_status()
             temporaria.mkdir()
-            _extrair(r.content, temporaria)
+            await asyncio.to_thread(_extrair, r.content, temporaria)
         await _dependencias(temporaria, no)
         temporaria.replace(final)  # so aparece para o ComfyUI quando completo
     return True
@@ -127,6 +130,7 @@ async def _instalar(lista: list[dict]):
                     ESTADO["erros"].append(f"{no['nome']}: {e}")
     finally:
         ESTADO.update(ativo=False, atual=None, terminado_em=time.time())
+        comfy.esquecer_info()
 
 
 def iniciar(id_pacote: str | None) -> dict:

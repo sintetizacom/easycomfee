@@ -22,7 +22,7 @@ def teste_preparar_traduz_modelo_e_sobe_entrada(tmp_path, monkeypatch):
         return "enviada_" + caminho.name
     monkeypatch.setattr(nuvem, "capacidades", capacidades)
     monkeypatch.setattr(nuvem, "_subir", subir)
-    g = {"1": {"class_type": "UNETLoader", "inputs": {"unet_name": "LTX\2.5\modelo.safetensors"}},
+    g = {"1": {"class_type": "UNETLoader", "inputs": {"unet_name": r"LTX\2.5\modelo.safetensors"}},
          "2": {"class_type": "LoadImage", "inputs": {"image": "foto.png"}}}
     pronto = asyncio.run(nuvem.preparar(g))
     assert pronto["1"]["inputs"]["unet_name"] == "modelo.safetensors"

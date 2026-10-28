@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react'
-import { LinhaOnde, MotorCtx, useEscolha } from './motor'
+import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha } from './motor'
 import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
@@ -62,11 +62,28 @@ export default function AbaMusica() {
   const [subindo, setSubindo] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  // Carregar os cartoes: num PC lento o ComfyUI leva ate um minuto para listar
+  // os modelos. Depois de 15 s avisa que segue conferindo; em 150 s desiste
+  // (o backend espera ate 120 s) e mostra o erro com "Try again".
+  const [tentativa, setTentativa] = useState(0)
+  const [demorando, setDemorando] = useState(false)
+  const [falhaCarga, setFalhaCarga] = useState<string | null>(null)
   useEffect(() => {
-    fetch('/api/musica').then((r) => r.json())
+    const parar = new AbortController()
+    let esgotou = false
+    setFalhaCarga(null); setDemorando(false)
+    const aviso = setTimeout(() => setDemorando(true), 15000)
+    const limite = setTimeout(() => { esgotou = true; parar.abort() }, 150000)
+    fetch('/api/musica', { signal: parar.signal })
+      .then((r) => { if (!r.ok) throw new Error(); return r.json() })
       .then((l: ModeloMusica[]) => setModelos(l))
-      .catch(() => setErro('Could not load the music models.'))
-  }, [naNuvem])  // availability depends on the engine: reread when it switches
+      .catch(() => {
+        if (parar.signal.aborted && !esgotou) return  // tab closed or engine switched
+        setFalhaCarga(esgotou ? 'ComfyUI took too long to list the music models.' : 'Could not load the music models.')
+      })
+      .finally(() => { clearTimeout(aviso); clearTimeout(limite) })
+    return () => { parar.abort(); clearTimeout(aviso); clearTimeout(limite) }
+  }, [naNuvem, tentativa])  // availability depends on the engine: reread when it switches
 
   const cfg = modelos.find((m) => m.id === modelo)
   // Cartao clicado: usa o motor atual se o modelo existe nele; senao troca de motor.
@@ -113,22 +130,27 @@ export default function AbaMusica() {
       </div>
 
       <div className="hf-mu-modelos">
-        {modelos.length === 0 && !erro && [0, 1, 2, 3, 4].map((k) => (
-          <div key={k} className="hf-mu-modelo" data-carregando="true"><b>Checking models…</b><small>On this computer and on Comfy Cloud</small></div>
+        {modelos.length === 0 && !falhaCarga && [0, 1, 2, 3, 4].map((k) => (
+          <div key={k} className="hf-mu-modelo" data-carregando="true"><b>Checking models…</b>
+            <small>{demorando ? 'Still checking: ComfyUI can take a minute the first time.' : 'On this computer and on Comfy Cloud'}</small></div>
         ))}
+        {modelos.length === 0 && falhaCarga && (
+          <p className="hf-erro" role="alert" style={{ gridColumn: "1 / -1" }}>{falhaCarga} Check that ComfyUI is running.{' '}
+            <button type="button" className="hf-link" onClick={() => setTentativa((t) => t + 1)}>Try again</button></p>
+        )}
         {modelos.map((m) => {
           const ok = m.local !== false || m.nuvem !== false
           return (
-            <button key={m.id} type="button" className="hf-mu-modelo" data-ativo={modelo === m.id}
-              onClick={() => escolherModelo(m)} title={ok ? DESCRICOES[m.id] : 'Install it in Config Models'}>
+            <CartaoModelo key={m.id} ativo={modelo === m.id} aoEscolher={() => escolherModelo(m)}
+              title={ok ? DESCRICOES[m.id] : 'Install it in Config Models'}
+              // A placa aparece mesmo sem o modelo instalado: escolher leva ao aviso junto do Generate.
+              rodape={<LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local nuvem={m.nuvem !== false} faltaLocal={m.local === false} />}>
               <b>{m.rotulo}</b>
               <small>{DESCRICOES[m.id]}</small>
               <span className="hf-mu-tags">
                 {(ETIQUETAS[m.id] ?? []).map((t) => <i key={t}>{t}</i>)}
               </span>
-              {/* A placa aparece mesmo sem o modelo instalado: escolher leva ao aviso junto do Generate. */}
-              <LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local nuvem={m.nuvem !== false} faltaLocal={m.local === false} />
-            </button>
+            </CartaoModelo>
           )
         })}
       </div>
@@ -137,7 +159,7 @@ export default function AbaMusica() {
         <div className="hf-mu-corpo" data-letra={!cfg?.plenio && !!cfg?.letra}>
           <section className="hf-vz-coluna">
             <span className="hf-grupo-rotulo">Style</span>
-            <textarea className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
+            <textarea aria-label="Style and mood" className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
               placeholder="Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive" />
             <div className="hf-vz-exemplos">
               {ESTILOS.map((e) => (
@@ -153,7 +175,7 @@ export default function AbaMusica() {
                   valor={vocal ? 'v' : 'i'} aoMudar={(v) => setVocal(v === 'v')} />
               </div>
               {comVoz ? <>
-                <textarea className="hf-vz-caixa hf-mu-letra" value={letra} onChange={(e) => setLetra(e.target.value)} rows={7}
+                <textarea aria-label="Lyrics" className="hf-vz-caixa hf-mu-letra" value={letra} onChange={(e) => setLetra(e.target.value)} rows={7}
                   placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} />
                 <div className="hf-vz-exemplos">
                   {['[Intro]', '[Verse]', '[Pre-Chorus]', '[Chorus]', '[Bridge]', '[Outro]'].map((m) => (
@@ -167,8 +189,13 @@ export default function AbaMusica() {
 
         {cfg?.plenio ? <BlocoYue key={cfg.id} cfg={cfg} prompt={prompt} /> : <>
         <div className="hf-mu-ajustes">
-          {!(modelo === 'ace-step15' && guia) && <label className="hf-ctrl hf-ctrl-largo"><small>Length · {Math.floor(durOk / 60)}:{String(durOk % 60).padStart(2, '0')} (max {Math.round((cfg?.maximo ?? 180) / 60)} min)</small>
-            <input type="range" min={10} max={cfg?.maximo ?? 180} step={5} value={durOk} onChange={(e) => setDuracao(Number(e.target.value))} /></label>}
+          {/* O teto vem do modelo: enquanto o catalogo carrega nao ha teto para mostrar
+              (antes aparecia um "max 3 min" inventado que depois virava 5 ou 10 min). */}
+          {!(modelo === 'ace-step15' && guia) && <label className="hf-ctrl hf-ctrl-largo"><small>Length · {Math.floor(durOk / 60)}:{String(durOk % 60).padStart(2, '0')}
+            {cfg ? ` (max ${Math.round(cfg.maximo / 60)} min)` : ' (checking the limit…)'}</small>
+            <input type="range" min={10} max={cfg?.maximo ?? duracao} step={5} value={durOk} disabled={!cfg}
+              onChange={(e) => setDuracao(Number(e.target.value))} aria-label="Length in seconds" />
+            {cfg && duracao > cfg.maximo && <small className="hf-ctrl-nota">{cfg.rotulo} goes up to {Math.round(cfg.maximo / 60)} min, so the song is {Math.round(cfg.maximo / 60)} min.</small>}</label>}
           <label className="hf-ctrl" title="Natural looks for a pause near the length; fade out fades the last seconds."><small>Ending</small>
             <select value={final} onChange={(e) => setFinal(e.target.value)}>
               <option value="natural">Natural ending</option><option value="fade">Fade out</option><option value="original">Keep as generated</option>
@@ -189,7 +216,7 @@ export default function AbaMusica() {
           <div className="hf-linha-controles">
             <label className="hf-slot hf-slot-audio" data-cheio={!!guia} title="Optional. A 10 to 600 s recording (WAV, MP3, FLAC, OGG, up to 40 MB). The new song keeps its length and part of its structure.">
               {guia ? <audio src={guia.url} controls /> : <span>{subindo ? 'Uploading…' : '+ Guide track (optional)'}</span>}
-              <input type="file" accept="audio/*" hidden onChange={async (e) => {
+              <input type="file" accept="audio/*" className="hf-arquivo" onChange={async (e) => {
                 const f = e.target.files?.[0]
                 if (!f) return
                 setSubindo(true); setErro(null)

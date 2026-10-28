@@ -4,7 +4,10 @@ import { Chips } from './comum'
 // Advanced: o proprio ComfyUI, com o editor de nodes, dentro do estudio.
 // Mostra os motores do seu PC (o principal e, se instalado, o de video).
 
-type MotorNos = { id: string; rotulo: string; url: string; vivo: boolean }
+type MotorNos = { id: string; rotulo: string; url: string; vivo: boolean
+  /** ComfyUI sem --enable-cors-header: o navegador pode receber 403 no quadro. */
+  estrito?: boolean }
+
 
 export default function AbaNodes() {
   const [motores, setMotores] = useState<MotorNos[] | null>(null)
@@ -36,7 +39,14 @@ export default function AbaNodes() {
               ? 'The video engine is off. It starts by itself when you generate an LTX video or a YuE2 song; then press Reload.'
               : 'Your ComfyUI is not running. Start the app with iniciar.bat (it starts ComfyUI too), then press Reload.'}
           </p>
-        ) : <iframe key={atual.id + versao} className="hf-nodes-quadro" src={atual.url} title="ComfyUI" />}
+        ) : (
+          <>
+            {atual.estrito && <p className="hf-dica hf-nodes-nota" role="note">Blank below, or "403 Forbidden"? This ComfyUI only accepts
+              its own page. Use <a href={atual.url} target="_blank" rel="noreferrer">Open in new window</a>, or start ComfyUI with
+              {' '}<code>--enable-cors-header {location.origin}</code> and press Reload.</p>}
+            <iframe key={atual.id + versao} className="hf-nodes-quadro" src={atual.url} title="ComfyUI" />
+          </>
+        )}
     </div>
   )
 }

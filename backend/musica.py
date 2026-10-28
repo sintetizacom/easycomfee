@@ -82,13 +82,12 @@ def resolver(info, ident):
 async def catalogo():
     try:
         # Na Comfy Cloud confere contra a lista de la (os tres abertos estao la).
-        async with comfy._cliente(30) as c:
-            r = await c.get(f"{comfy._base()}/object_info"); r.raise_for_status()
-        lista = [resolver(r.json(), ident) for ident in MODELOS if not MODELOS[ident].get("plenio")]
+        info = await comfy.info_nos()
+        lista = [resolver(info, ident) for ident in MODELOS if not MODELOS[ident].get("plenio")]
         if comfy.na_nuvem():
             return lista
-    except Exception:
-        lista = [{"id": k, "rotulo": v["rotulo"], "letra": v["letra"], "maximo": v["maximo"], "disponivel": False, "motivo": "O ComfyUI não está respondendo.", "pesos": {}} for k,v in MODELOS.items() if not v.get("plenio")]
+    except Exception as e:
+        lista = [{"id": k, "rotulo": v["rotulo"], "letra": v["letra"], "maximo": v["maximo"], "disponivel": False, "motivo": comfy.motivo_sem_info(e), "pesos": {}} for k,v in MODELOS.items() if not v.get("plenio")]
     lista = lista + [await _catalogo_plenio(k) for k, v in MODELOS.items() if v.get("plenio")]
     return lista
 
@@ -104,9 +103,7 @@ async def onde_roda() -> dict:
     import nuvem
     lados = {}
     try:
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(f"{comfy.BASE_PRINCIPAL}/object_info"); r.raise_for_status()
-        local = r.json()
+        local = await comfy.info_nos(comfy.BASE_PRINCIPAL)
     except Exception:
         local = None
     if chaves.chave() and (time.time() - _INFO_NUVEM["em"] > 3600 or _INFO_NUVEM["info"] is None):
@@ -127,6 +124,16 @@ async def onde_roda() -> dict:
     return lados
 
 
+def _plenio_no_disco() -> bool | None:
+    """Se a pasta dos nos do Plenio existe no custom_nodes do segundo motor
+    (None: a pasta do ComfyUI nao esta no config, nao da para saber)."""
+    import config
+    pasta = config.COMFY_DIR_FLUX3 and config.COMFY_DIR_FLUX3 / "custom_nodes"
+    if not pasta or not pasta.is_dir():
+        return None
+    return any("plenio" in d.name.lower() for d in pasta.iterdir() if d.is_dir())
+
+
 async def _catalogo_plenio(ident):
     """O Plenio mora no segundo motor, que sobe sob demanda: desligado, o
     modelo segue disponivel (sobe na hora de gerar), sem a lista de estilos."""
@@ -137,11 +144,17 @@ async def _catalogo_plenio(ident):
     if not motor_flux3.instalado():
         return base | {"disponivel": False, "motivo": "O segundo motor (v0.41) não está instalado.", "pesos": {}}
     try:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.get(f"{comfy.BASE_FLUX3}/object_info"); r.raise_for_status()
-        info = r.json()
-    except Exception:
-        return base | {"disponivel": True, "motivo": "", "pesos": {}}
+        info = await comfy.info_nos(comfy.BASE_FLUX3)
+    except Exception as e:
+        # Motor desligado (sobe na hora de gerar) ou lento: sem a lista dele,
+        # o disco diz se os nos do Plenio estao instalados. Antes era sempre
+        # "disponivel", e o YuE2 aparecia como "Your GPU" sem o Plenio.
+        no_disco = _plenio_no_disco()
+        if no_disco:
+            return base | {"disponivel": True, "motivo": "", "pesos": {}}
+        return base | {"disponivel": False, "pesos": {},
+                       "motivo": "Os nós do Plenio não estão instalados." if no_disco is False
+                       else comfy.motivo_sem_info(e)}
     res = resolver(info, ident)
     brief = info.get("PlenioSongBrief", {}).get("input", {}).get("required", {}).get("template", [None, {}])
     return base | res | {"estilos": brief[1].get("options", []) if len(brief) > 1 else []}
