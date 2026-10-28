@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { api, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
-import { GruposAbertos, useEscolha, useValor } from './motor'
+import { GruposAbertos, useEscolha, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
 
@@ -127,7 +127,15 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
     } catch (e) { setErro(mensagem(e)) } finally { setPensando(false) }
   }
 
-  const lookAtual = LOOKS.find((l) => l.id === look)
+  // Com foto na caixa, so valem os looks que usam a foto.
+  const lookAtual = LOOKS.find((l) => l.id === look && (!comRefs || l.comImagem))
+  // Look que usa a foto: sem modelo que aceite imagem, passa para o Flux 3 Klein.
+  const escolherLook = (l: typeof LOOKS[number]) => {
+    if (look === l.id) { setLook(''); return }
+    setLook(l.id)
+    if (l.comImagem && !maxRefs) escolher(valorAberto('flux3', naNuvem))
+  }
+  const faltaFoto = !!lookAtual?.comImagem && !comRefs
   const gerar = async () => {
     setErro(null)
     try {
@@ -147,7 +155,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
       </div>
 
       <div className="hf-barra-prompt">
-        {!comRefs && (
+        {(
           <div className="hf-looks">
             <span className="hf-grupo-rotulo">One-tap looks</span>
             {/* Cartoes com miniatura: cada uma e uma amostra real do look (Flux 3 Klein). */}
@@ -155,9 +163,9 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
               <button type="button" role="radio" aria-checked={look === ''} className="hf-look" data-ativo={look === ''} onClick={() => setLook('')}>
                 <span className="hf-look-nada" aria-hidden>⊘</span><span>None</span>
               </button>
-              {LOOKS.map((l) => (
+              {LOOKS.filter((l) => !comRefs || l.comImagem).map((l) => (
                 <button key={l.id} type="button" role="radio" aria-checked={look === l.id} className="hf-look" data-ativo={look === l.id}
-                  onClick={() => setLook(look === l.id ? '' : l.id)} title={`${l.rotulo}: e.g. ${l.exemplo}`}>
+                  onClick={() => escolherLook(l)} title={`${l.rotulo}: e.g. ${l.exemplo}`}>
                   <img src={`/looks/${l.id}.webp`} alt="" /><span>{l.rotulo}</span>
                 </button>
               ))}
@@ -178,8 +186,9 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
         )}
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
+            : faltaFoto ? 'Add your photo in the box above (+ Character), then press Generate. Optional: extra direction here.'
             : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && (prompt.trim() || lookAtual)) gerar() }} />
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !faltaFoto && (prompt.trim() || lookAtual)) gerar() }} />
         <div className="hf-linha-controles">
           <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
@@ -189,7 +198,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
           {apiAtual && niveis.length > 1 && (
             <Chips rotulo="Resolution" opcoes={niveis.map((n) => ({ id: n, rotulo: n }))} valor={nivelOk} aoMudar={setNivel} />
           )}
-          <BotaoGerar est={custo} desligado={!prompt.trim() && !(lookAtual && !comRefs)} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={faltaFoto || (!prompt.trim() && !lookAtual)} aoClicar={gerar} />
         </div>
         {ehIdeogram && (
           <div className="hf-linha-controles">

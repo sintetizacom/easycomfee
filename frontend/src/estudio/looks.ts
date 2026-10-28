@@ -1,7 +1,8 @@
 // One-tap looks da aba Image: prompts prontos que embrulham o assunto que a
 // pessoa digitou ({s}). Nomes e textos proprios do EasyComfee. Testados no
 // Flux 3 Klein local em 27/10/2026.
-export type Look = { id: string; rotulo: string; exemplo: string; texto: string }
+// comImagem: o look transforma a foto enviada (@image1) em vez de criar do zero.
+export type Look = { id: string; rotulo: string; exemplo: string; texto: string; comImagem?: boolean }
 
 export const LOOKS: Look[] = [
   { id: 'poster', rotulo: 'Gallery Poster', exemplo: 'a lighthouse at dawn',
@@ -28,8 +29,10 @@ export const LOOKS: Look[] = [
     texto: 'A technical blueprint drawing of {s}, thin white lines on deep blue paper, measurement lines, construction grid, engineering style' },
   { id: 'adesivo', rotulo: 'Sticker Sheet', exemplo: 'a happy avocado',
     texto: 'A sheet of glossy die-cut stickers of {s} in different poses, thick white borders, playful cartoon style, plain light background' },
+  { id: 'estatua', rotulo: 'Desk Figurine', exemplo: '', comImagem: true,
+    texto: 'Turn the person from @image1 into a 1/7 scale collectible figurine statue, keeping the face, hair, outfit and pose. The figurine stands on a round clear acrylic base on a tidy wooden office desk, next to a computer monitor and keyboard, with a coffee mug nearby. Realistic product photo of a painted PVC figure, soft daylight from a window, shallow depth of field. {s}' },
 ]
 
 /** O prompt final: o look em volta do assunto (ou do exemplo, se a caixa estiver vazia). */
 export const aplicarLook = (look: Look | undefined, assunto: string) =>
-  look ? look.texto.replace('{s}', assunto.trim() || look.exemplo) : assunto
+  look ? look.texto.replace('{s}', assunto.trim() || look.exemplo).trim() : assunto
