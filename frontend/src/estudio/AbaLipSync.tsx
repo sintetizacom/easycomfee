@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { GruposAbertos, useEscolha, useValor } from './motor'
 import { api, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente } from './comum'
 
 // Lip Sync: a portrait and a voice track become a talking video. LTX 2.3 is the
 // open-weights default (up to 30 s); with "Open weights only" off, the Comfy
@@ -22,11 +22,19 @@ const DESCRICOES: Record<string, string> = {
   veed: 'Works with photos, illustrations and mascots. 720p.',
 }
 
+// A foto e a voz ficam guardadas enquanto a pessoa anda pelas abas: mandar a voz
+// pelo menu de um audio e depois o rosto pelo de uma imagem nao pode perder a voz.
+const MEMORIA: Record<string, unknown> = {}
+function useLembrado<T>(chave: string, inicial: T): [T, (v: T) => void] {
+  const [valor, setValor] = useState<T>(() => (chave in MEMORIA ? MEMORIA[chave] as T : inicial))
+  return [valor, (v: T) => { MEMORIA[chave] = v; setValor(v) }]
+}
+
 export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
   const tarefas = useTarefas()
-  const [foto, setFoto] = useState<{ nome: string; url: string } | null>(null)
-  const [fala, setFala] = useState<{ nome: string; url: string; segundos: number } | null>(null)
-  const [vertical, setVertical] = useState(false)
+  const [foto, setFoto] = useLembrado<{ nome: string; url: string } | null>('foto', null)
+  const [fala, setFala] = useLembrado<{ nome: string; url: string; segundos: number } | null>('fala', null)
+  const [vertical, setVertical] = useLembrado('vertical', false)
   const [cena, setCena] = useState('')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setCena)
@@ -51,7 +59,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
     setFoto({ nome: d.nome, url })
   })
 
-  const [original, setOriginal] = useState<{ nome: string; url: string } | null>(null)
+  const [original, setOriginal] = useLembrado<{ nome: string; url: string } | null>('original', null)
 
   // A foto chega pelo slot (computador, galeria arrastada ou botao "Use") ja enviada;
   // aqui so se enquadra o rosto no formato escolhido.
@@ -71,6 +79,9 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
     const { nome } = await api.enviarAudio(f)
     setFala({ nome, url, segundos })
   })
+
+  // Audio mandado da galeria pelo menu "Send to Lip Sync (as the voice)".
+  useFalaPendente(useCallback((f: File) => { void enviarFala(f) }, []))  // eslint-disable-line react-hooks/exhaustive-deps
 
   const trocarFormato = (emPe: boolean) => {
     setVertical(emPe)

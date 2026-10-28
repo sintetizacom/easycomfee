@@ -131,6 +131,33 @@ function irComImagem(hash: string, e: { nome: string; subpasta: string }) {
   setTimeout(tentar, 100)
 }
 
+// "Send to Lip Sync" de um audio da galeria: guarda o arquivo ate a aba de Lip Sync
+// montar e pegar (useFalaPendente), e avisa se ela ja estiver aberta.
+let falaPendente: { nome: string; subpasta: string } | null = null
+const EVENTO_FALA = 'easycomfee:fala-lipsync'
+
+function mandarFalaParaLipSync(e: { nome: string; subpasta: string }) {
+  falaPendente = e
+  location.hash = '#lipsync'
+  window.dispatchEvent(new Event(EVENTO_FALA))
+}
+
+/** Na aba Lip Sync: recebe o audio mandado pelo menu de um arquivo da galeria. */
+export function useFalaPendente(receber: (f: File) => void) {
+  useEffect(() => {
+    const pegar = async () => {
+      const e = falaPendente
+      if (!e) return
+      falaPendente = null
+      const r = await fetch(urlImagem(e))
+      if (r.ok) receber(new File([await r.blob()], e.nome, { type: r.headers.get('content-type') || 'audio/flac' }))
+    }
+    void pegar()
+    window.addEventListener(EVENTO_FALA, pegar)
+    return () => window.removeEventListener(EVENTO_FALA, pegar)
+  }, [receber])
+}
+
 /** A generated file. Clicking it opens the full-size viewer; on hover, a bar of actions. */
 export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
   const url = urlImagem({ nome, subpasta })
@@ -175,6 +202,10 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
       { rotulo: 'Use as reference here', acao: usar },
       { rotulo: 'Animate (Image → Video)', acao: () => irComImagem('#video/imagem', arq) },
       { rotulo: 'Use in the Image tab', acao: () => irComImagem('#image', arq) },
+      { rotulo: 'Send to Lip Sync (as the face)', acao: () => irComImagem('#lipsync', arq) },
+    ] : []),
+    ...(eAudio(nome) ? [
+      { rotulo: 'Send to Lip Sync (as the voice)', acao: () => mandarFalaParaLipSync(arq) },
     ] : []),
     ...(video ? [
       { rotulo: 'Upscale', acao: () => { location.hash = '#ltx/ampliar' } },
