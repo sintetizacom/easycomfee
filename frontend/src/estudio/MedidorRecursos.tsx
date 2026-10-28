@@ -18,7 +18,7 @@ function Barra({ rotulo, usada, total }: { rotulo: string; usada: number; total:
     <span className="hf-rec-item" data-nivel={nivel(f)}>
       <b>{rotulo}</b>
       <span className="hf-rec-barra"><i style={{ width: `${Math.round(f * 100)}%` }} /></span>
-      <span>{gb(usada)}/{Math.round(total)} GB</span>
+      <span>{gb(usada)}/{Math.round(total)}</span>
     </span>
   )
 }

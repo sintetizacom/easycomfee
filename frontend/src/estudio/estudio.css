@@ -41,12 +41,19 @@
 .hf-nav button[data-ativo='true']::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 5px; height: 5px;
   border-radius: 50%; background: var(--hf-neon); transform: translateX(-50%); }
 .hf-nav sup { font-size: 9px; color: var(--hf-apagado); margin-left: 3px; font-weight: 500; }
+/* O medidor assenta na linha de base do nome: o E da logo termina a 85% da altura do SVG (255/300). */
+.hf-esquerda { display: flex; align-items: flex-end; gap: 16px; }
+/* + 3 px: o link da logo tem 44 px de area clicavel em volta da imagem de 38 px; - 5 px: o
+   usuario preferiu os botoes 5 px abaixo da linha de base (28/10/2026). */
+.hf-esquerda .hf-recursos { margin-bottom: calc(38px * 0.15 + 3px - 5px); }
+/* A direita (saldo e Config Models) na mesma linha de base: tudo no mesmo esquadro. */
+.hf-topo > .hf-direita { align-self: end; margin-bottom: calc(38px * 0.15 + 3px - 5px); }
 .hf-direita { display: flex; gap: 10px; align-items: center; }
 .hf-direita .seletor-motor { border-color: var(--hf-linha); border-radius: 10px; }
 .hf-direita .seletor-motor button { color: var(--hf-apagado); padding: 6px 12px; font-size: 13px; }
 .hf-direita .seletor-motor button[data-ativo='true'] { background: var(--hf-neon-escuro); color: var(--hf-neon); }
 .hf-botao-modelos { background: #2A2133; border: 1px solid var(--hf-linha); color: var(--hf-texto); border-radius: 10px;
-  padding: 7px 14px; cursor: pointer; font-weight: 600; }
+  height: 30px; box-sizing: border-box; padding: 0 12px; font-size: 13px; cursor: pointer; font-weight: 600; }
 
 .hf-corpo { padding: 0 24px 60px; }
 .hf-avancado { background: var(--fundo, #1E1724); }
@@ -254,8 +261,8 @@
 
 /* Comfy Cloud balance and account panel (top right) */
 .hf-conta { position: relative; }
-.hf-saldo { background: #241B2C; border: 1px solid var(--hf-linha); color: var(--hf-texto); border-radius: 999px; padding: 7px 14px;
-  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.hf-saldo { background: #241B2C; border: 1px solid var(--hf-linha); color: var(--hf-texto); border-radius: 999px; height: 30px; box-sizing: border-box; padding: 0 12px;
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .hf-saldo:hover { border-color: var(--hf-neon); }
 /* Botao Update (so aparece com versao nova no GitHub). */
 .hf-atualizar { background: var(--hf-neon); color: #1E1724; border: 0; border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
@@ -477,7 +484,9 @@
 
 /* Barra de abas centralizada na pagina (monitor largo): tres colunas, a do meio
    centrada; em tela estreita a barra continua rolando de lado, sem cortar a 1a aba. */
-.hf-topo { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }
+/* Lados com a mesma largura (1fr) quando ha espaco: as abas ficam no centro da TELA, nao so
+   do espaco que sobra. Sem espaco, cada lado cai para o proprio conteudo e as abas encolhem. */
+.hf-topo { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr); }
 .hf-nav { justify-content: safe center; min-width: 0; }
 .hf-direita { justify-self: end; }
 /* Celular: marca e saldo na 1a linha, abas rolando de lado na 2a (sem estourar a largura da tela). */
@@ -718,12 +727,30 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-look[data-ativo='true'] { border-color: var(--hf-neon); box-shadow: 0 0 0 1px var(--hf-neon) inset; }
 .hf-look[data-ativo='true'] span:last-child { color: var(--hf-neon); }
 /* Medidor de recursos (MedidorRecursos.tsx): RAM e VRAM com barrinhas na barra de cima. */
-.hf-recursos { display: flex; gap: 12px; align-items: center; padding: 6px 12px; border: 1px solid var(--hf-linha); border-radius: 999px;
-  background: #241B2C; font-size: 11.5px; color: var(--hf-apagado); white-space: nowrap; cursor: default; }
-.hf-rec-item { display: inline-flex; align-items: center; gap: 6px; }
+.hf-recursos { display: flex; gap: 11px; align-items: center; height: 30px; box-sizing: border-box; padding: 0 13px; border: 1px solid var(--hf-linha); border-radius: 999px;
+  background: #241B2C; font-size: 11px; line-height: 1; color: var(--hf-apagado); white-space: nowrap; cursor: default; }
+.hf-rec-item { display: inline-flex; align-items: center; gap: 5px; }
 .hf-rec-item b { color: var(--hf-texto); font-weight: 700; letter-spacing: .04em; }
-.hf-rec-barra { width: 42px; height: 5px; border-radius: 3px; background: #382D42; overflow: hidden; }
+.hf-rec-barra { width: 34px; height: 5px; border-radius: 3px; background: #382D42; overflow: hidden; }
 .hf-rec-barra i { display: block; height: 100%; background: var(--hf-neon); transition: width .4s; }
 .hf-rec-item[data-nivel='medio'] .hf-rec-barra i { background: #F5A33C; }
 .hf-rec-item[data-nivel='alto'] .hf-rec-barra i { background: #F0605A; }
-@media (max-width: 1100px) { .hf-recursos { display: none; } }
+/* Laptop e Full HD: abas mais justas; abaixo de 1366 px o medidor sai para as abas caberem inteiras. */
+@media (max-width: 1500px) { .hf-nav button { padding: 8px 9px; font-size: 14px; } }
+@media (max-width: 1366px) { .hf-recursos { display: none; } }
+/* Botao Studios e a janela com os seis estudios (MenuEstudios.tsx). */
+.hf-est-seta { font-size: 10px; margin-left: 2px; opacity: .8; }
+.hf-est-janela { position: fixed; z-index: 60; width: min(560px, calc(100vw - 24px)); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding: 10px; background: #261D2E; border: 1px solid var(--hf-linha); border-radius: 14px; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.hf-est-cartao { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 6px; border: 1px solid transparent;
+  border-radius: 10px; background: none; color: var(--hf-texto); text-align: left; cursor: pointer; font: inherit; }
+.hf-est-cartao img { width: 96px; height: 54px; object-fit: cover; border-radius: 7px; display: block; }
+.hf-est-cartao b { display: block; font-size: 13.5px; font-weight: 700; }
+.hf-est-cartao small { display: block; font-size: 11.5px; color: var(--hf-apagado); line-height: 1.35; margin-top: 2px; }
+.hf-est-cartao:hover, .hf-est-cartao:focus-visible { background: #2F2538; border-color: var(--hf-linha); outline: none; }
+.hf-est-cartao[data-ativo='true'] { border-color: var(--hf-neon); }
+.hf-est-cartao[data-ativo='true'] b { color: var(--hf-neon); }
+@media (max-width: 600px) { .hf-est-janela { grid-template-columns: 1fr; } }
+.hf-est-veu { position: fixed; inset: 0; z-index: 59; background: rgba(12, 8, 16, .62); backdrop-filter: blur(2px); animation: hf-est-entra .15s ease-out; }
+.hf-est-janela { animation: hf-est-entra .15s ease-out; }
+@keyframes hf-est-entra { from { opacity: 0; } to { opacity: 1; } }

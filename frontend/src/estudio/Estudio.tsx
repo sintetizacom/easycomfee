@@ -8,6 +8,7 @@ import AbaApps from './AbaApps'
 import AbaAssets from './AbaAssets'
 import BotaoAtualizar from './BotaoAtualizar'
 import MedidorRecursos from './MedidorRecursos'
+import MenuEstudios, { ESTUDIOS } from './MenuEstudios'
 import AbaCinema from './AbaCinema'
 import AbaGenjutsu from './AbaGenjutsu'
 import AbaImagem from './AbaImagem'
@@ -113,22 +114,29 @@ export default function Estudio() {
     <div className="hf">
       <header className="hf-topo">
         {/* Assinatura horizontal aprovada (nome em curvas dentro do SVG). Em tela estreita fica so o simbolo. */}
-        <a className="hf-marca" href="#image" onClick={() => ir('image')} aria-label="EasyComfee home">
-          <img className="hf-marca-completa" src="/brand/easycomfee-logo-horizontal.svg?v=5" alt="" />
-          <img className="hf-marca-simbolo" src="/brand/easycomfee-symbol.svg" alt="" />
-        </a>
+        {/* Esquerda: a marca e, ao lado, o medidor de RAM/VRAM (a direita fica so com conta e config). */}
+        <div className="hf-esquerda">
+          <a className="hf-marca" href="#image" onClick={() => ir('image')} aria-label="EasyComfee home">
+            <img className="hf-marca-completa" src="/brand/easycomfee-logo-horizontal.svg?v=5" alt="" />
+            <img className="hf-marca-simbolo" src="/brand/easycomfee-symbol.svg" alt="" />
+          </a>
+          <MedidorRecursos />
+        </div>
         <nav className="hf-nav">
-          {ABAS.map((a) => (
-            <button key={a.id} data-ativo={aba === a.id} onClick={() => ir(a.id)}>
-              {a.rotulo}{a.breve && <sup>soon</sup>}
-            </button>
+          {/* Os estudios ficam no botao Studios (MenuEstudios), logo depois de Video. */}
+          {ABAS.filter((a) => !ESTUDIOS.some((e) => e.id === a.id)).map((a) => (
+            <span key={a.id} style={{ display: 'contents' }}>
+              <button data-ativo={aba === a.id} onClick={() => ir(a.id)}>
+                {a.rotulo}{a.breve && <sup>soon</sup>}
+              </button>
+              {a.id === 'video' && <MenuEstudios aba={aba} ir={(id) => ir(id as Aba)} />}
+            </span>
           ))}
         </nav>
         <div className="hf-direita">
           {ativa && <PainelAndamento key={ativa.id} tarefa={ativa}
             naFila={tarefas.filter((t) => t.estado === 'na_fila' && t.id !== ativa.id).length} />}
-<MedidorRecursos />
-          <BotaoAtualizar />
+<BotaoAtualizar />
           <PainelConta temChave={temChave} linkRecarga={linkRecarga} abrirConfig={() => setVerModelos('api')} />
           <button className="hf-botao-modelos" onClick={() => setVerModelos('locais')}>Config Models</button>
         </div>
