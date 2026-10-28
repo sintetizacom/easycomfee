@@ -59,6 +59,11 @@ MASCARA_REFERENCIA = 0
 CAMERA_FIXA = ("Static shot with fixed framing: the view does not move, zoom or pan, "
                "and the framing does not change.")
 CENA_PADRAO = "A person speaks naturally to the camera"
+# Sem isto o LTX 2.3 quase nao mexia a boca (28/10/2026: retrato de labios fechados
+# saiu mudo; com a frase, o movimento na regiao da boca foi de 2,1 para 5,5). Sem
+# "showing teeth": com ela a pessoa sorria o tempo todo.
+FALA_VISIVEL = ("The person is speaking out loud to the camera, with a neutral expression: "
+                "the lips, mouth and jaw move naturally in sync with every word.")
 NEGATIVO = (
     "Close-up, bright tones, overexposed, static, blurred details, subtitles, style, "
     "works, paintings, images, static, overall gray, worst quality, low quality, JPEG "
@@ -190,7 +195,7 @@ def grafo_ltx23(p, seed: int, duracao: float, prefixo: str, vertical: bool = Fal
     cena = (p.prompt.strip().rstrip(".") or CENA_PADRAO)
     g["269"]["inputs"]["image"] = p.referencias[0]
     g["276"]["inputs"]["audio"] = p.referencia_avatar
-    g["340:319"]["inputs"]["value"] = f"{cena}. {CAMERA_FIXA}"
+    g["340:319"]["inputs"]["value"] = f"{cena}. {FALA_VISIVEL} {CAMERA_FIXA}"
     g["340:331"]["inputs"]["value"] = round(max(1.0, duracao - SOBRA_GUIA_LTX23), 3)
     g["340:285"]["inputs"]["noise_seed"] = seed
     g["340:286"]["inputs"]["noise_seed"] = seed + 1
