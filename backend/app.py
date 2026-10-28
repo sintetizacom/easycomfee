@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 import atualizacao
 import biblioteca
+import grafos
 import andamento
 import motores
 import chaves
@@ -1802,6 +1803,8 @@ async def submeter(tarefa: Tarefa, grafo: dict):
         tarefa.saldo_antes = None
     tarefa.estado = "submetendo"
     await anunciar(tarefa)
+    # Copia do grafo para o botao "Node recipe" (grafos.py); salva quando a saida existir.
+    tarefa._grafo = json.loads(json.dumps(grafo))
     tarefa.prompt_id = await comfy.enfileirar(grafo)
     POR_PROMPT_ID[tarefa.prompt_id] = tarefa
     tarefa.estado = "executando"
@@ -1929,6 +1932,10 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
                     # Um erro de pós-processamento não invalida a geração original.
                     tarefa.aviso = f"Original preservado: não foi possível finalizar o áudio ({type(e).__name__})."
             nomes = [json.dumps(im, ensure_ascii=False) for im in saidas]
+            try:
+                grafos.salvar(getattr(tarefa, "_grafo", None), saidas)
+            except OSError:
+                pass  # a receita e um extra: nunca derruba a geracao
             if tarefa.pedido.modelo in ("voz", "musica") and not nomes:
                 raise comfy.ErroComfy("O motor terminou sem salvar áudio.")
             tarefa.imagens = tarefa.imagens + nomes if acumular else nomes
@@ -3663,6 +3670,17 @@ async def galeria_arquivo(subpasta: str, nome: str):
     if item is None:
         raise HTTPException(404, "arquivo sem registro na galeria")
     return item
+
+
+@app.get("/api/galeria/receita")
+async def receita_de_nodes(subpasta: str, nome: str):
+    """O grafo do ComfyUI que gerou este arquivo, para baixar e arrastar no ComfyUI."""
+    g = grafos.ler(subpasta, nome)
+    if g is None:
+        raise HTTPException(404, "this file has no saved node recipe (made before this feature)")
+    base = pathlib.Path(nome).stem
+    return Response(json.dumps(g, ensure_ascii=False, indent=1), media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{base}_recipe.json"'})
 
 
 @app.get("/api/galeria/testes")

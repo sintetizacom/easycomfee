@@ -3,6 +3,7 @@ import { useReusarPrompt } from './Visualizador'
 import { api, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
 import { GruposAbertos, useEscolha, useValor } from './motor'
+import { LOOKS, aplicarLook } from './looks'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
@@ -60,6 +61,7 @@ const REF_NUVEM = { modo: 'qwen', max: 3, base: true, uso: 'On Comfy Cloud, imag
 export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: Modelo[]; apiModelos: ModeloNuvem[]; naNuvem: boolean }) {
   const tarefas = useTarefas()
   const [prompt, setPrompt] = useState('')
+  const [look, setLook] = useState('')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
   const [modelo, setModelo] = useState(() => parteDoHash(1) || 'krea')
@@ -125,10 +127,11 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
     } catch (e) { setErro(mensagem(e)) } finally { setPensando(false) }
   }
 
+  const lookAtual = LOOKS.find((l) => l.id === look)
   const gerar = async () => {
     setErro(null)
     try {
-      await api.gerar({ ...pedido, prompt } as Parameters<typeof api.gerar>[0])
+      await api.gerar({ ...pedido, prompt: aplicarLook(lookAtual, prompt) } as Parameters<typeof api.gerar>[0])
     } catch (e) { setErro(mensagem(e)) }
   }
 
@@ -156,9 +159,17 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
             )}
           </div>
         )}
+        {!comRefs && (
+          <div className="hf-looks">
+            <span className="hf-grupo-rotulo">One-tap looks</span>
+            <Chips rotulo="One-tap looks" opcoes={[{ id: '', rotulo: 'None' }, ...LOOKS.map((l) => ({ id: l.id, rotulo: l.rotulo }))]}
+              valor={look} aoMudar={setLook} />
+          </div>
+        )}
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
-          placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…' : 'Describe the image you want…'}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && prompt.trim()) gerar() }} />
+          placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
+            : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && (prompt.trim() || lookAtual)) gerar() }} />
         <div className="hf-linha-controles">
           <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
@@ -168,7 +179,7 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
           {apiAtual && niveis.length > 1 && (
             <Chips rotulo="Resolution" opcoes={niveis.map((n) => ({ id: n, rotulo: n }))} valor={nivelOk} aoMudar={setNivel} />
           )}
-          <BotaoGerar est={custo} desligado={!prompt.trim()} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={!prompt.trim() && !(lookAtual && !comRefs)} aoClicar={gerar} />
         </div>
         {ehIdeogram && (
           <div className="hf-linha-controles">

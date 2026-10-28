@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { urlImagem, type ItemGaleria } from '../api'
+import { useEffect, useRef, useState } from 'react'
+import { urlEntrada, urlImagem, type ItemGaleria } from '../api'
 import { eAudio, eVideo } from './comum'
 
 // Full-size viewer for every generated file of the new studio, local or cloud.
@@ -48,6 +48,55 @@ const nome = (id?: unknown) => (id ? NOMES[String(id)] ?? String(id) : '')
 
 const MODOS: Record<string, string> = { texto: 'Text to video', imagem: 'Image to video', primeiro_ultimo: 'First & last frame', referencia: 'References to video' }
 
+// Then & Now: o arquivo de origem de um resultado (o video antes do efeito, a foto
+// antes da edicao), lido de referencias_usadas. Tres formas: "editor/arquivo" (da
+// galeria), "entrada:arquivo" (video enviado) e "ref_....png" (imagem enviada).
+function origemDe(info: ItemGaleria | null, atual: string): string | null {
+  const refs = (info?.parametros as Record<string, unknown> | undefined)?.referencias_usadas as string[] | undefined
+  const r = refs?.[0]
+  if (!r) return null
+  const nomeR = r.startsWith('entrada:') ? r.slice(8) : r.includes('/') ? r.split('/').pop()! : r
+  // So compara o que e do mesmo tipo (video com video, imagem com imagem).
+  if (eVideo(nomeR) !== eVideo(atual) || eAudio(nomeR) || eAudio(atual)) return null
+  if (r.startsWith('entrada:')) return urlEntrada(nomeR)
+  if (r.includes('/')) { const [sub, ...resto] = r.split('/'); return urlImagem({ nome: resto.join('/'), subpasta: sub }) }
+  return urlEntrada(r)
+}
+
+/** Antes e depois, lado a lado ou com cortina; videos andam juntos. */
+function ThenNow({ antes, depois, modo }: { antes: string; depois: string; modo: 'lado' | 'cortina' }) {
+  const [corte, setCorte] = useState(50)
+  const vA = useRef<HTMLVideoElement>(null)
+  const vD = useRef<HTMLVideoElement>(null)
+  const video = eVideo(depois.split('nome=')[1]?.split('&')[0] ?? '')
+  useEffect(() => {
+    if (!video) return
+    const t = setInterval(() => {
+      const a = vA.current, d = vD.current
+      if (a && d && Math.abs(a.currentTime - d.currentTime) > 0.12) a.currentTime = d.currentTime
+    }, 400)
+    return () => clearInterval(t)
+  }, [video, antes, depois])
+  const midia = (src: string, ref: React.RefObject<HTMLVideoElement | null>) => video
+    ? <video ref={ref} src={src} autoPlay loop muted playsInline />
+    : <img src={src} alt="" />
+  if (modo === 'lado') return (
+    <div className="hf-tn-lado">
+      <figure>{midia(antes, vA)}<figcaption>Then</figcaption></figure>
+      <figure>{midia(depois, vD)}<figcaption>Now</figcaption></figure>
+    </div>
+  )
+  return (
+    <div className="hf-tn-cortina">
+      {midia(depois, vD)}
+      <div className="hf-tn-antes" style={{ clipPath: `inset(0 ${100 - corte}% 0 0)` }}>{midia(antes, vA)}</div>
+      <div className="hf-tn-linha" style={{ left: `${corte}%` }} />
+      <span className="hf-tn-rotulo" data-lado="esq">Then</span><span className="hf-tn-rotulo" data-lado="dir">Now</span>
+      <input type="range" min={0} max={100} value={corte} onChange={(e) => setCorte(Number(e.target.value))} aria-label="Slide between before and after" />
+    </div>
+  )
+}
+
 function Linha({ rotulo, valor }: { rotulo: string; valor?: string | number | null }) {
   if (valor === undefined || valor === null || valor === '') return null
   return <div className="hf-vis-linha"><span>{rotulo}</span><b>{valor}</b></div>
@@ -58,6 +107,8 @@ export default function Visualizador() {
   const [i, setI] = useState(0)
   const [info, setInfo] = useState<ItemGaleria | null>(null)
   const [copiado, setCopiado] = useState('')
+  const [comparar, setComparar] = useState<'' | 'lado' | 'cortina'>('')
+  const [receita, setReceita] = useState(false)
   const atual = lista[i]
 
   useEffect(() => {
@@ -68,7 +119,9 @@ export default function Visualizador() {
 
   useEffect(() => {
     if (!atual) return
-    setInfo(null); setCopiado('')
+    setInfo(null); setCopiado(''); setComparar(''); setReceita(false)
+    fetch(`/api/galeria/receita?subpasta=${encodeURIComponent(atual.subpasta)}&nome=${encodeURIComponent(atual.nome)}`)
+      .then((r) => setReceita(r.ok)).catch(() => setReceita(false))
     fetch(`/api/galeria/arquivo?subpasta=${encodeURIComponent(atual.subpasta)}&nome=${encodeURIComponent(atual.nome)}`)
       .then((r) => (r.ok ? r.json() : null)).then(setInfo).catch(() => setInfo(null))
   }, [atual?.nome, atual?.subpasta])
@@ -88,6 +141,7 @@ export default function Visualizador() {
   const url = urlImagem({ nome: atual.nome, subpasta: atual.subpasta })
   const p = (info?.parametros ?? {}) as Record<string, unknown>
   const prompt = info?.prompt || info?.prompt_final || ''
+  const origem = origemDe(info, atual.nome)
   const copiar = async (texto: string, qual: string) => {
     try { await navigator.clipboard.writeText(texto); setCopiado(qual) } catch { setCopiado('') }
   }
@@ -104,7 +158,8 @@ export default function Visualizador() {
       <div className="hf-vis" role="dialog" aria-label="Viewer" onClick={(e) => e.stopPropagation()}>
         <div className="hf-vis-palco">
           {i > 0 && <button className="hf-vis-seta" data-lado="esq" onClick={() => setI(i - 1)} aria-label="Previous">‹</button>}
-          {eVideo(atual.nome) ? <video key={url} src={url} controls autoPlay loop playsInline />
+          {comparar && origem ? <ThenNow key={url + comparar} antes={origem} depois={url} modo={comparar} />
+            : eVideo(atual.nome) ? <video key={url} src={url} controls autoPlay loop playsInline />
             : eAudio(atual.nome) ? <audio key={url} src={url} controls autoPlay />
               : <img src={url} alt="" />}
           {i < lista.length - 1 && <button className="hf-vis-seta" data-lado="dir" onClick={() => setI(i + 1)} aria-label="Next">›</button>}
@@ -133,8 +188,18 @@ export default function Visualizador() {
               <p className="hf-vis-prompt">{prompt}</p>
             </>}
           </> : <p className="hf-dica">No details saved for this file.</p>}
+          {origem && <>
+            <span className="hf-vis-titulo">Then &amp; Now</span>
+            <div className="hf-tn-botoes">
+              <button className="hf-vis-botao" data-ativo={comparar === ''} onClick={() => setComparar('')}>Result</button>
+              <button className="hf-vis-botao" data-ativo={comparar === 'lado'} onClick={() => setComparar('lado')}>◧ Split</button>
+              <button className="hf-vis-botao" data-ativo={comparar === 'cortina'} onClick={() => setComparar('cortina')}>⇹ Slide</button>
+            </div>
+          </>}
           <div className="hf-vis-acoes">
             <a className="hf-vis-botao" href={url} download={atual.nome}>⬇ Download</a>
+            {receita && <a className="hf-vis-botao" href={`/api/galeria/receita?subpasta=${encodeURIComponent(atual.subpasta)}&nome=${encodeURIComponent(atual.nome)}`}
+              download title="The exact ComfyUI graph that made this file. Drag it onto the ComfyUI canvas.">⬡ Node recipe</a>}
             {prompt && <button className="hf-vis-botao" onClick={() => { reusarPrompt(prompt); setLista([]) }}>↺ Reuse prompt</button>}
             {prompt && <button className="hf-vis-botao" onClick={() => copiar(prompt, 'prompt')}>{copiado === 'prompt' ? '✓ Copied' : '⧉ Copy prompt'}</button>}
             <button className="hf-vis-botao" onClick={() => copiar(resumo, 'resumo')}>{copiado === 'resumo' ? '✓ Copied' : '⧉ Copy summary'}</button>
