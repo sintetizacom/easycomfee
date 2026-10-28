@@ -708,3 +708,12 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-tn-botoes .hf-vis-botao[data-ativo='true'] { border-color: var(--hf-neon); color: var(--hf-neon); }
 /* One-tap looks (aba Image): fileira de looks prontos acima da caixa de texto. */
 .hf-looks { display: grid; gap: 6px; margin-bottom: 10px; }
+/* Cartoes dos One-tap looks: miniatura real do look em cima, nome embaixo; rolam de lado. */
+.hf-looks-grade { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.hf-look { flex: none; width: 92px; display: grid; gap: 5px; padding: 4px 4px 6px; border: 1px solid var(--hf-linha); border-radius: 12px;
+  background: #241B2C; color: var(--hf-texto); font-size: 11.5px; font-weight: 600; text-align: center; cursor: pointer; line-height: 1.2; }
+.hf-look img, .hf-look-nada { width: 82px; height: 82px; border-radius: 9px; object-fit: cover; display: block; }
+.hf-look-nada { display: grid; place-items: center; font-size: 30px; color: #888095; background: #1E1724; }
+.hf-look:hover { border-color: #888095; }
+.hf-look[data-ativo='true'] { border-color: var(--hf-neon); box-shadow: 0 0 0 1px var(--hf-neon) inset; }
+.hf-look[data-ativo='true'] span:last-child { color: var(--hf-neon); }

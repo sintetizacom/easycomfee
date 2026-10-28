@@ -147,6 +147,23 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
       </div>
 
       <div className="hf-barra-prompt">
+        {!comRefs && (
+          <div className="hf-looks">
+            <span className="hf-grupo-rotulo">One-tap looks</span>
+            {/* Cartoes com miniatura: cada uma e uma amostra real do look (Flux 3 Klein). */}
+            <div className="hf-looks-grade" role="radiogroup" aria-label="One-tap looks">
+              <button type="button" role="radio" aria-checked={look === ''} className="hf-look" data-ativo={look === ''} onClick={() => setLook('')}>
+                <span className="hf-look-nada" aria-hidden>⊘</span><span>None</span>
+              </button>
+              {LOOKS.map((l) => (
+                <button key={l.id} type="button" role="radio" aria-checked={look === l.id} className="hf-look" data-ativo={look === l.id}
+                  onClick={() => setLook(look === l.id ? '' : l.id)} title={`${l.rotulo}: e.g. ${l.exemplo}`}>
+                  <img src={`/looks/${l.id}.webp`} alt="" /><span>{l.rotulo}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {maxRefs > 0 && (
           <div className="hf-slots">
             {refsOk.map((r, i) => (
@@ -157,13 +174,6 @@ export default function AbaImagem({ modelos, apiModelos, naNuvem }: { modelos: M
               <SlotImagem key={`novo${refsOk.length}`} rotulo={refsOk.length ? `Image ${refsOk.length + 1}` : usoRefs?.base ? 'Base image' : 'Character'}
                 valor={null} aoMudar={(n) => n && setRefs((a) => [...a.slice(0, maxRefs), n])} />
             )}
-          </div>
-        )}
-        {!comRefs && (
-          <div className="hf-looks">
-            <span className="hf-grupo-rotulo">One-tap looks</span>
-            <Chips rotulo="One-tap looks" opcoes={[{ id: '', rotulo: 'None' }, ...LOOKS.map((l) => ({ id: l.id, rotulo: l.rotulo }))]}
-              valor={look} aoMudar={setLook} />
           </div>
         )}
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
