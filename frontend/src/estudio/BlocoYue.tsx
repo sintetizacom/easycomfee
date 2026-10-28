@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { mensagem } from './comum'
+import { mensagem, textoDoDetalhe } from './comum'
 
 // YuE2 through Plenio (second engine), in the new Music tab. Same flow as the
 // editor's music panel: Gemma writes title, style and lyrics, YuE2 plans the
@@ -61,7 +61,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
     const r = await fetch('/api/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...pedidoBase(), seed: semente.current, ...extra }) })
     const t = await r.json()
-    if (!r.ok) throw new Error(typeof t.detail === 'string' ? t.detail : 'Check the song settings.')
+    if (!r.ok) throw new Error(textoDoDetalhe(t.detail, 'Check the song settings.'))
     for (;;) {
       await new Promise((ok) => setTimeout(ok, 2500))
       const lista = await fetch('/api/tarefas').then((x) => x.json())
@@ -129,7 +129,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
     try {
       const r = await fetch('/api/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pedidoBase()) })
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Could not start the song.')
+      if (!r.ok) throw new Error(textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not start the song.'))
     } catch (e) { setErro(mensagem(e)) }
   }
 

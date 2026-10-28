@@ -151,6 +151,8 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
   const [nos, setNos] = useState<Nos | null>(null)
   const [opcionais, setOpcionais] = useState<Record<string, boolean>>({})
   const [erro, setErro] = useState<string | null>(null)
+  // Recado sem erro (antes um alert() do navegador): mostrado como o erro, sem o vermelho.
+  const [aviso, setAviso] = useState<string | null>(null)
   const [token, setToken] = useState<{ configurado: boolean } | null>(null)
   const [novoToken, setNovoToken] = useState('')
 
@@ -194,11 +196,11 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
   // Remove: mostra o plano (o que sai, o que fica por ser de outro pacote) e so
   // entao manda os arquivos para a Lixeira.
   const remover = async (p: Pacote) => {
-    setErro(null)
+    setErro(null); setAviso(null)
     try {
       const plano = await apiPacotes.planoRemocao(p.id)
       if (!plano.sai.length) {
-        alert(`Nothing to remove: every file of ${p.nome} is also used by another installed package.`)
+        setAviso(`Nothing to remove: every file of ${p.nome} is also used by another installed package.`)
         return
       }
       const sai = plano.sai.map((f) => `• ${f.rotulo} (${gb(f.tamanho)})`).join('\n')
@@ -231,7 +233,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
   // Esc fecha e o foco volta para o botao que a abriu.
   const janela = useRef<HTMLDivElement>(null)
   const fecharAgora = useRef(fechar)
-  fecharAgora.current = fechar
+  useEffect(() => { fecharAgora.current = fechar })
   useEffect(() => {
     const antes = document.activeElement as HTMLElement | null
     janela.current?.focus()
@@ -263,10 +265,12 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         </div>
         {conta && (
           <div className="mq-abas" role="tablist">
-            <button role="tab" aria-selected={aba === 'api'} data-ativo={aba === 'api'} onClick={() => setAba('api')}>Comfy Cloud API</button>
-            <button role="tab" aria-selected={aba === 'locais'} data-ativo={aba === 'locais'} onClick={() => setAba('locais')}>Local models</button>
+            <button role="tab" id="mq-aba-api" aria-controls="mq-painel" aria-selected={aba === 'api'} data-ativo={aba === 'api'} onClick={() => setAba('api')}>Comfy Cloud API</button>
+            <button role="tab" id="mq-aba-locais" aria-controls="mq-painel" aria-selected={aba === 'locais'} data-ativo={aba === 'locais'} onClick={() => setAba('locais')}>Local models</button>
           </div>
         )}
+        {/* O conteudo da aba escolhida: as abas acima apontam para ele (aria-controls). */}
+        <div role={conta ? 'tabpanel' : undefined} id="mq-painel" aria-labelledby={conta ? `mq-aba-${aba}` : undefined}>
         {aba === 'api' ? conta : <>
         {topoLocais && <section className="mq-cartao">{topoLocais}</section>}
 
@@ -274,6 +278,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
 
         {!motor && <p className="mq-aviso">ComfyUI is not responding, so installed files can't be checked.</p>}
         {erro && <p className="mq-aviso erro">{erro}</p>}
+        {aviso && <p className="mq-aviso" role="status">{aviso}</p>}
         {nos?.ativo && <p className="mq-aviso">Installing ComfyUI nodes: {nos.atual}…</p>}
         {nos && !nos.ativo && nos.erros.length > 0 && <p className="mq-aviso erro">Node errors: {nos.erros.join('; ')}</p>}
         {nos && !nos.ativo && nos.reiniciar && <p className="mq-aviso">New nodes installed ({nos.feitos.join(', ')}). Restart ComfyUI to load them.</p>}
@@ -403,6 +408,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
           )
         })}
         </>}
+        </div>
       </div>
     </div>
   )

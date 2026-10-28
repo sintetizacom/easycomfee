@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { textoDoDetalhe } from './comum'
 
 // "Comfy Cloud API" tab of Config Models: the key, the balance and whether the
 // paid API models show up in the menus. The key is typed by the user and goes
@@ -23,7 +24,7 @@ export default function ContaApi({ temChave, soAbertos, linkRecarga, aoMudar }: 
       const r = await fetch('/api/nuvem/chave', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chave: valor }) })
       const corpo = await r.json()
-      if (!r.ok) throw new Error(corpo.detail ?? 'Could not save the key.')
+      if (!r.ok) throw new Error(textoDoDetalhe(corpo.detail, 'Could not save the key.'))
       setChave('')
       setSaldo(corpo.saldo)
       if (valor && corpo.saldo && !corpo.saldo.ok) setErro(`Saved, but Comfy did not accept it: ${corpo.saldo.motivo ?? 'unknown reason'}`)

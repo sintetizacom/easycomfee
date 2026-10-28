@@ -51,7 +51,8 @@ export default function MenuEstudios({ aba, ir }: { aba: string; ir: (id: string
 
   return (
     <>
-      <button ref={botao} type="button" data-ativo={!!atual} aria-haspopup="dialog" aria-expanded={aberto}
+      {/* Com um estudio aberto (Cinema, LTX...), o botao e a "pagina atual" da barra. */}
+      <button ref={botao} type="button" data-ativo={!!atual} aria-current={atual ? 'page' : undefined} aria-haspopup="dialog" aria-expanded={aberto}
         onClick={() => (aberto ? setAberto(false) : abrir())}>
         {atual ? atual.rotulo : 'Studios'} <span className="hf-est-seta" aria-hidden>▾</span>
       </button>

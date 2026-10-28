@@ -166,16 +166,16 @@ async def capacidades():
     def estado(nos, checar):
         faltam = [n for n in nos if n not in info]
         if faltam:
-            return "Nós ausentes: " + ", ".join(faltam)
+            return "Missing nodes: " + ", ".join(faltam)
         return checar()
 
     def checar_longcat():
         lista = info["WanVideoModelLoader"]["input"]["required"]["model"][0]
-        return "" if MODELO in lista else "O modelo LongCat-Avatar não está instalado."
+        return "" if MODELO in lista else "The LongCat-Avatar model is not installed."
 
     def checar_ltx23():
         lista = info["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"][0]
-        return "" if CKPT_LTX23 in lista else "O checkpoint do LTX 2.3 não está instalado."
+        return "" if CKPT_LTX23 in lista else "The LTX 2.3 checkpoint is not installed."
 
     motivos = {"longcat": estado(NOS, checar_longcat), "ltx23": estado(NOS_LTX23, checar_ltx23)}
     modelos = [{"id": k, **v, "disponivel": not motivos[k], "motivo": motivos[k]}

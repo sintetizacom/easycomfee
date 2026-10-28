@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
+import { AvisoInstalar, useFaltaInstalar } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, TIPO_GALERIA, arquivos, mensagem, referenciaDe, useCusto, useTarefas, Galeria } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, TIPO_GALERIA, arquivos, mensagem, referenciaDe, useCusto, useTarefas, Galeria, quadroChave } from './comum'
 
 // Telas proprias do LTX Studio (#ltx/<ferramenta>): Keyframes com linha do
 // tempo, Ingredients e Latent upscale. Antes as duas ultimas so existiam no
@@ -21,6 +22,8 @@ const passo = (s: number) => Math.round(s * 3) / 3
 const rotuloSeg = (s: number) => `${s.toFixed(s % 1 ? 1 : 0)}s`
 
 function Keyframes() {
+  // LTX 2.5 local sem o pacote: Generate desligado e aviso.
+  const semLtx = useFaltaInstalar()('ltx')
   const tarefas = useTarefas()
   const [duracao, setDuracao] = useState(8)
   const [chaves, setChaves] = useState<Chave[]>([])
@@ -66,7 +69,7 @@ function Keyframes() {
 
   const ordem = chaves.map((c) => ({ ...c, seg: Math.min(c.seg, duracao) })).sort((x, y) => x.seg - y.seg)
   // Duas imagens no mesmo instante: o backend fica com uma so; avisa antes.
-  const repetidas = ordem.some((c, i) => i > 0 && Math.round(c.seg * 24) === Math.round(ordem[i - 1].seg * 24))
+  const repetidas = ordem.some((c, i) => i > 0 && quadroChave(c.seg, duracao) === quadroChave(ordem[i - 1].seg, duracao))
   const pedido = {
     modelo: 'video', modelo_video: 'ltx', modo_video: 'chaves', prompt: prompt || 'x', proporcao: '1:1',
     proporcao_video: proporcao, resolucao_video: '720p', duracao_video: duracao, com_audio: audio,
@@ -77,7 +80,7 @@ function Keyframes() {
     setErro(null)
     try {
       await api.gerar({ ...pedido, prompt,
-        quadros_referencias: ordem.map((c) => Math.round(c.seg * 24) + 1), forca_chaves: forca,
+        quadros_referencias: ordem.map((c) => quadroChave(c.seg, duracao) + 1), forca_chaves: forca,
       } as Parameters<typeof api.gerar>[0])
     } catch (e) { setErro(mensagem(e)) }
   }
@@ -142,8 +145,9 @@ function Keyframes() {
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={['16:9', '9:16', '1:1'].map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           <label className="hf-toggle"><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
-          <BotaoGerar est={custo} desligado={!prompt.trim() || ordem.length < 2 || repetidas} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={semLtx || !prompt.trim() || ordem.length < 2 || repetidas} aoClicar={gerar} />
         </div>
+        {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 
@@ -162,6 +166,8 @@ const POSICOES: Record<string, string[]> = {
 }
 
 function Ingredientes() {
+  // LTX 2.5 local sem o pacote: Generate desligado e aviso.
+  const semLtx = useFaltaInstalar()('ltx')
   const tarefas = useTarefas()
   const [imgs, setImgs] = useState<Referencia[]>([])
   const [prompt, setPrompt] = useState('')
@@ -221,8 +227,9 @@ function Ingredientes() {
           <label className="hf-duracao">{duracao}s
             <input type="range" min={2} max={8} value={duracao} onChange={(e) => setDuracao(Number(e.target.value))} />
           </label>
-          <BotaoGerar est={custo} desligado={!prompt.trim() || !imgs.length} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={semLtx || !prompt.trim() || !imgs.length} aoClicar={gerar} />
         </div>
+        {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 
@@ -238,9 +245,12 @@ function Ingredientes() {
 type Escolhido = { ref: string; url: string; rotulo: string }
 
 function Ampliar() {
+  const faltaInstalar = useFaltaInstalar()
   const tarefas = useTarefas()
   const [video, setVideo] = useState<Escolhido | null>(null)
   const [metodo, setMetodo] = useState('ltx')
+  // So o metodo no latente usa o LTX 2.5; os RTX rodam no segundo motor.
+  const semLtx = metodo === 'ltx' && faltaInstalar('ltx')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -303,9 +313,10 @@ function Ampliar() {
             { id: 'ltx', rotulo: 'Latent · LTX', dica: 'Understands motion and can reinterpret the scene. May soften faces.' },
             { id: 'seedvr', rotulo: 'Pixels · SeedVR2', dica: 'Faithful to the original. Best for faces.' },
           ]} valor={metodo} aoMudar={setMetodo} />
-          <BotaoGerar rotulo="Upscale ✦" est={custo} desligado={!video} aoClicar={ampliar} />
+          <BotaoGerar rotulo="Upscale ✦" est={custo} desligado={semLtx || !video} aoClicar={ampliar} />
         </div>
         <p className="hf-dica">{metodo === 'ltx' ? 'Latent: LTX re-renders the clip at twice the size, keeping the motion. Faces may change a little.' : 'Pixels: sharpens and enlarges without changing what is in the shot.'}</p>
+        {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

@@ -112,7 +112,7 @@
 .hf-barra div { height: 100%; background: var(--hf-neon); transition: width 0.4s; }
 .hf-legenda { margin: 0; padding: 10px 12px; font-size: 12px; color: var(--hf-apagado); white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; }
-.hf-vazio { color: #6B6178; text-align: center; grid-column: 1 / -1; padding: 40px 0; }
+.hf-vazio { color: var(--hf-apagado); /* era #6B6178: 2,99:1 */ text-align: center; grid-column: 1 / -1; padding: 40px 0; }
 
 @media (max-width: 700px) {
   .hf-topo { flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
@@ -462,6 +462,8 @@
 .hf-nodes { display: flex; flex-direction: column; height: calc(100vh - 64px); }
 .hf-nodes-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 16px; border-bottom: 1px solid #33293D; }
 .hf-nodes-barra a.hf-botao-sec { text-decoration: none; }
+/* O titulo da aba Advanced (antes um <b>: a aba nao tinha h1), com o mesmo visual. */
+.hf-nodes-titulo { font-size: 15px; font-weight: 700; margin: 0; }
 .hf-nodes-nuvem { margin-left: auto; color: var(--hf-apagado); font-size: 13px; text-decoration: none; }
 .hf-nodes-nuvem:hover { color: var(--hf-neon); }
 .hf-nodes-quadro { flex: 1; width: 100%; border: 0; background: #191220; }
@@ -496,8 +498,10 @@
 .hf-topo { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr); }
 .hf-nav { justify-content: safe center; min-width: 0; }
 .hf-direita { justify-self: end; }
-/* Celular: marca e saldo na 1a linha, abas rolando de lado na 2a (sem estourar a largura da tela). */
-@media (max-width: 700px) {
+/* Tela estreita (tablet, notebook pequeno, celular): marca e saldo na 1a linha, abas na 2a,
+   com a largura toda. Era so abaixo de 700 px, e em 768 px sobravam 177 px para as abas
+   (so Image e Video apareciam). As 9 abas pedem ~620 px; com marca e conta ao lado, ~1180. */
+@media (max-width: 1180px) {
   .hf-topo { grid-template-columns: auto minmax(0, 1fr); }
   .hf-nav { grid-column: 1 / -1; grid-row: 2; width: auto; }
 }
@@ -613,6 +617,8 @@
 .hf-mu-modelo b { font-size: 15px; }
 .hf-mu-modelo small { color: var(--hf-apagado); font-size: 12px; line-height: 1.4; flex: 1; }
 .hf-mu-modelo:hover:not(:disabled) { border-color: #463A52; }
+/* No fundo amarelado do cartao escolhido o cinza dos rotulos clareia: 4,3:1 -> 5,1:1. */
+.hf-mu-modelo[data-ativo='true'], .hf-vz-modo[data-ativo='true'] { --hf-apagado: #A8A1B3; }
 .hf-mu-modelo[data-ativo='true'] { border-color: var(--hf-neon); background: var(--hf-neon-escuro); }
 .hf-mu-modelo[data-ativo='true'] b { color: var(--hf-neon); }
 .hf-mu-modelo:disabled { opacity: .45; cursor: not-allowed; }
@@ -669,8 +675,9 @@
 /* Linha "Run on" no pe do cartao; no cartao escolhido, a opcao nao escolhida fica apagada */
 .hf-linha-onde { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
 .hf-linha-onde small { color: var(--hf-apagado); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; flex: none; }
-.hf-linha-onde[data-cartao-ativo='true'] .hf-onde[data-ativo='false'] { opacity: .35; }
-.hf-linha-onde[data-cartao-ativo='true'] .hf-onde[data-ativo='false']:hover { opacity: 1; }
+/* A opcao nao escolhida do cartao escolhido: so o contorno, texto legivel (com opacity .35 ficava em 2,3:1). */
+.hf-linha-onde[data-cartao-ativo='true'] .hf-onde[data-ativo='false'] { background: transparent; border-color: #5A4F66; color: #CFC7D8; }
+.hf-linha-onde[data-cartao-ativo='true'] .hf-onde[data-ativo='false']:hover { border-color: currentColor; }
 .hf-onde[data-falta='true'] { background: #2a1a12; color: #ffb36b; }
 .hf-onde[data-falta='true'][data-ativo='true'] { background: #ffb36b; color: #191220; }
 .hf-mu-modelo small { flex: none; }
@@ -787,3 +794,12 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-mu-escolher:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 4px; }
 button.hf-onde { font-family: inherit; line-height: inherit; }
 .hf-onde:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }
+
+/* Celular: o topo deixa de ficar preso no alto (ocupava 110 px, 14% da tela) e o
+   "Config Models" nao quebra em duas linhas; na Cinema os valores das linhas de
+   direcao ("ARRI Alexa 65") quebram linha em vez de virar "ARRI Alexa 6...". */
+@media (max-width: 700px) {
+  .hf-topo { position: static; }
+  .hf-botao-modelos { white-space: nowrap; padding: 6px 10px; font-size: 13px; }
+  .hf-linha-dir b { white-space: normal; overflow: visible; }
+}

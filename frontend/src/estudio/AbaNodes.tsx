@@ -23,7 +23,7 @@ export default function AbaNodes() {
   return (
     <div className="hf-nodes">
       <div className="hf-nodes-barra">
-        <b>ComfyUI · nodes</b>
+        <h1 className="hf-nodes-titulo">ComfyUI · nodes</h1>
         {motores && motores.length > 1 && (
           <Chips rotulo="Engine" opcoes={motores.map((m) => ({ id: m.id, rotulo: m.rotulo + (m.vivo ? '' : ' · off') }))}
             valor={atual?.id ?? 'principal'} aoMudar={setEscolhido} />

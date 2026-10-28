@@ -13,7 +13,7 @@ async def capacidades():
         info = await comfy.info_nos(comfy.BASE_PRINCIPAL)
         necessarios = ["OmniVoiceEngineNode", "UnifiedTTSTextNode", "CharacterVoicesNode", "LoadAudio", "SaveAudio", "PreviewAny"]
         faltam = [n for n in necessarios if n not in info]
-        return {"disponivel": not faltam, "motivo": "Nós ausentes: " + ", ".join(faltam) if faltam else "",
+        return {"disponivel": not faltam, "motivo": "Missing nodes: " + ", ".join(faltam) if faltam else "",
                 "transcricao": all(n in info for n in ("GraniteASREngineNode", "UnifiedASRTranscribeNode", "LoadAudio", "PreviewAny")),
                 "design": "UnifiedVoiceDesignerNode" in info}
     except Exception as e:

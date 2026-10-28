@@ -3,7 +3,7 @@ import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha } from './motor'
 import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, textoDoDetalhe } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
@@ -36,6 +36,10 @@ const ESTILOS = ['Lo-fi hip hop, mellow, vinyl crackle', 'Synthwave, 80s, drivin
   'Indie rock, energetic, live band', 'Ambient, slow, dreamy pads']
 
 const NOTAS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+// Os mesmos limites do servidor (PedidoGeracao): acima deles o preco sumia e o
+// Generate devolvia um erro.
+const MAX_LETRA = 12000
+const BPM_MIN = 40, BPM_MAX = 240
 const IDIOMAS: Record<string, string> = { en: 'English', pt: 'Portuguese', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', ja: 'Japanese', zh: 'Chinese', ko: 'Korean' }
 
 export default function AbaMusica() {
@@ -44,11 +48,11 @@ export default function AbaMusica() {
   const [modelo, setModelo] = useState(() => parteDoHash(1) || 'minimax-music3')
   const escolher = useEscolha(setModelo)
   const { naNuvem } = useContext(MotorCtx)
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useLembrado('music.prompt', '')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
   const [vocal, setVocal] = useState(true)
-  const [letra, setLetra] = useState('')
+  const [letra, setLetra] = useLembrado('music.letra', '')
   const [duracao, setDuracao] = useState(60)
   const [genero, setGenero] = useState('livre')
   // As in the editor's music panel: ending, BPM, key and lyrics language.
@@ -86,6 +90,9 @@ export default function AbaMusica() {
   }, [naNuvem, tentativa])  // availability depends on the engine: reread when it switches
 
   const cfg = modelos.find((m) => m.id === modelo)
+  // Link com um modelo que nao existe (#music/xyz): nenhum cartao escolhido e o
+  // Generate desligado sem motivo. Agora a aba diz o que fazer.
+  const modeloDesconhecido = modelos.length > 0 && !cfg
   // Cartao clicado: usa o motor atual se o modelo existe nele; senao troca de motor.
   const escolherModelo = (m: ModeloMusica) => {
     const aqui = naNuvem ? m.nuvem !== false : m.local !== false
@@ -102,7 +109,7 @@ export default function AbaMusica() {
     modelo: 'musica', modelo_musica: modelo, prompt: prompt.trim() || 'x', proporcao: '1:1',
     vocal_musica: comVoz, letra_musica: comVoz ? letra : '', duracao_musica: durOk,
     genero_vocal_musica: genero, encerramento_musica: final, margem_musica: 10,
-    ...(modelo === 'ace-step15' ? { bpm_musica: bpm, tonalidade_musica: tom, idioma_musica: idioma,
+    ...(modelo === 'ace-step15' ? { bpm_musica: Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(bpm) || 120)), tonalidade_musica: tom, idioma_musica: idioma,
       ...(guia ? { referencia_musica: guia.nome, transformacao_musica: transformacao } : {}) } : {}),
   }
   const custo = useCusto(cfg?.disponivel ? pedido : null)
@@ -113,7 +120,7 @@ export default function AbaMusica() {
     try {
       const r = await fetch('/api/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...pedido, prompt: prompt.trim() }) })
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Could not start the song.')
+      if (!r.ok) throw new Error(textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not start the song.'))
     } catch (e) { setErro(mensagem(e)) }
   }
 
@@ -176,6 +183,7 @@ export default function AbaMusica() {
               </div>
               {comVoz ? <>
                 <textarea aria-label="Lyrics" className="hf-vz-caixa hf-mu-letra" value={letra} onChange={(e) => setLetra(e.target.value)} rows={7}
+                  maxLength={MAX_LETRA}
                   placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} />
                 <div className="hf-vz-exemplos">
                   {['[Intro]', '[Verse]', '[Pre-Chorus]', '[Chorus]', '[Bridge]', '[Outro]'].map((m) => (
@@ -187,6 +195,7 @@ export default function AbaMusica() {
           )}
         </div>
 
+        {modeloDesconhecido && <p className="hf-dica" role="status">{`"${modelo}" is not a music model here. Pick one of the cards above.`}</p>}
         {cfg?.plenio ? <BlocoYue key={cfg.id} cfg={cfg} prompt={prompt} /> : <>
         <div className="hf-mu-ajustes">
           {/* O teto vem do modelo: enquanto o catalogo carrega nao ha teto para mostrar
@@ -201,7 +210,10 @@ export default function AbaMusica() {
               <option value="natural">Natural ending</option><option value="fade">Fade out</option><option value="original">Keep as generated</option>
             </select></label>
           {modelo === 'ace-step15' && <>
-            <label className="hf-ctrl"><small>Tempo</small><span><input className="hf-campo" type="number" min={40} max={240} value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: 64 }} /> BPM</span></label>
+            <label className="hf-ctrl"><small>Tempo</small><span><input className="hf-campo" type="number" min={BPM_MIN} max={BPM_MAX} value={bpm} style={{ width: 64 }}
+              onChange={(e) => setBpm(Number(e.target.value))}
+              // Ao sair do campo o valor volta para a faixa (digitar "9" a caminho de "90" nao e cortado).
+              onBlur={() => setBpm((b) => Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(b) || 120)))} /> BPM</span></label>
             <label className="hf-ctrl"><small>Key</small><select value={tom} onChange={(e) => setTom(e.target.value)}>
               {(['major', 'minor'] as const).flatMap((m) => NOTAS.map((n) => <option key={n + m} value={`${n} ${m}`}>{n} {m}</option>))}</select></label>
           </>}

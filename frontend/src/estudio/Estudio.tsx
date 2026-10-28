@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AbaNodes from './AbaNodes'
 import PainelAndamento from '../PainelAndamento'
-import { useSoltarNaCaixa, useTarefas } from './comum'
+import { ProtegeAba, useSoltarNaCaixa, useTarefas } from './comum'
 import { api, type GeradorVideo, type Modelo, type ModeloNuvem } from '../api'
 import TelaModelos from '../TelaModelos'
 import AbaApps from './AbaApps'
@@ -91,6 +91,12 @@ function useBarraRolavel(ativa: string) {
 
 export default function Estudio() {
   const [aba, setAba] = useState<Aba>(lerAba)
+  // Titulo da janela/aba do navegador por rota ("Video · EasyComfee"): o historico,
+  // as abas do navegador e os leitores de tela distinguem as paginas.
+  useEffect(() => {
+    const rotulo = ABAS.find((a) => a.id === aba)?.rotulo
+    document.title = rotulo ? `${rotulo} · EasyComfee` : 'EasyComfee'
+  }, [aba])
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [apiImagem, setApiImagem] = useState<ModeloNuvem[]>([])
   const [geradores, setGeradores] = useState<GeradorVideo[]>([])
@@ -108,16 +114,23 @@ export default function Estudio() {
   const mudarOcultar = (v: boolean) => { setOcultar(v); try { localStorage.setItem(CHAVE_OCULTAR, v ? '1' : '0') } catch { /* private window */ } }
   const [linkRecarga, setLinkRecarga] = useState<string | undefined>()
 
-  // Rota profunda nova ("#video/imagem/wan22_14b") com a aba ja aberta: as abas
-  // so leem o modelo e o modo do endereco ao montar, entao ela monta de novo.
-  // Trocar so de aba (#video) nao conta: o que a pessoa escreveu fica.
+  // As abas so leem o modelo e o modo do endereco ao montar. Na MESMA aba, ela
+  // monta de novo quando chega uma rota profunda nova ("#video/imagem/wan22_14b")
+  // ou quando se volta de uma rota profunda para a simples (Voltar ate "#video":
+  // antes a tela seguia com o modelo do link). O texto escrito fica (useLembrado).
   const [rota, setRota] = useState(0)
+  // A ultima rota de cada aba: o botao da aba volta para ela (modelo e modo
+  // inclusos), em vez de abrir a aba do zero. Video e Image mantem o endereco em dia.
+  const rotas = useRef<Record<string, string>>({})
   useEffect(() => {
-    let anterior = location.hash
-    const ao = () => {
+    const ao = (e: HashChangeEvent) => {
+      const antes = new URL(e.oldURL).hash, agora = location.hash
+      const abaDe = (h: string) => h.replace('#', '').split('/')[0]
+      if (antes) rotas.current[abaDe(antes)] = antes
       setAba(lerAba())
-      if (location.hash !== anterior && location.hash.replace('#', '').includes('/')) setRota((r) => r + 1)
-      anterior = location.hash
+      const profunda = (h: string) => h.replace('#', '').includes('/')
+      if (agora !== antes && abaDe(agora) === abaDe(antes) && (profunda(agora) || profunda(antes))) setRota((r) => r + 1)
+      else if (agora !== antes && profunda(agora)) setRota((r) => r + 1)
     }
     window.addEventListener('hashchange', ao)
     return () => window.removeEventListener('hashchange', ao)
@@ -167,7 +180,10 @@ export default function Estudio() {
   useSoltarNaCaixa()
   const ATIVOS = ['preparando', 'submetendo', 'executando']
   const ativa = tarefas.find((t) => ATIVOS.includes(t.estado)) ?? tarefas.find((t) => t.estado === 'na_fila')
-  const ir = (a: Aba) => { location.hash = a; setAba(a) }
+  const ir = (a: Aba) => {
+    if (a !== aba) location.hash = rotas.current[a] ?? a
+    setAba(a)
+  }
   const barra = useBarraRolavel(aba)
 
   return (
@@ -204,8 +220,9 @@ export default function Estudio() {
       </header>
 
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
+        <ProtegeAba key={aba}>
         {aba === 'image' && <AbaImagem key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} apiOcultos={soAbertos ? apiImagem : []} naNuvem={naNuvem} />}
-        {aba === 'video' && <AbaVideo key={chave} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} apiOcultos={soAbertos ? geradores.filter((g) => g.nuvem) : []} naNuvem={naNuvem} />}
+        {aba === 'video' && <AbaVideo key={chave} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} apiOcultos={soAbertos ? geradores.filter((g) => g.nuvem) : []} naNuvem={naNuvem} pronto={modelos.length > 0} />}
         {aba === 'ltx' && <AbaLTX />}
         {aba === 'h3' && <AbaH3 />}
         {aba === 'wan' && <AbaWan />}
@@ -219,6 +236,7 @@ export default function Estudio() {
         {aba === 'voice' && <AbaVoz key={chave} naNuvem={naNuvem} />}
         {aba === 'assets' && <AbaAssets />}
         {aba === 'advanced' && <AbaNodes />}
+        </ProtegeAba>
       </main>
 
       <Visualizador />

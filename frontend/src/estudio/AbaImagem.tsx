@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { api, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
-import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor, valorAberto } from './motor'
+import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio, useLembrado } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -60,18 +60,28 @@ const REF_NUVEM = { modo: 'qwen', max: 3, base: true, uso: 'On Comfy Cloud, imag
 
 export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuvem }: { modelos: Modelo[]; apiModelos: ModeloNuvem[]; apiOcultos?: ModeloNuvem[]; naNuvem: boolean }) {
   const tarefas = useTarefas()
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useLembrado('image.prompt', '')
   const [look, setLook] = useState('')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
-  const [escolhido, setModelo] = useState(() => parteDoHash(1) || 'krea')
+  // '' = sem escolha (nem no link): fica o padrao abaixo.
+  const [escolhido, setModelo] = useState(() => parteDoHash(1))
   // O que aparece, o que o preco mostra e o que vai no pedido sao o MESMO modelo:
-  // um id que o menu nao tem (API oculta em "so abertos", link inventado) vira o padrao.
+  // um id que o menu nao tem (API oculta, sem chave, link inventado) vira o padrao.
   // Enquanto o catalogo carrega (listas vazias) fica o escolhido, para nao perde-lo.
   const carregado = modelos.length > 0
-  const modelo = !carregado || modelos.some((m) => m.id === escolhido) || apiModelos.some((m) => m.id === escolhido)
-    ? escolhido : (modelos.find((m) => m.id === 'krea') ?? modelos[0]).id
-  const apiOculta = modelo !== escolhido ? apiOcultos.find((m) => m.id === escolhido) : undefined
+  const instalado = useInstalado()
+  // Padrao: o Krea se roda aqui; senao o primeiro modelo que roda (instalado, ou na
+  // nuvem). Antes era sempre o Krea, mesmo nao instalado com o Qwen instalado.
+  const roda = (m: Modelo) => (naNuvem ? m.nuvem !== false : instalado(m.id))
+  const padrao = (modelos.find((m) => m.id === 'krea' && roda(m)) ?? modelos.find(roda) ?? modelos.find((m) => m.id === 'krea') ?? modelos[0])?.id ?? 'krea'
+  // Modelo so local (nuvem: false) com o motor na Comfy Cloud: o menu nao o tem
+  // ali, entao a tela mostraria outro e o pedido iria com este.
+  const soLocal = naNuvem && modelos.find((m) => m.id === escolhido)?.nuvem === false
+  const conhecido = (modelos.some((m) => m.id === escolhido) && !soLocal) || apiModelos.some((m) => m.id === escolhido)
+  const modelo = escolhido && (!carregado || conhecido) ? escolhido : padrao
+  const apiOculta = carregado && escolhido && !conhecido ? apiOcultos.find((m) => m.id === escolhido) : undefined
+  const indisponivel = carregado && !!escolhido && !conhecido && !apiOculta
   const escolher = useEscolha(setModelo)
   const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(modelo, apiModelos.some((m) => m.id === modelo))
@@ -145,6 +155,9 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
     if (l.comImagem && !maxRefs) escolher(valorAberto('flux3', naNuvem))
   }
   const faltaFoto = !!lookAtual?.comImagem && !comRefs
+  // A mesma regra vale para o botao e para o Ctrl+Enter (o atalho ignorava o
+  // modelo nao instalado e mandava o pedido com o botao desligado).
+  const desligado = naoInstalado || faltaFoto || (!prompt.trim() && !lookAtual)
   const gerar = async () => {
     setErro(null)
     try {
@@ -153,6 +166,12 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   }
 
   const modosRef = new Set([...Object.values(REFERENCIAS).map((r) => r.modo), REF_NUVEM.modo])
+  // O endereco acompanha o modelo escolhido (sem novo item no historico): voltar a
+  // aba, recarregar ou copiar o link abre o que esta na tela.
+  useEffect(() => {
+    if (carregado && escolhido && conhecido) history.replaceState(history.state, '', `#image/${escolhido}`)
+  }, [carregado, escolhido, conhecido])
+
   const minhas = tarefas.filter((t) => modelos.some((m) => m.id === t.modelo) || apiModelos.some((m) => m.id === t.modelo)
     || modosRef.has(t.modelo))
 
@@ -197,7 +216,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
             : faltaFoto ? 'Add your photo in the box above (+ Character), then press Generate. Optional: extra direction here.'
             : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !faltaFoto && (prompt.trim() || lookAtual)) gerar() }} />
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !desligado) gerar() }} />
         <div className="hf-linha-controles">
           <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
@@ -207,7 +226,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           {apiAtual && niveis.length > 1 && (
             <Chips rotulo="Resolution" opcoes={niveis.map((n) => ({ id: n, rotulo: n }))} valor={nivelOk} aoMudar={setNivel} />
           )}
-          <BotaoGerar est={custo} desligado={naoInstalado || faltaFoto || (!prompt.trim() && !lookAtual)} aoClicar={gerar} />
+          <BotaoGerar est={custo} desligado={desligado} aoClicar={gerar} />
         </div>
         {ehIdeogram && (
           <div className="hf-linha-controles">
@@ -224,6 +243,8 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           {usoRefs ? ` With images: ${usoRefs.uso}` : ''}</p>}
         {apiAtual && <p className="hf-dica">Paid API model, runs on your Comfy account credits{preco !== null ? ` · about $${preco.toFixed(2)} per run` : ''}.</p>}
         {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing {atual?.rotulo ?? 'another model'} instead.</p>}
+        {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${modelos.find((m) => m.id === escolhido)?.rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing ${atual?.rotulo ?? 'another model'} on Comfy Cloud instead.`}</p>}
+        {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing ${atual?.rotulo ?? 'another model'} instead.`}</p>}
         {naoInstalado && <AvisoInstalar rotulo={atual?.rotulo ?? modelo} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>

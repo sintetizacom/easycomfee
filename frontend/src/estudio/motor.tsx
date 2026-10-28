@@ -23,7 +23,9 @@ export async function trocarMotor(modo: Motor) {
 
 type Item = { id: string; rotulo: string; nuvem?: boolean; soLocal?: boolean; soNuvem?: boolean; desligado?: boolean
   /** The tab knows it is not installed here (the menus that do not go by package). */
-  naoInstalado?: boolean }
+  naoInstalado?: boolean
+  /** O que falta, quando nao e um pacote do Config Models (ex.: nos do ComfyUI). */
+  falta?: string }
 
 // Which install package (Config Models > Local models) each menu id needs.
 // A model whose package is not installed does not show under "Local".
@@ -58,7 +60,7 @@ export function GruposAbertos({ itens, api = [] }: { itens: Item[]; api?: { id: 
         <optgroup label="Local · your GPU">
           {local.map((m) => (
             <option key={'l' + m.id} value={`local:${m.id}`} disabled={m.desligado || !instalado(m)}>
-              {m.rotulo}{instalado(m) ? '' : ' (install it in Config Models)'}
+              {m.rotulo}{instalado(m) ? '' : ` (${m.falta ?? 'install it in Config Models'})`}
             </option>
           ))}
         </optgroup>
@@ -121,8 +123,9 @@ export function useFaltaInstalar() {
   return (id: string, ehApi = false) => !naNuvem && !ehApi && !instalado(id)
 }
 
-export function AvisoInstalar({ rotulo }: { rotulo: string }) {
-  return <p className="hf-erro" role="alert">{rotulo} is not installed on this computer. Install it in Config Models, or pick a Comfy Cloud model in the menu.</p>
+export function AvisoInstalar({ rotulo, semMenu = false }: { rotulo: string; semMenu?: boolean }) {
+  // semMenu: telas sem menu de modelo (ferramentas LTX) nao mandam escolher outro.
+  return <p className="hf-erro" role="alert">{rotulo} is not installed on this computer. Install it in Config Models{semMenu ? '.' : ', or pick a Comfy Cloud model in the menu.'}</p>
 }
 
 /** Etiqueta "Your GPU" / "Cloud" dentro de um cartao de modelo: escolhe o modelo

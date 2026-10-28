@@ -40,6 +40,12 @@ def pasta_nos(no: dict | None = None) -> pathlib.Path | None:
     return raiz / "custom_nodes" if raiz else None
 
 
+def pacotes_conhecidos() -> set[str]:
+    """Os pacotes do Config Models e os que aparecem no catalogo de nos."""
+    import pacotes
+    return {p["id"] for p in pacotes.carregar()} | {i for n in carregar() for i in n["pacotes"]}
+
+
 def para_pacote(id_pacote: str) -> list[dict]:
     """Nos que um pacote de modelo precisa, mais os da base."""
     return [n for n in carregar() if "base" in n["pacotes"] or id_pacote in n["pacotes"]]
@@ -137,6 +143,9 @@ def iniciar(id_pacote: str | None) -> dict:
     global _tarefa
     if ESTADO["ativo"]:
         raise RuntimeError("Ja ha uma instalacao de nos em andamento.")
+    if id_pacote and id_pacote not in pacotes_conhecidos():
+        # Antes instalava so os nos da base e respondia como se fosse o pacote.
+        raise KeyError(id_pacote)
     lista = para_pacote(id_pacote) if id_pacote else carregar()
     for no in lista:
         raiz = pasta_nos(no)

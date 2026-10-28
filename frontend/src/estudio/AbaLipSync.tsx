@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
-import { GruposAbertos, useEscolha, useValor } from './motor'
+import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 import { api, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe } from './comum'
 
 // Lip Sync: a portrait and a voice track become a talking video. LTX 2.3 is the
 // open-weights default (up to 30 s); with "Open weights only" off, the Comfy
@@ -22,20 +22,15 @@ const DESCRICOES: Record<string, string> = {
   veed: 'Works with photos, illustrations and mascots. 720p.',
 }
 
-// A foto e a voz ficam guardadas enquanto a pessoa anda pelas abas: mandar a voz
-// pelo menu de um audio e depois o rosto pelo de uma imagem nao pode perder a voz.
-const MEMORIA: Record<string, unknown> = {}
-function useLembrado<T>(chave: string, inicial: T): [T, (v: T) => void] {
-  const [valor, setValor] = useState<T>(() => (chave in MEMORIA ? MEMORIA[chave] as T : inicial))
-  return [valor, (v: T) => { MEMORIA[chave] = v; setValor(v) }]
-}
+// A foto e a voz ficam guardadas enquanto a pessoa anda pelas abas (useLembrado):
+// mandar a voz pelo menu de um audio e depois o rosto pelo de uma imagem nao pode perder a voz.
 
 export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
   const tarefas = useTarefas()
-  const [foto, setFoto] = useLembrado<{ nome: string; url: string } | null>('foto', null)
-  const [fala, setFala] = useLembrado<{ nome: string; url: string; segundos: number } | null>('fala', null)
-  const [vertical, setVertical] = useLembrado('vertical', false)
-  const [cena, setCena] = useState('')
+  const [foto, setFoto] = useLembrado<{ nome: string; url: string } | null>('lipsync.foto', null)
+  const [fala, setFala] = useLembrado<{ nome: string; url: string; segundos: number } | null>('lipsync.fala', null)
+  const [vertical, setVertical] = useLembrado('lipsync.vertical', false)
+  const [cena, setCena] = useLembrado('lipsync.cena', '')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setCena)
   const [ocupado, setOcupado] = useState('')
@@ -43,6 +38,8 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
   const escolher = useEscolha(setModelo)
   const valorSelect = useValor(modelo, apiModelos.some((m) => m.id === modelo))
   const cfg = [...ABERTOS, ...apiModelos].find((m) => m.id === modelo) ?? ABERTOS[0]
+  // LTX 2.3 local sem o pacote: Generate desligado e aviso (como Image e Video).
+  const naoInstalado = useFaltaInstalar()(cfg.id, apiModelos.some((m) => m.id === cfg.id))
   const LIMITE = cfg.limite
   const [erro, setErro] = useState<string | null>(null)
 
@@ -55,11 +52,11 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
     const r = await fetch('/api/avatar/recorte', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ foto: nome, vertical: emPe }) })
     const d = await r.json()
-    if (!r.ok) throw new Error(d.detail ?? 'Could not prepare the photo.')
+    if (!r.ok) throw new Error(textoDoDetalhe(d.detail, 'Could not prepare the photo.'))
     setFoto({ nome: d.nome, url })
   })
 
-  const [original, setOriginal] = useLembrado<{ nome: string; url: string } | null>('original', null)
+  const [original, setOriginal] = useLembrado<{ nome: string; url: string } | null>('lipsync.original', null)
 
   // A foto chega pelo slot (computador, galeria arrastada ou botao "Use") ja enviada;
   // aqui so se enquadra o rosto no formato escolhido.
@@ -89,7 +86,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
   }
 
   const longa = !!fala && fala.segundos > LIMITE + 0.05
-  const pronto = !!foto && !!fala && !longa && !ocupado
+  const pronto = !naoInstalado && !!foto && !!fala && !longa && !ocupado
 
   const custo = useCusto(foto && fala ? { modelo: 'avatar', prompt: cena, referencias: [foto.nome],
     referencia_avatar: fala.nome, modelo_avatar: cfg.id, vertical_avatar: vertical } : null)
@@ -157,6 +154,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
           <span className="hf-espaco" />
           <BotaoGerar est={custo} desligado={!pronto} aoClicar={gerar} />
         </div>
+        {naoInstalado && <AvisoInstalar rotulo={cfg.rotulo} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

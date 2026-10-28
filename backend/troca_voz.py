@@ -221,9 +221,13 @@ async def treinar(arquivos: list[pathlib.Path], nome: str, epocas: int, separar_
 
 def apagar(nome: str) -> pathlib.Path:
     """Tira a voz da lista movendo a pasta para a quarentena (nao apaga)."""
+    # So uma voz que esta na lista: com nome "..", MODELOS / ".." e uma pasta e o
+    # .parent dele parecia ser MODELOS, e a pasta de modelos inteira ia junto.
+    if nome not in {v["id"] for v in vozes()}:
+        raise RuntimeError("Voice not found.")
     pasta = MODELOS / nome
-    if not pasta.is_dir() or pasta.parent != MODELOS:
-        raise RuntimeError("Voz não encontrada.")
+    if not pasta.is_dir() or pasta.resolve().parent != MODELOS.resolve():
+        raise RuntimeError("Voice not found.")
     quarentena = APPLIO / "_removidas"
     quarentena.mkdir(exist_ok=True)
     alvo = quarentena / nome

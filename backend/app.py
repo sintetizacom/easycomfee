@@ -23,7 +23,7 @@ from fastapi import (FastAPI, File, HTTPException, Query, Request, UploadFile, W
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 import atualizacao
 import biblioteca
@@ -115,6 +115,63 @@ class HeadComoGet:
 app.add_middleware(HeadComoGet)
 
 
+class EnvioGrandeDemais(Exception):
+    pass
+
+
+class LimiteDeEnvio:
+    """Conta os bytes do corpo dos envios enquanto chegam e corta ao passar de
+    40 MB. A conferencia pelo Content-Length (somente_interface_local) nao pega
+    um envio em partes (Transfer-Encoding: chunked), que antes ia inteiro para
+    um arquivo temporario antes do 413."""
+
+    CAMINHOS = ("/api/referencia", "/api/referencia-audio")
+    LIMITE = 40 * 1024 * 1024 + 64 * 1024  # folga para o envelope multipart
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["path"] not in self.CAMINHOS:
+            return await self.app(scope, receive, send)
+        recebido, comecou, estourou = 0, False, False
+        corpo413 = b'{"detail":"file above 40 MB"}'
+
+        async def receber():
+            nonlocal recebido, estourou
+            mensagem = await receive()
+            if mensagem["type"] == "http.request":
+                recebido += len(mensagem.get("body", b""))
+                if recebido > self.LIMITE:
+                    estourou = True
+                    raise EnvioGrandeDemais()
+            return mensagem
+
+        async def enviar(mensagem):
+            nonlocal comecou
+            # O FastAPI pega a interrupcao e responde 400 ("error parsing the
+            # body"); com o limite estourado, a resposta vira o 413 certo.
+            if estourou:
+                if mensagem["type"] == "http.response.start" and not comecou:
+                    comecou = True
+                    await send({"type": "http.response.start", "status": 413,
+                                "headers": [(b"content-type", b"application/json"),
+                                            (b"content-length", str(len(corpo413)).encode())]})
+                    await send({"type": "http.response.body", "body": corpo413})
+                return
+            comecou = comecou or mensagem["type"] == "http.response.start"
+            await send(mensagem)
+
+        try:
+            await self.app(scope, receber, enviar)
+        except EnvioGrandeDemais:
+            if not comecou:
+                await JSONResponse({"detail": "file above 40 MB"}, status_code=413)(scope, receive, send)
+
+
+app.add_middleware(LimiteDeEnvio)
+
+
 @app.exception_handler(RequestValidationError)
 async def pedido_invalido(request: Request, erro: RequestValidationError):
     # O 422 padrao repete o valor recebido; um NaN ali nao vira JSON e o erro
@@ -125,13 +182,56 @@ async def pedido_invalido(request: Request, erro: RequestValidationError):
 
 # ---------------------------------------------------------------- modelos de dados
 
+def _tem_surrogate(valor) -> bool:
+    if isinstance(valor, str):
+        return any(0xD800 <= ord(c) <= 0xDFFF for c in valor)
+    if isinstance(valor, (list, tuple)):
+        return any(_tem_surrogate(v) for v in valor)
+    if isinstance(valor, dict):
+        return any(_tem_surrogate(k) or _tem_surrogate(v) for k, v in valor.items())
+    return False
+
+
 class Pedido(BaseModel):
     """Base dos corpos de pedido. O JSON do Python aceita NaN e Infinity; sem
     isto eles passavam pela validacao e estouravam la dentro como erro 500."""
     model_config = ConfigDict(allow_inf_nan=False)
 
+    @model_validator(mode="after")
+    def _sem_surrogate(self):
+        # Meio emoji sozinho (o escape \ud83d no JSON) passa na leitura, mas nao
+        # vira UTF-8: o pedido entrava na fila e quebrava ao gravar no banco (500).
+        for nome, valor in self.__dict__.items():
+            if _tem_surrogate(valor):
+                raise ValueError(f"{nome}: broken character (half of an emoji?)")
+        return self
+
+
+def _referencia_segura(ref: str) -> str:
+    """Nome de arquivo vindo do pedido: "nome.png" (pasta input), "subpasta/nome.mp4"
+    (galeria) ou "entrada:nome". Recusa o que sairia da pasta: "..", ".", partes
+    vazias, barra invertida, caminho absoluto e unidade do Windows ("C:nome",
+    "C:/..."). Antes so o modo simples conferia; edicao, controle, rosto e as
+    previas repassavam o nome cru ao motor."""
+    nome = ref[len("entrada:"):] if ref.startswith("entrada:") else ref
+    partes = nome.split("/")
+    if (not nome or "\\" in nome or ":" in nome or nome.startswith("/")
+            or any(p in ("", ".", "..") for p in partes)):
+        raise ValueError("invalid file name")
+    return ref
+
 
 class PedidoGeracao(Pedido):
+    @field_validator("referencias", "referencias_video", "referencias_audio", mode="after")
+    @classmethod
+    def _refs(cls, v: list[str]) -> list[str]:
+        return [_referencia_segura(r) for r in v]
+
+    @field_validator("fundo_referencia", "referencia_voz", "referencia_musica", "referencia_avatar", mode="after")
+    @classmethod
+    def _ref(cls, v: str | None) -> str | None:
+        return _referencia_segura(v) if v else v
+
     encerramento_musica: str = Field("original", pattern="^(original|natural|fade)$")
     margem_musica: float = Field(10.0, ge=0, le=10)
     modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover)$")
@@ -232,9 +332,10 @@ class PedidoGeracao(Pedido):
     # foi de +3,0 a -18,3 numa escala cujo alvo era -24. A seed domina, e
     # o remedio e oferecer escolha, nao caçar parametro.
     variacoes: int = Field(1, ge=1, le=4)
-    seed: int | None = None
-    steps: int | None = None
-    cfg: float | None = None
+    # Limites: valores absurdos (steps 99999999, cfg -1e9) seguiam ate o ComfyUI.
+    seed: int | None = Field(None, ge=0, le=2**64 - 1)
+    steps: int | None = Field(None, ge=1, le=150)
+    cfg: float | None = Field(None, ge=0, le=30)
     # Especifico dos modelos por nuvem: 1K, 2K ou 4K. Nao usa `escala`, que
     # vale para os modelos locais e vira pixels em presets.dimensoes.
     resolucao_nuvem: str = "1K"
@@ -647,7 +748,7 @@ async def montar(tarefa: Tarefa):
             return genjutsu.grafo_h3_swap(entrada, refs[0], quadros, larg, alt, seed, prefixo,
                                           alvo=p.alvo_genjutsu, pedido=p.prompt, gemini=p.gemini_genjutsu,
                                           turbo=p.turbo_genjutsu, com_som=com_som, local=not comfy.na_nuvem())
-        dados = pathlib.Path(caminho).read_bytes()
+        dados = await asyncio.to_thread(pathlib.Path(caminho).read_bytes)
         d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
         entrada = await comfy.enviar_imagem(f"genjutsu_{uuid.uuid4().hex[:12]}{sufixo}", dados)
         larg, alt = d["largura"] or 16, d["altura"] or 9
@@ -768,7 +869,7 @@ async def montar(tarefa: Tarefa):
                 caminho = luz.arquivo(p.azimute, p.elevacao, p.intensidade,
                                       p.temperatura)
                 enviado = await comfy.enviar_imagem(caminho.name,
-                                                    caminho.read_bytes())
+                                                    await asyncio.to_thread(caminho.read_bytes))
                 refs.append(enviado)
         tarefa.prompt_final = instrucao
         if metodo["motor"] == "qwen":
@@ -1116,7 +1217,7 @@ async def montar(tarefa: Tarefa):
         caminho = _video_de_referencia(p.referencias[0])
         if not caminho:
             raise ValueError("não encontrei esse vídeo")
-        origem = pathlib.Path(caminho).read_bytes()
+        origem = await asyncio.to_thread(pathlib.Path(caminho).read_bytes)
         d = await asyncio.to_thread(miniaturas.dados_do_video, origem)
         fps = d["fps"] or 24
         total = int(round((d["duracao"] or 0) * fps)) or 1
@@ -1145,7 +1246,7 @@ async def montar(tarefa: Tarefa):
             raise ValueError("não encontrei esse vídeo")
         # A cadencia sai do ARQUIVO de origem, nao de um padrao: gravar um
         # clipe de 24 fps a 30 o deixaria mais curto e acelerado.
-        origem = pathlib.Path(caminho).read_bytes()
+        origem = await asyncio.to_thread(pathlib.Path(caminho).read_bytes)
         d = await asyncio.to_thread(miniaturas.dados_do_video, origem)
         fps = d["fps"] or presets.VIDEO_LTX["fps"]
         # O VHS_LoadVideoPath EXPLODE ao tentar extrair audio de um video que
@@ -2322,6 +2423,18 @@ def _eh_api(p: PedidoGeracao) -> bool:
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
 
 
+def _modelos_conhecidos() -> set[str]:
+    """Os modelos que /api/gerar aceita; o /api/estimar usa a mesma lista
+    (antes um modelo inventado dava 200 "gratis" no preco e 400 so ao gerar)."""
+    return (set(presets.SIMPLE) | set(presets.EDICAO) | set(presets.NUVEM)
+            | {"ideogram", "controle", "ampliar", "angulo", "reluz",
+               "personagem", "rosto", "recorte", "video",
+               "limpar_video", "transformar_video", "quadros_maquete", "voz",
+               "profundidade_video",
+               "transcricao_voz", "musica", "genjutsu",
+               "avatar", "separar", "trocar_voz", "treinar_voz"})
+
+
 @app.post("/api/estimar")
 async def estimar(p: PedidoGeracao):
     """Custo estimado do pedido, sem enviar nada.
@@ -2329,9 +2442,12 @@ async def estimar(p: PedidoGeracao):
     API: monta o grafo (os ramos de API nao tem efeito colateral) e avalia o
     price_badge de cada no, a mesma conta que a Comfy mostra. Modelo aberto na
     nuvem: tempo previsto x tarifa de GPU. Local: gratis."""
+    if p.modelo not in _modelos_conhecidos():
+        raise HTTPException(400, f"Unknown model: {p.modelo}")
     global MOTOR_CARREGADO
     if _eh_api(p):
         antes = MOTOR_CARREGADO
+        so_estimando = comfy.SO_ESTIMANDO.set(True)
         try:
             grafo = await montar(Tarefa(p.model_copy(deep=True)))
             faixa = await precos.de_api(grafo)
@@ -2339,6 +2455,7 @@ async def estimar(p: PedidoGeracao):
             return {"tipo": "desconhecido", "motivo": str(e)[:200]}
         finally:
             MOTOR_CARREGADO = antes
+            comfy.SO_ESTIMANDO.reset(so_estimando)
         if faixa is not None and p.modelo == "genjutsu" and p.modelo_genjutsu != "kling_omni":
             # Higgsfield e Aleph2 cobram por segundo do video de origem.
             try:
@@ -2515,10 +2632,18 @@ async def ver_maquina():
     return {"detectado": await maquina.detectar(), "salvo": maquina.salvo()}
 
 
+class PerfilMaquina(Pedido):
+    gpu: str = Field("", max_length=80)
+    vram_gb: float = Field(0, ge=0, le=1024)
+    ram_gb: float = Field(0, ge=0, le=8192)
+    so_nuvem: bool = False
+
+
 @app.post("/api/maquina")
-async def salvar_maquina(perfil: dict):
+async def salvar_maquina(perfil: PerfilMaquina):
+    # Modelo tipado: {"vram_gb": "abc"} da 422 (era ValueError -> 500).
     import maquina
-    return maquina.salvar(perfil)
+    return maquina.salvar(perfil.model_dump())
 
 
 @app.get("/api/pacotes")
@@ -2604,6 +2729,8 @@ async def instalar_nos(pedido: PedidoNos):
     import instalador_nos
     try:
         return instalador_nos.iniciar(pedido.pacote)
+    except KeyError:
+        raise HTTPException(404, "Unknown package.")
     except RuntimeError as e:
         raise HTTPException(409, str(e))
 
@@ -3173,15 +3300,8 @@ async def genjutsu_quadro(p: PedidoQuadro):
 
 @app.post("/api/gerar")
 async def gerar(pedido: PedidoGeracao):
-    conhecidos = (set(presets.SIMPLE) | set(presets.EDICAO) | set(presets.NUVEM)
-                  | {"ideogram", "controle", "ampliar", "angulo", "reluz",
-                     "personagem", "rosto", "recorte", "video",
-                     "limpar_video", "transformar_video", "quadros_maquete", "voz",
-                     "profundidade_video",
-                     "transcricao_voz", "musica", "genjutsu",
-                     "avatar", "separar", "trocar_voz", "treinar_voz"})
-    if pedido.modelo not in conhecidos:
-        raise HTTPException(400, f"modelo desconhecido: {pedido.modelo}")
+    if pedido.modelo not in _modelos_conhecidos():
+        raise HTTPException(400, f"Unknown model: {pedido.modelo}")
     if pedido.modelo in presets.SIMPLE and pedido.referencias:
         if pedido.modelo not in ("krea", "kroma", "kroma_foto"):
             raise HTTPException(400, "Este gerador não aceita referência de personagem.")
@@ -3375,7 +3495,12 @@ class PedidoTranscricao(Pedido):
 
 @app.post("/api/voz/transcrever")
 async def transcrever_voz(pedido: PedidoTranscricao):
-    return await gerar(PedidoGeracao(modelo="transcricao_voz", prompt="Transcrição do áudio de referência", referencia_voz=pedido.referencia, idioma_referencia_voz=pedido.idioma))
+    try:
+        interno = PedidoGeracao(modelo="transcricao_voz", prompt="Transcrição do áudio de referência",
+                                referencia_voz=pedido.referencia, idioma_referencia_voz=pedido.idioma)
+    except ValueError:  # nome de arquivo recusado por _referencia_segura
+        raise HTTPException(400, "Invalid voice sample name.")
+    return await gerar(interno)
 
 
 @app.get("/api/voz/transcricao/{tarefa_id}")
@@ -3467,6 +3592,8 @@ async def remover_voz(nome: str):
         alvo = troca_voz.apagar(nome)
     except RuntimeError as e:
         raise HTTPException(404, str(e))
+    except OSError:
+        raise HTTPException(409, "Could not move the voice (a file in it may be open). Try again.")
     return {"movida_para": str(alvo)}
 
 
@@ -3484,12 +3611,16 @@ class PedidoRecorteAvatar(Pedido):
 async def recorte_avatar(pedido: PedidoRecorteAvatar):
     """Recorta a foto em volta do rosto ANTES de gerar, para a tela mostrar."""
     foto = pedido.foto
-    if not foto or pathlib.PurePosixPath(foto).name != foto or chr(92) in foto:
-        raise HTTPException(400, "Foto inválida.")
+    try:
+        if "/" in _referencia_segura(foto):
+            raise ValueError
+    except ValueError:
+        raise HTTPException(400, "Invalid photo name.")
     try:
         nome, achou = await avatar.recortar_no_rosto(foto, pedido.vertical)
-    except Exception as e:
-        raise HTTPException(400, f"Não foi possível ler a foto: {e}")
+    except Exception:
+        # O detalhe (com o endereco interno do ComfyUI) fica fora da resposta.
+        raise HTTPException(400, "Could not read the photo. Upload it again.")
     return {"nome": nome, "rosto": achou}
 
 
@@ -3519,7 +3650,8 @@ async def previa_latente(pedido: PedidoPrevia):
     if not caminho:
         raise HTTPException(404, "não encontrei esse vídeo na pasta de saída")
 
-    origem = pathlib.Path(caminho).read_bytes()
+    # Ler o video inteiro (centenas de MB) no laco de eventos parava o servidor.
+    origem = await asyncio.to_thread(pathlib.Path(caminho).read_bytes)
     d = await asyncio.to_thread(miniaturas.dados_do_video, origem)
     fps = d["fps"] or presets.VIDEO_LTX["fps"]
     # `dados_do_video` devolve duracao e fps, nao contagem de quadros. Usar
@@ -3684,20 +3816,27 @@ async def previa_controle(pedido: PedidoGeracao):
     raise HTTPException(502, "o pré-processador não devolveu imagem")
 
 
+# Temperatura desconhecida virava "neutra" calada (luz.py); agora e 422.
+TEMPERATURAS_LUZ = "^(" + "|".join(luz.TEMPERATURAS) + ")$"
+
+
 @app.get("/api/luz/mapa")
 async def mapa_de_luz(azimute: float = Query(-45, ge=-720, le=720, allow_inf_nan=False),
                       elevacao: float = Query(25, ge=-180, le=180, allow_inf_nan=False),
                       intensidade: float = Query(1.0, ge=0, le=10, allow_inf_nan=False),
-                      temperatura: str = "neutra"):
+                      temperatura: str = Query("neutra", pattern=TEMPERATURAS_LUZ)):
     """A esfera iluminada que o widget mostra — e a mesma imagem que vai ao modelo."""
-    dados = luz.desenhar(azimute, elevacao, intensidade, temperatura)
+    # Desenhar a esfera e trabalho de CPU, pedido a cada arrasto: fora do laco de eventos.
+    dados = await asyncio.to_thread(luz.desenhar, azimute, elevacao, intensidade, temperatura)
     return Response(dados, media_type="image/png",
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/luz/frase")
-async def frase_de_luz(azimute: float = -45, elevacao: float = 25,
-                       intensidade: float = 1.0, temperatura: str = "neutra"):
+async def frase_de_luz(azimute: float = Query(-45, ge=-720, le=720, allow_inf_nan=False),
+                       elevacao: float = Query(25, ge=-180, le=180, allow_inf_nan=False),
+                       intensidade: float = Query(1.0, ge=0, le=10, allow_inf_nan=False),
+                       temperatura: str = Query("neutra", pattern=TEMPERATURAS_LUZ)):
     """Mostra ao usuário exatamente o que será pedido ao modelo."""
     return {"frase": luz.em_palavras(azimute, elevacao, intensidade, temperatura)}
 
@@ -3860,7 +3999,7 @@ if ESTATICOS.exists():
     async def spa(caminho: str):
         # Rota da API que nao existe e erro, nao a pagina: com 200 + index.html
         # um nome errado no frontend ou num script parecia funcionar.
-        if caminho == "api" or caminho.startswith("api/"):
+        if caminho.lower() == "api" or caminho.lower().startswith("api/"):
             raise HTTPException(404, "Not found")
         # So arquivos de dentro da pasta da interface: "../" (ou %2e%2e, barra
         # invertida) nao pode sair dela e entregar, por exemplo, chaves.json.

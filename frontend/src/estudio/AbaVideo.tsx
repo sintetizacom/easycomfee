@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
 import { api, type GeradorVideo, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, quadroChave, passoChave } from './comum'
 
 // Video tab: LTX 2.5 or the open-weight MiniMax H3, plus the API generators.
 // "References" puts the people and objects of your images into the shot:
@@ -39,14 +39,20 @@ const LEVES: Record<string, { rotulo: string; modos: Modo[]; resolucoes: string[
 type Chave = { id: number; img: Referencia | null; seg: number }
 let proximaChave = 3
 
-export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem = false }: { apiGeradores?: GeradorVideo[]; apiOcultos?: GeradorVideo[]; naNuvem?: boolean }) {
+export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem = false, pronto = true }: {
+  apiGeradores?: GeradorVideo[]; apiOcultos?: GeradorVideo[]; naNuvem?: boolean
+  /** O catalogo ja chegou: antes disso um gerador de API do link ainda nao esta na lista. */
+  pronto?: boolean }) {
   const tarefas = useTarefas()
   const [escolhido, setMotor] = useState<string>(() => parteDoHash(2) || 'ltx')
   // O que aparece, o que o preco mostra e o que vai no pedido sao o MESMO modelo:
-  // um id que o menu nao tem (API oculta em "so abertos", link inventado) vira LTX 2.5.
-  const motor = apiGeradores.some((g) => g.id === escolhido) || !!LEVES[escolhido]
+  // um id que o menu nao tem (API oculta, sem chave, link inventado) vira LTX 2.5.
+  // Modelo leve so local (nuvem: false) com o motor na Comfy Cloud: nao esta no menu ali.
+  const soLocal = naNuvem && LEVES[escolhido]?.nuvem === false
+  const motor = apiGeradores.some((g) => g.id === escolhido) || (!!LEVES[escolhido] && !soLocal)
     || escolhido === 'ltx' || escolhido === 'minimax' ? escolhido : 'ltx'
-  const apiOculta = motor !== escolhido ? apiOcultos.find((g) => g.id === escolhido) : undefined
+  const apiOculta = pronto && motor !== escolhido ? apiOcultos.find((g) => g.id === escolhido) : undefined
+  const indisponivel = pronto && motor !== escolhido && !apiOculta
   const escolher = useEscolha(setMotor)
   const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(motor, apiGeradores.some((g) => g.id === motor))
@@ -58,7 +64,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   // O modo que o link pediu (#video/chaves/minimax): se o modelo nao o tem, a aba
   // avisa em vez de abrir outro modo calada.
   const [modoDoLink] = useState(() => parteDoHash(1))
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useLembrado('video.prompt', '')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setPrompt)
   const [proporcao, setProporcao] = useState('16:9')
@@ -105,7 +111,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   // Keyframes in time order, only the ones with an image, inside the clip length.
   const chavesOk = chaves.filter((c) => c.img).map((c) => ({ ...c, seg: Math.min(c.seg, duracaoOk) })).sort((x, y) => x.seg - y.seg)
   // Duas imagens no mesmo quadro: o backend fica com uma so (como em FerramentasLTX).
-  const chavesRepetidas = ehChaves && chavesOk.some((c, i) => i > 0 && Math.round(c.seg * 24) === Math.round(chavesOk[i - 1].seg * 24))
+  const chavesRepetidas = ehChaves && chavesOk.some((c, i) => i > 0 && quadroChave(c.seg, duracaoOk) === quadroChave(chavesOk[i - 1].seg, duracaoOk))
   const ehRef = modoOk === 'referencia'
   const faltaImagem = ehChaves ? chavesOk.length < 2 : ehRef ? refsOk.length === 0
     : (modoOk !== 'texto' && !inicio) || (modoOk === 'primeiro_ultimo' && !fim)
@@ -129,10 +135,16 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
         referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
         ...(ehRef && motor === 'ltx' && fundo ? { fundo_referencia: fundo.nome } : {}),
-        ...(ehChaves ? { quadros_referencias: chavesOk.map((c) => Math.round(c.seg * 24) + 1), forca_chaves: forcaChaves } : {}),
+        ...(ehChaves ? { quadros_referencias: chavesOk.map((c) => quadroChave(c.seg, duracaoOk) + 1), forca_chaves: forcaChaves } : {}),
       } as Parameters<typeof api.gerar>[0])
     } catch (e) { setErro(mensagem(e)) }
   }
+
+  // O endereco acompanha o modo e o modelo (sem novo item no historico): voltar a
+  // aba, recarregar ou copiar o link abre o que esta na tela.
+  useEffect(() => {
+    if (pronto && !indisponivel) history.replaceState(history.state, '', `#video/${modoOk}/${motor}`)
+  }, [pronto, indisponivel, modoOk, motor])
 
   const minhas = tarefas.filter((t) => t.modelo === 'video')
 
@@ -155,6 +167,8 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           )}
         </div>
         {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
+        {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${LEVES[escolhido].rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing LTX 2.5 on Comfy Cloud instead.`}</p>}
+        {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing LTX 2.5 instead.`}</p>}
         {motor === 'minimax' && <p className="hf-dica">MiniMax H3 is heavy: on a 16 GB card it only fits at low resolution. Best on Comfy Cloud or a 32 GB+ GPU.</p>}
         <Chips rotulo="Mode" opcoes={modos} valor={modoOk} aoMudar={setModo} />
         {ehRef && (
@@ -181,7 +195,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
                 <SlotImagem rotulo={`Keyframe ${i + 1}`} valor={c.img}
                   aoMudar={(img) => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, img } : x)))} />
                 <label className="hf-ctrl"><small>At second</small>
-                  <input className="hf-campo" type="number" min={0} max={duracaoOk} step={0.5} value={c.seg} style={{ width: 80 }}
+                  <input className="hf-campo" type="number" min={0} max={duracaoOk} step={0.33} value={c.seg} style={{ width: 80 }}
+                    // Ao sair do campo, vai ao passo de 1/3 s em que o modelo poe a imagem.
+                    onBlur={() => setChaves((a) => a.map((x) => (x.id === c.id ? { ...x, seg: Math.min(duracaoOk, passoChave(x.seg)) } : x)))}
                     onChange={(e) => {
                       // Dentro do video: o max do campo so vale para as setinhas, nao para o que se digita.
                       const v = Number(e.target.value)

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { GruposAbertos, useEscolha } from './motor'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, teclasRadio, useCusto, useTarefas, Galeria } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe } from './comum'
 
 // Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
 // on Comfy Cloud, where OmniVoice is missing, Qwen3-TTS (voz.grafo_nuvem),
@@ -46,13 +46,16 @@ const FALANTES = ['Ryan', 'Aiden', 'Dylan', 'Eric', 'Serena', 'Vivian', 'Ono_ann
 export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const tarefas = useTarefas()
   const [modo, setModo] = useState('narrar')
-  const [texto, setTexto] = useState('')
+  const [texto, setTexto] = useLembrado('voice.texto', '')
   const [idioma, setIdioma] = useState('English')
   const [falante, setFalante] = useState('Ryan')
   const [vozLocal, setVozLocal] = useState('')
-  const [instrucao, setInstrucao] = useState('')
+  const [instrucao, setInstrucao] = useLembrado('voice.instrucao', '')
+  // Narrate na nuvem: "como dizer" (excited, whispering...). Era o mesmo campo da
+  // descricao do Design a voice, que ia escondida no pedido do Narrate.
+  const [comoDizer, setComoDizer] = useLembrado('voice.como', '')
   const [ref, setRef] = useState<{ nome: string; url: string } | null>(null)
-  const [transcricao, setTranscricao] = useState('')
+  const [transcricao, setTranscricao] = useLembrado('voice.transcricao', '')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   // The model follows the engine: OmniVoice on your GPU, Qwen3-TTS on Comfy Cloud.
@@ -63,12 +66,27 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const pronta = modo === 'narrar' && !naNuvem ? VOZES_LOCAIS.find((v) => v.id === vozLocal && v.tags) : undefined
   const pedido = {
     modelo: 'voz', modo_voz: pronta ? 'criar' : modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
-    falante_voz: falante, instrucao_voz: pronta ? pronta.tags : instrucao.trim(), ...(pronta ? { seed: pronta.seed } : {}),
+    falante_voz: falante,
+    instrucao_voz: pronta ? pronta.tags : modo === 'criar' ? instrucao.trim() : modo === 'narrar' && naNuvem ? comoDizer.trim() : '', ...(pronta ? { seed: pronta.seed } : {}),
     referencia_voz: modo === 'clonar' ? ref?.nome ?? '' : '', transcricao_voz: modo === 'clonar' ? transcricao.trim() : '',
   }
   const custo = useCusto(pedido)
-  const pronto = !!texto.trim() && (modo !== 'criar' || !!instrucao.trim())
+  // O que o motor tem: sem os nos do OmniVoice (TTS Audio Suite) a voz local nao
+  // gera. Antes a aba nao perguntava e o Generate ficava ligado.
+  const [caps, setCaps] = useState<{ disponivel: boolean; motivo: string; design?: boolean } | null>(null)
+  useEffect(() => {
+    setCaps(null)
+    fetch('/api/voz').then((r) => r.json()).then(setCaps).catch(() => setCaps(null))
+  }, [naNuvem])
+  const semMotor = !!caps && (!caps.disponivel || (modo === 'criar' && caps.design === false))
+  const pronto = !semMotor && !!texto.trim() && (modo !== 'criar' || !!instrucao.trim())
     && (modo !== 'clonar' || (!!ref && (naNuvem || !!transcricao.trim())))
+  // O que falta para o Generate ligar (antes ficava desligado sem dizer por que).
+  const falta = semMotor ? null
+    : modo === 'criar' && !instrucao.trim() ? 'Describe the voice (or pick an example) to design it.'
+    : modo === 'clonar' && !ref ? 'Add a voice sample to clone.'
+    : modo === 'clonar' && !naNuvem && !transcricao.trim() ? 'Type what the sample says, word for word (needed on your GPU).'
+    : !texto.trim() ? 'Write what to say.' : null
 
   const enviar = async (f: File) => {
     setEnviando(true); setErro(null)
@@ -81,7 +99,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
     try {
       const r = await fetch('/api/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...pedido, prompt: texto.trim() }) })
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? 'Could not start the voice.')
+      if (!r.ok) throw new Error(textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not start the voice.'))
     } catch (e) { setErro(mensagem(e)) }
   }
 
@@ -111,7 +129,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
             {modo === 'narrar' && (naNuvem ? (
               <>
                 <Chips rotulo="Speaker" opcoes={FALANTES.map((f) => ({ id: f, rotulo: f.replace('_', ' ') }))} valor={falante} aoMudar={setFalante} />
-                <input className="hf-campo" value={instrucao} onChange={(e) => setInstrucao(e.target.value)}
+                <input className="hf-campo" value={comoDizer} onChange={(e) => setComoDizer(e.target.value)} aria-label="How to say it"
                   placeholder="Optional: how to say it, e.g. excited, whispering, sad" />
               </>
             ) : (
@@ -162,7 +180,8 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
 
         <div className="hf-linha-controles">
           <select className="hf-select" value={naNuvem ? 'nuvem:qwen3tts' : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
-            <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true }, { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true }]} />
+            <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true, naoInstalado: !naNuvem && !!caps && !caps.disponivel, falta: 'nodes missing' },
+              { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true }]} />
           </select>
           <select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
             {IDIOMAS.map((i) => <option key={i}>{i}</option>)}
@@ -170,6 +189,8 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           <span className="hf-espaco" />
           <BotaoGerar est={custo} desligado={!pronto} aoClicar={gerar} />
         </div>
+        {falta && <p className="hf-dica" role="status">{falta}</p>}
+        {semMotor && <p className="hf-erro" role="alert">{naNuvem ? 'Voice design is not available here.' : 'OmniVoice is not installed in your ComfyUI'}{caps?.motivo ? ` (${caps.motivo})` : ''}. Install the TTS Audio Suite nodes, or pick Qwen3-TTS (Comfy Cloud) in the menu.</p>}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

@@ -1,4 +1,4 @@
-import { Children, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Children, Component, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { api, ouvirTarefas, referenciaDaGaleria, urlImagem, type Referencia, type Tarefa } from '../api'
 import { abrirVisualizador, reusarPrompt } from './Visualizador'
 import { emIngles } from '../PainelAndamento'
@@ -22,6 +22,31 @@ export function teclasRadio(e: KeyboardEvent<HTMLElement>) {
   radios[j].focus()
   radios[j].click()
 }
+
+// O texto de cada aba sobrevive a troca de aba: a aba desmonta ao sair, mas o
+// que a pessoa escreveu fica aqui ate a pagina recarregar.
+const LEMBRADOS = new Map<string, unknown>()
+
+/** useState que lembra o valor entre montagens da aba (chave unica por campo). */
+export function useLembrado<T>(chave: string, inicial: T) {
+  const [valor, setValor] = useState<T>(() => (LEMBRADOS.has(chave) ? LEMBRADOS.get(chave) as T : inicial))
+  useEffect(() => { LEMBRADOS.set(chave, valor) }, [chave, valor])
+  return [valor, setValor] as const
+}
+
+/** O quadro (contado de 0) onde o servidor poe uma imagem-chave do LTX, como em
+ *  app.py _posicao_do_quadro: multiplo de 8 (passos de 1/3 s) e, passando do fim
+ *  do clipe, o ultimo quadro. A tela confere repeticoes e envia por aqui, senao
+ *  1,3 s e 1,4 s caiam no mesmo quadro e uma imagem sumia sem aviso. */
+export function quadroChave(seg: number, duracao: number) {
+  const pedidos = Math.floor(duracao * 24) + 1
+  const quadros = Math.min(361, Math.floor((Math.max(pedidos, 9) - 1) / 8) * 8 + 1)
+  const q = Math.round(Math.max(0, Math.round(seg * 24)) / 8) * 8
+  return q >= quadros - 1 ? quadros - 1 : q
+}
+
+/** Segundos levados ao passo de 1/3 s dos quadros-chave (2 casas, para o campo). */
+export const passoChave = (s: number) => Math.round(Math.round(s * 3) / 3 * 100) / 100
 
 export function parteDoHash(n: number): string {
   return decodeURIComponent(location.hash.replace(/^#/, '').split('/')[n] ?? '')
@@ -138,7 +163,9 @@ const Icone = ({ d }: { d: string }) => (
 
 /** Leva para outra aba e entrega o arquivo ao primeiro slot de imagem dela. */
 function irComImagem(hash: string, e: { nome: string; subpasta: string }) {
-  location.hash = hash
+  // Ja na aba com um modelo no endereco (#image/qwen21): ficar nele, e nao voltar a
+  // rota simples, que remontaria a aba no modelo padrao.
+  if (!location.hash.startsWith(hash + '/')) location.hash = hash
   // A aba nova monta no proximo quadro; tenta por ate ~1,5 s.
   let n = 0
   const tentar = () => { if (!usarNaCaixa(e) && n++ < 15) setTimeout(tentar, 100) }
@@ -332,7 +359,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
     try { aoMudar(await referenciaDe(e)) } catch (x) { setErro(String(x)) } finally { setEnviando(false) }
   }
   const receberRef = useRef(receber)
-  receberRef.current = receber
+  useEffect(() => { receberRef.current = receber })
   useEffect(() => {
     const el = caixa.current
     if (!el) return
@@ -383,9 +410,30 @@ export function ComLinks({ texto }: { texto: string }) {
       : parte)}</>
 }
 
+// Nomes legiveis dos campos que o servidor recusa com 422.
+const CAMPOS: Record<string, string> = {
+  prompt: 'Prompt', letra_musica: 'Lyrics', bpm_musica: 'Tempo (BPM)', duracao_musica: 'Length',
+  duracao_video: 'Length', lote: 'Images', referencias: 'Images',
+}
+
+/** O "detail" de um erro do servidor como texto. No 422 ele vem como lista de
+ *  objetos {loc, msg}; antes isso virava "[object Object]" ou, posto na tela,
+ *  quebrava a aba inteira (o React nao desenha objetos). */
+export function textoDoDetalhe(detail: unknown, padrao: string): string {
+  if (typeof detail === 'string' && detail) return detail
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((d) => {
+      const loc = Array.isArray(d?.loc) ? d.loc : []
+      const campo = String(loc[loc.length - 1] ?? '')
+      return `${CAMPOS[campo] ?? campo}${campo ? ': ' : ''}${d?.msg ?? 'invalid value'}`
+    }).join('; ')
+  }
+  return padrao
+}
+
 export function mensagem(e: unknown): string {
   const bruto = e instanceof Error ? e.message : String(e)
-  try { return JSON.parse(bruto).detail ?? bruto } catch { return bruto }
+  try { return textoDoDetalhe(JSON.parse(bruto).detail, bruto) } catch { return bruto }
 }
 
 export type Estimativa = { tipo: 'gratis' | 'api' | 'gpu' | 'desconhecido'; min?: number; max?: number; usd?: number }
@@ -413,6 +461,14 @@ export function useCusto(pedido: Record<string, unknown> | null) {
 const usd = (v: number) => (v < 0.01 ? '<$0.01' : `$${v.toFixed(2)}`)
 
 /** Text shown on the Generate button. */
+/** O preco de N pedidos iguais (ex.: um por plano na Cinema). Modelo de API vem
+ *  como faixa min/max e GPU da nuvem como usd: multiplica os tres. */
+export function vezes(est: Estimativa | null, n: number): Estimativa | null {
+  if (!est || n === 1) return est
+  const m = (v?: number) => (v === undefined ? undefined : v * n)
+  return { ...est, min: m(est.min), max: m(est.max), usd: m(est.usd) }
+}
+
 export function rotuloCusto(est: Estimativa | null): string {
   if (!est) return ''
   if (est.tipo === 'gratis') return 'Free'
@@ -464,4 +520,18 @@ export function Galeria({ tipo, children }: { tipo?: 'video' | 'audio'; children
       {pilhas.map((pilha, i) => <div key={i} className="hf-galeria-coluna">{pilha}</div>)}
     </div>
   )
+}
+
+/** Se uma aba quebrar ao desenhar, mostra o erro no lugar dela em vez de a tela
+ *  ficar em branco (antes nao havia nenhum). Trocar de aba (key) recomeca. */
+export class ProtegeAba extends Component<{ children: ReactNode }, { erro: Error | null }> {
+  state = { erro: null as Error | null }
+  static getDerivedStateFromError(erro: Error) { return { erro } }
+  render() {
+    if (!this.state.erro) return this.props.children
+    return (
+      <div className="hf-aba"><p className="hf-erro" role="alert">This tab hit an error: {this.state.erro.message}.{' '}
+        <button type="button" className="hf-link" onClick={() => this.setState({ erro: null })}>Try again</button></p></div>
+    )
+  }
 }

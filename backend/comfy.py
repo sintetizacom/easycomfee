@@ -22,6 +22,9 @@ WS = config.COMFY_WS
 # Qual motor a tarefa corrente usa. Cada tarefa roda numa asyncio.Task
 # propria, que copia o contexto: trocar aqui nao afeta as outras.
 MOTOR = contextvars.ContextVar("motor", default=BASE_PRINCIPAL)
+# Ligado durante o /api/estimar: o grafo e montado so para ler o preco, entao
+# enviar_imagem nao grava nada (antes cada mudanca na tela subia arquivos novos).
+SO_ESTIMANDO = contextvars.ContextVar("so_estimando", default=False)
 
 # ---- Local ou Comfy Cloud ------------------------------------------------
 # A API da nuvem e a do ComfyUI com o prefixo /api e a chave no cabecalho, entao
@@ -121,8 +124,8 @@ def esquecer_info() -> None:
 def motivo_sem_info(erro: Exception) -> str:
     """Por que a lista de nos nao veio: lento nao e o mesmo que fora do ar."""
     if isinstance(erro, httpx.TimeoutException):
-        return "O ComfyUI está demorando para responder (pode estar carregando). Tente de novo em um minuto."
-    return "O ComfyUI não está respondendo."
+        return "ComfyUI is taking long to answer (it may still be loading). Try again in a minute."
+    return "ComfyUI is not responding."
 
 
 _parceiros: dict[str, set[str]] = {}
@@ -380,6 +383,8 @@ async def enviar_imagem(nome: str, dados: bytes) -> str:
     No modo Comfy Cloud o arquivo fica na pasta input DESTA maquina: e daqui
     que o app mede, recorta e mostra; a nuvem o recebe na hora de gerar
     (nuvem.preparar sobe cada arquivo de entrada que o grafo usa)."""
+    if SO_ESTIMANDO.get():
+        return os.path.basename(nome)
     if na_nuvem():
         pasta = config.COMFY_ENTRADA
         pasta.mkdir(parents=True, exist_ok=True)

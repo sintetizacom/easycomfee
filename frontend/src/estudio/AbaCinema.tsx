@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { api, type GeradorVideo, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import {
   ABERTURAS, CAMERAS, ENQUADRAMENTOS, FILMES, FOCAIS, GENEROS, GRADES, LENTES, LUZES, MOVIMENTOS,
   montarPrompt, texto, visualDe, type Cor, type Direcao, type Opcao,
 } from './cinema'
-import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas } from './comum'
+import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas, vezes, useLembrado } from './comum'
 import { IconeCamera } from './IconesCamera'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 
@@ -88,7 +88,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const tarefas = useTarefas()
   const [tipo, setTipo] = useState<'imagem' | 'video'>(() => location.hash === '#cinema/ltx-video' ? 'video' : 'imagem')
   const video = tipo === 'video'
-  const [cena, setCena] = useState('')
+  const [cena, setCena] = useLembrado('cinema.cena', '')
   // "Reuse prompt" in the viewer fills this tab's text.
   useReusarPrompt(setCena)
   // Cast: people, objects and places, called @image1, @image2… in the scene.
@@ -111,7 +111,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const [trabalhando, setTrabalhando] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   // One seed for the whole shot list: same cast and light from shot to shot.
-  const seed = useMemo(() => Math.floor(Math.random() * 2 ** 31), [])
+  // Sorteada uma vez, ao montar (useState com funcao: fora do desenho, como o React pede).
+  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 31))
 
   // ---- image model: never default to one that cannot run where we are
   const roda = (m: Modelo) => !(naNuvem && m.nuvem === false)
@@ -160,7 +161,9 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   }
 
   const custo = useCusto(video ? { ...pedidoVideo, prompt: 'x' } : { ...pedidoImagem, prompt: 'x' })
-  const custoTotal = custo && custo.usd != null ? { ...custo, usd: custo.usd * planos.length } : custo
+  // Um pedido por plano (gerarTodos): o botao mostra o total. Antes so o usd (GPU)
+  // era multiplicado, e um modelo de API (faixa min/max) mostrava o preco de 1.
+  const custoTotal = vezes(custo, planos.length)
 
   const mudar = (campo: keyof Direcao) => (v: string) => setD((a) => ({ ...a, [campo]: v }))
   const mudarPlano = (id: number, c: Partial<Plano>) => setPlanos((a) => a.map((p) => (p.id === id ? { ...p, ...c } : p)))

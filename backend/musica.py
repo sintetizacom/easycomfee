@@ -77,7 +77,7 @@ def resolver(info, ident):
         if encontrado: pesos[chave] = encontrado
         else: faltam.append(arquivo)
     return {"id": ident, "rotulo": cfg["rotulo"], "letra": cfg["letra"], "maximo": cfg["maximo"],
-            "disponivel": not faltam, "motivo": "Faltam: " + ", ".join(faltam) if faltam else "", "pesos": pesos}
+            "disponivel": not faltam, "motivo": "Missing: " + ", ".join(faltam) if faltam else "", "pesos": pesos}
 
 async def catalogo():
     try:
@@ -142,7 +142,7 @@ async def _catalogo_plenio(ident):
     base = {"id": ident, "rotulo": cfg["rotulo"], "letra": cfg["letra"], "maximo": cfg["maximo"],
             "plenio": True, "estilos": [], "cover": bool(cfg.get("cover")), "ordem": cfg["ordem"]}
     if not motor_flux3.instalado():
-        return base | {"disponivel": False, "motivo": "O segundo motor (v0.41) não está instalado.", "pesos": {}}
+        return base | {"disponivel": False, "motivo": "The second engine (ComfyUI v0.41) is not installed.", "pesos": {}}
     try:
         info = await comfy.info_nos(comfy.BASE_FLUX3)
     except Exception as e:
@@ -153,7 +153,7 @@ async def _catalogo_plenio(ident):
         if no_disco:
             return base | {"disponivel": True, "motivo": "", "pesos": {}}
         return base | {"disponivel": False, "pesos": {},
-                       "motivo": "Os nós do Plenio não estão instalados." if no_disco is False
+                       "motivo": "The Plenio nodes are not installed." if no_disco is False
                        else comfy.motivo_sem_info(e)}
     res = resolver(info, ident)
     brief = info.get("PlenioSongBrief", {}).get("input", {}).get("required", {}).get("template", [None, {}])

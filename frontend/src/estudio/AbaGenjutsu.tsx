@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe } from './comum'
 
 // Genjutsu: recast a video with a new cast, place or style while its motion,
 // camera and timing stay. Models (backend genjutsu.py):
@@ -55,7 +55,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   const instalado = useInstalado()
   const [video, setVideo] = useState<Referencia | null>(null)
   const [refs, setRefs] = useState<(Referencia | null)[]>([])
-  const [texto, setTexto] = useState('')
+  const [texto, setTexto] = useLembrado('genjutsu.texto', '')
   const [controle, setControle] = useState('pose')
   // MiniMax H3 Character Swap
   const [alvo, setAlvo] = useState('person')
@@ -127,7 +127,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
         setEtapa('Redrawing the first frame…')
         const r = await fetch('/api/genjutsu/quadro', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ video: `entrada:${video.nome}` }) })
-        if (!r.ok) throw new Error((await r.json()).detail ?? 'Could not read the video.')
+        if (!r.ok) throw new Error(textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not read the video.'))
         const { nome } = await r.json()
         const quem = imagens.length > 1
           ? 'the main character from image 2, placed in the setting of image 3'

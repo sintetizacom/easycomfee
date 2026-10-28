@@ -3,6 +3,7 @@
 // downloads and builds the new version, and this page reloads by itself when
 // the studio is back.
 import { useEffect, useState } from 'react'
+import { textoDoDetalhe } from './comum'
 
 type Estado = { disponivel: boolean; novos: number }
 
@@ -23,7 +24,7 @@ export default function BotaoAtualizar() {
     setFase('atualizando')
     const r = await fetch('/api/atualizacao', { method: 'POST' }).catch(() => null)
     if (!r?.ok) {
-      setErro(r ? ((await r.json().catch(() => ({}))).detail ?? 'Could not update.') : 'Could not reach the studio.')
+      setErro(r ? textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not update.') : 'Could not reach the studio.')
       setFase('erro')
       return
     }
