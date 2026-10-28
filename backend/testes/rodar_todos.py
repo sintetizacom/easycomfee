@@ -20,6 +20,12 @@ def main():
     # so tem testes no formato do pytest (tmp_path, monkeypatch) e, rodados
     # como script, davam ModuleNotFoundError ou passavam sem testar nada.
     print("\n== testes puros (pytest) ==", flush=True)
+    import importlib.util
+    if importlib.util.find_spec("pytest") is None:
+        # A instalacao do app nao traz o pytest (requirements.txt e so o que o app usa).
+        print("pytest nao esta instalado. Rode, na pasta backend:\n"
+              "    .venv\\Scripts\\python -m pip install -r requirements-dev.txt")
+        return 1
     puros = subprocess.run([sys.executable, "-m", "pytest", str(pasta), "-q",
                             "-p", "no:cacheprovider"], cwd=pasta.parent, check=False)
     falhas = ["testes puros (pytest)"] if puros.returncode else []

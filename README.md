@@ -153,7 +153,7 @@ To show ComfyUI inside the **Advanced** tab, start ComfyUI with `--enable-cors-h
 - **`catalogo/nos.json`**: custom node packs, pinned to registry versions or git commits.
 - **`frontend/`**: React and TypeScript (Vite); the studio is in `src/estudio/`.
 
-Run the tests with `cd backend && .venv/Scripts/python -m pytest testes`.
+Run the tests with `cd backend && .venv/Scripts/python -m pip install -r requirements-dev.txt && .venv/Scripts/python -m pytest testes` (the first part installs pytest, once).
 
 ## License
 
