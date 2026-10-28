@@ -105,7 +105,7 @@ install.bat
 }
 ```
 
-Start ComfyUI, then run `start.bat`. The studio opens at <http://127.0.0.1:8600>. Open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
+`install.bat` also puts an **EasyComfee** shortcut with the app icon on your Desktop and in the Start menu (run `criar-atalho.bat` to recreate it). Start ComfyUI, then open the shortcut (or run `start.bat`). The studio opens at <http://127.0.0.1:8600>. Open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
 
 ### Updating
 

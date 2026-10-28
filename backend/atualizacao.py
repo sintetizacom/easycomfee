@@ -80,6 +80,8 @@ call npm ci --no-audit --no-fund || (popd & goto erro)
 call npm run build || (popd & goto erro)
 popd
 echo.
+REM Atalho com o icone da marca (cria ou atualiza; quem instalou antes dele ganha agora).
+call "%~dp0criar-atalho.bat" >nul 2>nul
 echo Done. Starting EasyComfee...
 REM O app volta numa janela minimizada (fechar ela desliga o estudio) e esta
 REM janela se fecha. Caminho completo: depois do npm, "start.bat" sozinho nao e encontrado.

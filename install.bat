@@ -30,4 +30,5 @@ if not exist config.json (
   echo Created config.json. Open it and set "comfy_dir" to your ComfyUI folder.
 )
 echo.
-echo Done. Run start.bat
+call "%~dp0criar-atalho.bat"
+echo Done. Open EasyComfee from the shortcut on your Desktop (or run start.bat)

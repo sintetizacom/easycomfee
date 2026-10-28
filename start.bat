@@ -1,6 +1,7 @@
 @echo off
 REM Starts the studio and opens it in the browser. ComfyUI must already be running.
 setlocal
+title EasyComfee
 cd /d "%~dp0"
 if not exist backend\.venv (echo Run install.bat first. & exit /b 1)
 for /f %%p in ('backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); import config; print(config.APP_PORTA)"') do set PORT=%%p
