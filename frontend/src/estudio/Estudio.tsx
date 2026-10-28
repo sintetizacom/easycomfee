@@ -7,6 +7,7 @@ import TelaModelos from '../TelaModelos'
 import AbaApps from './AbaApps'
 import AbaAssets from './AbaAssets'
 import BotaoAtualizar from './BotaoAtualizar'
+import MedidorRecursos from './MedidorRecursos'
 import AbaCinema from './AbaCinema'
 import AbaGenjutsu from './AbaGenjutsu'
 import AbaImagem from './AbaImagem'
@@ -126,7 +127,8 @@ export default function Estudio() {
         <div className="hf-direita">
           {ativa && <PainelAndamento key={ativa.id} tarefa={ativa}
             naFila={tarefas.filter((t) => t.estado === 'na_fila' && t.id !== ativa.id).length} />}
-<BotaoAtualizar />
+<MedidorRecursos />
+          <BotaoAtualizar />
           <PainelConta temChave={temChave} linkRecarga={linkRecarga} abrirConfig={() => setVerModelos('api')} />
           <button className="hf-botao-modelos" onClick={() => setVerModelos('locais')}>Config Models</button>
         </div>

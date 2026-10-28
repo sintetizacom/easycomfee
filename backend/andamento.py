@@ -9,11 +9,29 @@ import time
 import httpx
 
 ESTADO = {"coletado_em": None, "motor_respondendo": None,
-          "gpu": None, "ram": None, "executando": 0, "na_fila": 0}
+          "gpu": None, "ram": None, "cpu_pct": None, "executando": 0, "na_fila": 0}
+
+
+_CPU_ANTES: tuple[int, int] | None = None
+
+
+def _cpu_pct() -> float | None:
+    """Uso da CPU desde a ultima leitura, pelo GetSystemTimes do Windows (sem psutil)."""
+    global _CPU_ANTES
+    ocioso, nucleo, usuario = (ctypes.c_ulonglong() for _ in range(3))
+    if not ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(ocioso), ctypes.byref(nucleo), ctypes.byref(usuario)):
+        return None
+    total, livre = nucleo.value + usuario.value, ocioso.value  # o tempo de nucleo ja inclui o ocioso
+    antes, _CPU_ANTES = _CPU_ANTES, (total, livre)
+    if not antes or total == antes[0]:
+        return None
+    return round(100 * (1 - (livre - antes[1]) / (total - antes[0])), 1)
 
 
 def recursos():
-    resultado = {"gpu": None, "ram": None}
+    resultado = {"gpu": None, "ram": None, "cpu_pct": None}
+    if sys.platform == "win32":
+        resultado["cpu_pct"] = _cpu_pct()
     if sys.platform == "win32":
         class Memoria(ctypes.Structure):
             _fields_ = [("length", ctypes.c_ulong), ("load", ctypes.c_ulong)] + [
@@ -57,4 +75,5 @@ async def vigiar(ao_fila):
             except (httpx.HTTPError, ValueError):
                 pass
             ESTADO = retrato
-            await asyncio.sleep(5)
+            # 2 s: o medidor de recursos da barra de cima le daqui.
+            await asyncio.sleep(2)

@@ -717,3 +717,13 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 .hf-look:hover { border-color: #888095; }
 .hf-look[data-ativo='true'] { border-color: var(--hf-neon); box-shadow: 0 0 0 1px var(--hf-neon) inset; }
 .hf-look[data-ativo='true'] span:last-child { color: var(--hf-neon); }
+/* Medidor de recursos (MedidorRecursos.tsx): RAM e VRAM com barrinhas na barra de cima. */
+.hf-recursos { display: flex; gap: 12px; align-items: center; padding: 6px 12px; border: 1px solid var(--hf-linha); border-radius: 999px;
+  background: #241B2C; font-size: 11.5px; color: var(--hf-apagado); white-space: nowrap; cursor: default; }
+.hf-rec-item { display: inline-flex; align-items: center; gap: 6px; }
+.hf-rec-item b { color: var(--hf-texto); font-weight: 700; letter-spacing: .04em; }
+.hf-rec-barra { width: 42px; height: 5px; border-radius: 3px; background: #382D42; overflow: hidden; }
+.hf-rec-barra i { display: block; height: 100%; background: var(--hf-neon); transition: width .4s; }
+.hf-rec-item[data-nivel='medio'] .hf-rec-barra i { background: #F5A33C; }
+.hf-rec-item[data-nivel='alto'] .hf-rec-barra i { background: #F0605A; }
+@media (max-width: 1100px) { .hf-recursos { display: none; } }
