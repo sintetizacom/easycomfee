@@ -327,3 +327,18 @@ def test_seed_dos_videos_de_api_cabe_no_limite_dos_nos():
         for no in g.values():
             if "seed" in no["inputs"]:
                 assert 0 <= no["inputs"]["seed"] <= 2147483647, prov
+
+
+def teste_kling_omni_recebe_video_com_720_px(tmp_path):
+    # Teste de 29/10/2026: o Kling 3.0 Omni recusou um video do Lip Sync (1280x704).
+    import subprocess
+    import genjutsu
+    import miniaturas
+    origem = tmp_path / "v.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=1280x704:rate=24:duration=1",
+                    "-pix_fmt", "yuv420p", str(origem)], check=True)
+    d = miniaturas.dados_do_video(genjutsu.video_minimo(str(origem), 1280, 704))
+    assert (d["largura"], d["altura"]) == (1310, 720)
+    assert genjutsu.video_minimo(str(origem), 1280, 720) is None  # ja serve: nao mexe
+    em_pe = miniaturas.dados_do_video(genjutsu.video_minimo(str(origem), 704, 1280))
+    assert (em_pe["largura"], em_pe["altura"]) == (720, 1310)

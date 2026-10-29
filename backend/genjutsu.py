@@ -65,6 +65,26 @@ def video_wan(caminho: str) -> bytes:
         return saida.read_bytes()
 
 
+# O Kling 3.0 Omni recusa video com menos de 720 px ("Video height must be at least
+# 720px, got 704px"; teste de 29/10/2026), e os videos do proprio app (LTX, Lip Sync)
+# saem com 704. Amplia so o que falta, mantendo a proporcao.
+KLING_MINIMO = 720
+
+
+def video_minimo(caminho: str, largura: int, altura: int, minimo: int = KLING_MINIMO) -> bytes | None:
+    """O video com o lado menor em `minimo` px, ou None se ja tem isso."""
+    menor = min(largura, altura)
+    if not menor or menor >= minimo:
+        return None
+    escala = minimo / menor
+    larg, alt = (max(minimo, -(-round(largura * escala) // 2) * 2), max(minimo, -(-round(altura * escala) // 2) * 2))
+    with tempfile.TemporaryDirectory() as pasta:
+        saida = pathlib.Path(pasta) / "kling.mp4"
+        _ffmpeg("-i", caminho, "-vf", f"scale={larg}:{alt}:flags=lanczos",
+                "-c:v", "libx264", "-crf", "14", "-c:a", "aac", str(saida))
+        return saida.read_bytes()
+
+
 def tamanho_wan(largura: int, altura: int) -> tuple[int, int]:
     """832x480 deitado, 480x832 em pe, 640x640 quadrado (multiplos de 16)."""
     r = largura / max(1, altura)

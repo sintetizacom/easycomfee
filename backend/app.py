@@ -752,6 +752,11 @@ async def montar(tarefa: Tarefa):
                                           turbo=p.turbo_genjutsu, com_som=com_som, local=not comfy.na_nuvem())
         dados = await asyncio.to_thread(pathlib.Path(caminho).read_bytes)
         d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
+        if p.modelo_genjutsu == "kling_omni":
+            maior = await asyncio.to_thread(genjutsu.video_minimo, caminho, d["largura"] or 0, d["altura"] or 0)
+            if maior:
+                dados, sufixo = maior, ".mp4"
+                d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
         entrada = await comfy.enviar_imagem(f"genjutsu_{uuid.uuid4().hex[:12]}{sufixo}", dados)
         larg, alt = d["largura"] or 16, d["altura"] or 9
         proporcao = "16:9" if larg / alt > 1.2 else "9:16" if larg / alt < 0.83 else "1:1"
