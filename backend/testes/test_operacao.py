@@ -33,6 +33,17 @@ async def acesso_local():
         r = await c.post("/api/gerar", json=pedido,
                          headers={"Host": "site-externo.example"})
         assert r.status_code == 403, r.text
+        # Abrir a pagina por um link de outro site (ChatGPT, 29/10/2026) e permitido;
+        # a API chamada de outro site, mesmo como navegacao, continua recusada.
+        link = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}
+        r = await c.get("/?utm_source=chatgpt.com", headers=link)
+        assert r.status_code != 403, r.text
+        r = await c.get("/api/tarefas", headers=link)
+        assert r.status_code == 403, r.text
+        r = await c.get("/", headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "cors"})
+        assert r.status_code == 403, r.text
+        r = await c.get("/", headers={**link, "Host": "site-externo.example"})
+        assert r.status_code == 403, r.text
     cliente = TestClient(A.app, base_url="http://127.0.0.1:8600")
     try:
         with cliente.websocket_connect(

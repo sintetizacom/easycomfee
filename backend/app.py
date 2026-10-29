@@ -91,9 +91,16 @@ async def somente_interface_local(request: Request, proximo):
             tamanho = 0
         if tamanho > 40 * 1024 * 1024 + 64 * 1024:
             return JSONResponse({"detail": "file above 40 MB"}, status_code=413)
+    # Abrir a PAGINA por um link de outro site (ex.: um link no ChatGPT, 29/10/2026) e so
+    # navegar: o outro site nao le nada e nao dispara acao. A API e o WebSocket seguem
+    # recusando qualquer pedido vindo de outro site.
+    navegacao = (request.method in ("GET", "HEAD")
+                 and request.headers.get("sec-fetch-mode") == "navigate"
+                 and request.headers.get("sec-fetch-dest") == "document"
+                 and not request.url.path.startswith(("/api", "/ws")))
     if (host not in {"127.0.0.1", "localhost"}
             or not _origem_permitida(request.headers.get("origin"))
-            or request.headers.get("sec-fetch-site") == "cross-site"):
+            or (request.headers.get("sec-fetch-site") == "cross-site" and not navegacao)):
         return JSONResponse({"detail": "acesso local recusado"}, status_code=403)
     return await proximo(request)
 
