@@ -45,6 +45,11 @@ ESPERA_ENTRE_RELANCES = 180.0
 # que tinha acabado de relancar e o motor so subia na checagem seguinte (29/10/2026).
 _ultimo_relance: float | None = None
 
+# Instalar nos as vezes precisa do ComfyUI desligado: o pip nao troca um arquivo
+# que ele carregou (cv2.pyd do OpenCV, "WinError 5 Acesso negado"; PC de teste,
+# 29/10/2026). Enquanto a instalacao dura, o vigia nao o religa por conta propria.
+_pausa = threading.Event()
+
 # Quantas checagens seguidas com processo de pe mas ninguem atendendo na porta
 # antes de considerar o motor quebrado. Subir leva ~20 s, e com a pasta de
 # modelos grande pode passar de um minuto; agir antes disso mataria um motor
@@ -210,6 +215,8 @@ def _limpar() -> dict:
 def limpar() -> dict:
     if not GERENCIADO:
         return {"acao": "nada", "motores": [], "motivo": "motor nao gerenciado pelo app"}
+    if _pausa.is_set():
+        return {"acao": "nada", "motores": [], "motivo": "instalando nos"}
     with _mudanca:
         return _limpar()
 
@@ -290,6 +297,41 @@ def _perfil_configurado(argv, perfil):
     except (ValueError, IndexError, TypeError):
         return False
     return "--disable-dynamic-vram" not in argv and margem == 2.0 and "--disable-comfy-compiler" in argv
+
+
+def pode_religar() -> bool:
+    """O app sabe ligar este ComfyUI de novo: o daqui (lancador) ou o portatil que o
+    install.bat baixou ("comfy_iniciar"). O ComfyUI de outra pessoa nunca e desligado."""
+    return GERENCIADO or str(config._valor("comfy_iniciar")).lower() in ("true", "1")
+
+
+# A janela "ComfyUI" do iniciar_comfy.py: se so o python morresse, ela ficaria
+# parada no aviso de erro esperando uma tecla.
+_JANELA = r"""
+Get-CimInstance Win32_Process -Filter "Name='cmd.exe'" |
+  Where-Object { $_.CommandLine -like '*main.py*' -and $_.CommandLine -like '*PORTA*' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+"""
+
+
+def desligar() -> None:
+    """Fecha o ComfyUI principal (e a janela dele). Quem chama confere antes que
+    pode_religar() e que nada esta gerando."""
+    with _mudanca:
+        _powershell(_JANELA.replace("PORTA", str(PORTA)))
+        _encerrar(inspecionar().get("motores") or [])
+    limite = time.monotonic() + 30
+    while _responde() and time.monotonic() < limite:
+        time.sleep(1)
+    time.sleep(2)  # o Windows solta os arquivos um instante depois do fim do processo
+
+
+def ligar() -> bool:
+    if GERENCIADO:
+        return _relancar(forcar=True)
+    import iniciar_comfy
+    iniciar_comfy.main()
+    return True
 
 
 def _frase(r: dict) -> str:

@@ -2761,7 +2761,9 @@ async def nos_extras():
 async def instalar_nos(pedido: PedidoNos):
     import instalador_nos
     try:
-        return instalador_nos.iniciar(pedido.pacote)
+        # Com geracao em andamento o instalador nao desliga o ComfyUI (nem para religar).
+        return instalador_nos.iniciar(pedido.pacote, ocupado=lambda: any(
+            t.estado in ("na_fila", "preparando", "submetendo", "executando") for t in TAREFAS.values()))
     except KeyError:
         raise HTTPException(404, "Unknown package.")
     except RuntimeError as e:

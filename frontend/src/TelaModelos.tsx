@@ -44,7 +44,7 @@ const OPCOES_RAM = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256]
 const redondo = (v: number, opcoes: number[]) =>
   v ? opcoes.reduce((m, o) => (Math.abs(o - v) < Math.abs(m - v) ? o : m)) : 0
 
-type Nos = { ativo: boolean; atual: string | null; feitos: string[]; erros: string[]; reiniciar: boolean }
+type Nos = { ativo: boolean; atual: string | null; feitos: string[]; erros: string[]; reiniciar: boolean; religado?: boolean }
 
 const SELOS: Record<string, { texto: string; classe: string }> = {
   bem: { texto: 'Runs well here', classe: 'bem' },
@@ -320,6 +320,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         {aviso && <p className="mq-aviso" role="status">{aviso}</p>}
         {nos?.ativo && <p className="mq-aviso">Installing ComfyUI nodes: {nos.atual}…</p>}
         {nos && !nos.ativo && nos.erros.length > 0 && <p className="mq-aviso erro">Node errors: {nos.erros.join('; ')}</p>}
+        {nos && !nos.ativo && nos.religado && <p className="mq-aviso" role="status">New nodes installed ({nos.feitos.join(', ')}). ComfyUI was restarted to load them; it takes a minute or two to come back.</p>}
         {nos && !nos.ativo && nos.reiniciar && <p className="mq-aviso">New nodes installed ({nos.feitos.join(', ')}). Restart ComfyUI to load them.</p>}
 
         {perfil && !perfil.so_nuvem && precisaToken && (
