@@ -71,6 +71,9 @@ echo.
 echo Downloading the new version...
 REM Rede instavel (WinError 10054, "connection reset"): tenta de novo antes de desistir.
 REM Sem nada novo, o git pull so diz "Already up to date": rodar este .bat de novo termina o que faltou.
+REM Arquivos do app editados a mao (ou por outro programa) travam o git pull. Eles ficam
+REM guardados no "git stash" (nada se perde: "git stash pop" traz de volta) e a versao nova entra.
+git diff --quiet HEAD -- || (echo Saving your local edits to the app files with "git stash"... & git stash push -q -m "EasyComfee: local edits before update" || goto erro)
 set N=0
 :pull
 git pull --ff-only && goto pip
