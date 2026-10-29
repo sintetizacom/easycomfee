@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLembrado } from './estudio/comum'
 import {
   apiPacotes, type Detectado, type Pacote, type PerfilMaquina, type ProgressoInstalacao,
 } from './apiPacotes'
@@ -182,6 +183,8 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
   topoLocais?: ReactNode
 }) {
   const [aba, setAba] = useState<'api' | 'locais'>(conta ? abaInicial : 'locais')
+  // Ligado: some da lista o que nao roda nesta placa (o que ja esta instalado fica).
+  const [soQueRodam, setSoQueRodam] = useLembrado('modelos.so_que_rodam', false)
   const [pacotes, setPacotes] = useState<Pacote[] | null>(null)
   const [perfil, setPerfil] = useState<PerfilMaquina | null>(null)
   const [motor, setMotor] = useState(true)
@@ -342,7 +345,15 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
           </section>
         )}
 
-        {perfil && pacotes?.map((p) => {
+        {perfil && !perfil.so_nuvem && pacotes && (
+          <label className="mq-filtro">
+            <input type="checkbox" checked={soQueRodam} onChange={(e) => setSoQueRodam(e.target.checked)} />
+            Only show models that run on my computer
+            {soQueRodam && <small> ({pacotes.filter((p) => p.nesta_maquina.selo === 'nao_roda' && p.pronto !== true).length} hidden)</small>}
+          </label>
+        )}
+
+        {perfil && pacotes?.filter((p) => !soQueRodam || p.nesta_maquina.selo !== 'nao_roda' || p.pronto === true).map((p) => {
           const baixando = !!prog?.ativo && prog.pacote === p.id
           const avaliacao = p.nesta_maquina
           const selo = SELOS[avaliacao.selo]

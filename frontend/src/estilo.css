@@ -1859,6 +1859,9 @@ button.mini { height: 30px; }
 .mq-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
 .mq-sub { margin: 4px 0 0; font-size: 13px; color: #9a9a9a; line-height: 1.45; }
 .mq-sub a, .mq-aviso a, .mq-estado a { color: var(--neon); }
+.mq-filtro { display: flex; align-items: center; gap: 8px; margin: 4px 0 12px; font-size: 14px; cursor: pointer; }
+.mq-filtro input { width: 16px; height: 16px; accent-color: var(--neon); }
+.mq-filtro small { color: #9a9a9a; }
 .mq-rotulo { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8a8a; }
 .mq-cartao, .mq-pacote { background: var(--cartao); border: 1px solid var(--linha); border-radius: 14px; padding: 16px; margin-top: 12px; }
 .mq-resumo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
