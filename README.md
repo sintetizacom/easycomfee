@@ -22,6 +22,24 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 | **Cinema Studio** | **Music** |
 | ![Cinema Studio tab](docs/galeria/tela-cinema.png) | ![Music tab](docs/galeria/tela-music.png) |
 
+### Runs on the GPU you have
+
+EasyComfee was installed and tested on three ordinary PCs, including two 8 GB cards:
+
+| CPU | GPU | RAM |
+|---|---|---|
+| Intel Core i9, 12th gen | RTX 5070 Ti · 16 GB | 64 GB |
+| Intel Core i5, 12th gen | RTX 3060 Ti · 8 GB | 16 GB |
+| Intel Xeon E5-2680 v4 | RTX 3050 · 8 GB | 64 GB |
+
+Times on the RTX 5070 Ti (16 GB), one run each including model loading:
+
+| Image · Krea 2 Turbo | Video · LTX 2.5, 3 s, 480p, with sound | Voice · OmniVoice, 3 s | Music · ACE-Step 1.5, 20 s | Lip Sync · LTX 2.3, 3 s |
+|---|---|---|---|---|
+| 40 s | 1 min 41 s | 4 s | 20 s | about 6 min |
+
+On smaller cards, **Config Models** shows which packages run well on that GPU and offers light ones (SD 1.5, SDXL, LTX-Video 2B, Wan); anything that doesn't fit can run on Comfy Cloud from the same menu.
+
 ---
 
 ## What it does
