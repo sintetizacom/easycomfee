@@ -8,6 +8,7 @@ import AbaApps from './AbaApps'
 import AbaAssets from './AbaAssets'
 import BotaoAtualizar from './BotaoAtualizar'
 import MedidorRecursos from './MedidorRecursos'
+import AvisoComfy from './AvisoComfy'
 import MenuEstudios, { ESTUDIOS } from './MenuEstudios'
 import AbaCinema from './AbaCinema'
 import AbaGenjutsu from './AbaGenjutsu'
@@ -218,6 +219,7 @@ export default function Estudio() {
           <button className="hf-botao-modelos" onClick={() => setVerModelos('locais')}>Config Models</button>
         </div>
       </header>
+      <AvisoComfy />
 
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
         <ProtegeAba key={aba}>

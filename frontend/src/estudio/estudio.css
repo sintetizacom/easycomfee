@@ -803,3 +803,8 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
   .hf-botao-modelos { white-space: nowrap; padding: 6px 10px; font-size: 13px; }
   .hf-linha-dir b { white-space: normal; overflow: visible; }
 }
+/* Faixa "ComfyUI isn't running" (AvisoComfy.tsx), logo abaixo da barra de cima. */
+.hf-aviso-comfy { position: sticky; top: 70px; z-index: 19; margin: 0; padding: 10px 24px; background: #3A2A12; color: #F4F0E8;
+  border-bottom: 1px solid #6B4A1C; font-size: 13.5px; line-height: 1.45; }
+.hf-aviso-comfy b { color: #F5A33C; }
+.hf-aviso-comfy code { background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
