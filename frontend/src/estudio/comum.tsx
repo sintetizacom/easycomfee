@@ -443,26 +443,37 @@ export function mensagem(e: unknown): string {
   try { return textoDoDetalhe(JSON.parse(bruto).detail, bruto) } catch { return bruto }
 }
 
-export type Estimativa = { tipo: 'gratis' | 'api' | 'gpu' | 'desconhecido'; min?: number; max?: number; usd?: number }
+// 'carregando' e so da tela: o preco do pedido atual ainda nao chegou.
+/** Mesmo limite do servidor (PedidoGeracao.prompt). */
+export const MAX_PROMPT = 12000
+
+export type Estimativa = { tipo: 'gratis' | 'api' | 'gpu' | 'desconhecido' | 'carregando'; min?: number; max?: number; usd?: number }
 
 /** Estimated cost of a request, asked to the backend (no generation happens).
  *  API models use Comfy's own price formula for each node; open models on
  *  Comfy Cloud are GPU time; local runs are free. */
 export function useCusto(pedido: Record<string, unknown> | null) {
-  const [est, setEst] = useState<Estimativa | null>(null)
+  // O preco guarda o pedido a que pertence. Antes o botao mostrava o preco do modelo
+  // anterior ate a resposta chegar, e uma resposta antiga que chegasse depois da nova
+  // ficava na tela (ex.: Flux 2 Klein local com "$0.03"; varredura de 29/10/2026).
+  const [est, setEst] = useState<{ chave: string; est: Estimativa | null } | null>(null)
   // O motor entra na chave: "local:klein" e "nuvem:klein" mandam o mesmo pedido, e
   // sem isto o botao seguia dizendo "Free" com a nuvem escolhida (27/10/2026).
   const { naNuvem } = useContext(MotorCtx)
-  const chave = pedido ? JSON.stringify(pedido) : ''
+  const chave = pedido ? `${naNuvem}|${JSON.stringify(pedido)}` : ''
   useEffect(() => {
-    if (!chave) { setEst(null); return }
+    if (!chave) return
+    let atual = true
     const t = setTimeout(() => {
-      fetch('/api/estimar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: chave })
-        .then((r) => r.json()).then(setEst).catch(() => setEst(null))
+      fetch('/api/estimar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: chave.slice(chave.indexOf('|') + 1) })
+        .then((r) => r.json()).then((e) => { if (atual) setEst({ chave, est: e }) })
+        .catch(() => { if (atual) setEst({ chave, est: null }) })
     }, 350)
-    return () => clearTimeout(t)
-  }, [chave, naNuvem])
-  return est
+    return () => { atual = false; clearTimeout(t) }
+  }, [chave])
+  if (!chave) return null
+  return est?.chave === chave ? est.est : { tipo: 'carregando' } as Estimativa
 }
 
 const usd = (v: number) => (v < 0.01 ? '<$0.01' : `$${v.toFixed(2)}`)
@@ -478,7 +489,11 @@ export function vezes(est: Estimativa | null, n: number): Estimativa | null {
 
 export function rotuloCusto(est: Estimativa | null): string {
   if (!est) return ''
+  if (est.tipo === 'carregando') return '…'
   if (est.tipo === 'gratis') return 'Free'
+  // Modelo de API sem tabela de preco na Comfy (ex.: Krea 3, Luma UNI-1): o botao ficava
+  // so "Generate ✦" e parecia de graca.
+  if (est.tipo === 'desconhecido') return 'Uses credits'
   if (est.tipo === 'gpu' && est.usd !== undefined) return `~${usd(est.usd)}`
   if (est.tipo === 'api' && est.min !== undefined) {
     return est.max !== undefined && est.max > est.min ? `${usd(est.min)}–${usd(est.max)}` : usd(est.min)
@@ -493,7 +508,9 @@ export function BotaoGerar({ rotulo = 'Generate ✦', est, desligado, aoClicar }
   const custo = rotuloCusto(est)
   const dica = est?.tipo === 'gpu' ? 'Estimated Comfy Cloud GPU time for an open model'
     : est?.tipo === 'api' ? 'Price of the API model, from the Comfy pricing table'
-    : est?.tipo === 'gratis' ? 'Runs on your own GPU' : undefined
+    : est?.tipo === 'gratis' ? 'Runs on your own GPU'
+    : est?.tipo === 'desconhecido' ? 'Comfy has not published a price for this model: it uses your Comfy credits, check your balance after'
+    : undefined
   return (
     <button className="hf-gerar" disabled={desligado} onClick={aoClicar} title={dica}>
       {rotulo}

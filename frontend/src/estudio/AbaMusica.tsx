@@ -3,7 +3,7 @@ import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha } from './motor'
 import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, textoDoDetalhe } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
@@ -166,7 +166,7 @@ export default function AbaMusica() {
         <div className="hf-mu-corpo" data-letra={!cfg?.plenio && !!cfg?.letra}>
           <section className="hf-vz-coluna">
             <span className="hf-grupo-rotulo">Style</span>
-            <textarea aria-label="Style and mood" className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
+            <textarea aria-label="Style and mood" maxLength={MAX_PROMPT} className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
               placeholder="Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive" />
             <div className="hf-vz-exemplos">
               {ESTILOS.map((e) => (

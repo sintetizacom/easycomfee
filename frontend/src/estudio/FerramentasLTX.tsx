@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { AvisoInstalar, useFaltaInstalar } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, TIPO_GALERIA, arquivos, mensagem, referenciaDe, useCusto, useTarefas, Galeria, quadroChave } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, TIPO_GALERIA, arquivos, mensagem, referenciaDe, useCusto, useTarefas, Galeria, quadroChave, MAX_PROMPT } from './comum'
 
 // Telas proprias do LTX Studio (#ltx/<ferramenta>): Keyframes com linha do
 // tempo, Ingredients e Latent upscale. Antes as duas ultimas so existiam no
@@ -140,7 +140,7 @@ function Keyframes() {
           <p className="hf-dica">Neighbouring images should share a similar point of view; very different ones blend into each other.</p>
         </div>
 
-        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder="What happens between the images: motion, camera, sound…" />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={['16:9', '9:16', '1:1'].map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
@@ -220,7 +220,7 @@ function Ingredientes() {
           )}
         </div>
         <p className="hf-dica">Name each image by its place on the sheet ({lado1} to {lado2}), in English — e.g. “the woman {doLado1} of the reference sheet walks along the street shown {noLado2} of the sheet”. Writing “image 1” makes the model animate the sheet itself.</p>
-        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={`the man ${doLado1} of the reference sheet rides the red bike shown ${noLado2} of the sheet…`} />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={['16:9', '9:16'].map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />

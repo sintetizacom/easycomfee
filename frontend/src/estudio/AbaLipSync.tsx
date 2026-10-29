@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 import { api, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe, MAX_PROMPT } from './comum'
 
 // Lip Sync: a portrait and a voice track become a talking video. LTX 2.3 is the
 // open-weights default (up to 30 s); with "Open weights only" off, the Comfy
@@ -138,7 +138,7 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
 
           <section className="hf-ls-cartao hf-ls-cena">
             <header><b>3</b> Describe the scene <small>optional</small></header>
-            <textarea aria-label="Scene description" value={cena} onChange={(e) => setCena(e.target.value)} rows={4}
+            <textarea aria-label="Scene description" maxLength={MAX_PROMPT} value={cena} onChange={(e) => setCena(e.target.value)} rows={4}
               placeholder="e.g. a news anchor in a bright studio, speaking with confidence" />
             <p className="hf-dica">How the person behaves while talking: mood, setting, gestures.</p>
           </section>

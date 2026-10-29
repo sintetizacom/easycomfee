@@ -4,7 +4,7 @@ import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Ref
 import LayoutIdeogram from './LayoutIdeogram'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio, useLembrado } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio, useLembrado, MAX_PROMPT } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -230,7 +230,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
             )}
           </div>
         )}
-        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={comRefs && lookAtual ? `Optional: an extra touch for ${lookAtual.rotulo}, e.g. "smiling" or "blue background"`
             : comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
             : faltaFoto ? 'Add your photo in the box above (+ Character), then press Generate. Optional: extra direction here.'

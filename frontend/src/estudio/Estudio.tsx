@@ -50,7 +50,11 @@ const ABAS: { id: Aba; rotulo: string; breve?: boolean }[] = [
 
 function lerAba(): Aba {
   const h = location.hash.replace('#', '').split('/')[0] as Aba
-  return ABAS.some((a) => a.id === h) ? h : 'image'
+  if (ABAS.some((a) => a.id === h)) return h
+  // Endereco que nao existe (ex.: #voz): a tela mostra a Image e o endereco passa a
+  // dizer isso. Antes ficava o endereco errado na barra (varredura de 29/10/2026).
+  if (location.hash) history.replaceState(history.state, '', '#image')
+  return 'image'
 }
 
 /** Barra de abas que rola de lado: esmaece a borda onde ha mais abas e traz

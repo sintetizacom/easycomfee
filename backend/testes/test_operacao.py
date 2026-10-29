@@ -192,3 +192,12 @@ def test_rotas_get_nao_se_repetem():
     from collections import Counter
     rotas = Counter((r.path, m) for r in A.app.routes for m in getattr(r, "methods", ()) or ())
     assert not [k for k, n in rotas.items() if n > 1]
+
+
+def teste_prompt_tem_limite_de_12000_caracteres():
+    # Varredura de 29/10/2026: 30.000 caracteres passavam (e ganhavam preco).
+    import pydantic
+    import pytest
+    assert len(A.PedidoGeracao(modelo="krea", prompt="x" * 12000).prompt) == 12000
+    with pytest.raises(pydantic.ValidationError):
+        A.PedidoGeracao(modelo="krea", prompt="x" * 12001)

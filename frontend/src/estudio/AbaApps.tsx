@@ -1,7 +1,7 @@
 import { useContext, useRef, useState } from 'react'
 import { MotorCtx } from './motor'
 import { api, urlEntrada, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, MAX_PROMPT } from './comum'
 
 // VFX Apps: one card per effect, all open-weight LTX IC-LoRAs. Pick a card,
 // drop a video, press Apply. Each card id is an effect of VIDEO_TRANSFORMAR
@@ -184,7 +184,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                 restyle it in the Image tab (Flux 3 with the captured frame as the base) and drop it here. 24 frames = 1 s, counted from 1 as in Blender.</p>
             </div>
           )}
-          {!ehMapa && <textarea aria-label="Prompt" value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
+          {!ehMapa && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
             placeholder="Optional: describe what you want to see…" />}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           <div className="hf-linha-controles">

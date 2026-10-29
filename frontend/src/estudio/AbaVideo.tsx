@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
 import { api, type GeradorVideo, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, quadroChave, passoChave } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, quadroChave, passoChave, MAX_PROMPT } from './comum'
 
 // Video tab: LTX 2.5 or the open-weight MiniMax H3, plus the API generators.
 // "References" puts the people and objects of your images into the shot:
@@ -86,7 +86,8 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   // MiniMax H3 MultiRef is a paid API node, listed with the API generators.
   const leve = LEVES[motor]
   const naoInstalado = faltaInstalar(motor, !!gApi)
-  const rotuloMotor = gApi ? gApi.rotulo : leve ? leve.rotulo : motor === 'ltx' ? 'LTX 2.5' : 'MiniMax H3'
+  // O rotulo do servidor marca " (nuvem)" (app.py usa a marca); a tela e em ingles.
+  const rotuloMotor = gApi ? gApi.rotulo.replace(' (nuvem)', '') : leve ? leve.rotulo : motor === 'ltx' ? 'LTX 2.5' : 'MiniMax H3'
   const modos = gApi ? MODOS.filter((m) => gApi.modos.includes(m.id))
     : leve ? MODOS.filter((m) => leve.modos.includes(m.id))
     : motor === 'ltx' ? MODOS.filter((m) => !naNuvem || m.id !== 'referencia')
@@ -115,6 +116,15 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const ehRef = modoOk === 'referencia'
   const faltaImagem = ehChaves ? chavesOk.length < 2 : ehRef ? refsOk.length === 0
     : (modoOk !== 'texto' && !inicio) || (modoOk === 'primeiro_ultimo' && !fim)
+  // O Generate cinza so por falta de imagem nao dizia nada: com LTX 2.3, Wan 3.0 ou Runway
+  // (so Image → Video) a aba trocava de modo sozinha e ficava so o quadro vazio
+  // (varredura de 29/10/2026).
+  const soDeImagem = !modos.some((m) => m.id === 'texto')
+  const faltaQual = !faltaImagem ? ''
+    : ehChaves ? `Add at least 2 keyframe images (${chavesOk.length} added).`
+    : ehRef ? 'Add at least one reference image.'
+    : modoOk === 'primeiro_ultimo' ? (!inicio && !fim ? 'Add the first and the last frame.' : !inicio ? 'Add the first frame.' : 'Add the last frame.')
+    : `Add a start image${soDeImagem ? `: ${rotuloMotor} only makes video from an image` : ''}.`
   const motorPedido = motor
   const nomesRefs = ehRef ? refsOk.map((r) => r.nome)
     : [inicio, fim].filter((r): r is Referencia => !!r && modoOk !== 'texto').map((r) => r.nome)
@@ -226,7 +236,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
             {modoOk === 'primeiro_ultimo' && <SlotImagem rotulo="Last frame" valor={fim} aoMudar={setFim} />}
           </div>
         )}
-        <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={proporcoes.map((p) => ({ id: p, rotulo: p }))} valor={proporcaoOk} aoMudar={setProporcao} />
@@ -241,6 +251,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         {avisoModo && <p className="hf-dica" role="note">{avisoModo}</p>}
         {chavesRepetidas && <p className="hf-erro">Two keyframes are at the same second: move one of them.</p>}
         {naoInstalado && <AvisoInstalar rotulo={rotuloMotor} />}
+        {!naoInstalado && faltaQual && <p className="hf-dica" role="note">{faltaQual}</p>}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>
 

@@ -297,7 +297,9 @@ class PedidoGeracao(Pedido):
     velocidade_voz: float = Field(1.0, ge=0.5, le=2.0)
     passos_voz: int = Field(32, ge=16, le=64)
     modelo: str = "krea"
-    prompt: str
+    # Antes sem limite: 30.000 caracteres passavam e ganhavam preco, e um modelo de API
+    # recusaria so depois do envio (varredura de 29/10/2026). 12.000 e o da narracao.
+    prompt: str = Field(..., max_length=12000)
     negativo: str = ""
     proporcao: str = "1:1"
     escala: float = Field(1.0, ge=0.5, le=2.0)
