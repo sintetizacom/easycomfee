@@ -12,8 +12,29 @@ import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
+AVISO_CONTROLE = """
+WARNING: Windows Smart App Control is ON on this PC.
+It blocks the PyTorch/CUDA files that ComfyUI needs ("An Application Control policy
+has blocked this file"), and it has no exceptions, so ComfyUI cannot start locally.
+To turn it off: Windows Security > App & browser control > Smart App Control settings > Off.
+(Windows does not let you turn it back on without reinstalling. Microsoft Defender keeps working.)
+"""
+
+
+def controle_inteligente_ligado() -> bool:
+    """Smart App Control do Windows 11 ligado (1 = ligado; 0 = desligado; 2 = so avaliando)."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\CI\Policy") as chave:
+            return winreg.QueryValueEx(chave, "VerifiedAndReputablePolicyState")[0] == 1
+    except (ImportError, OSError):
+        return False
+
 
 def main() -> None:
+    # Vale para qualquer ComfyUI local, nao so o que o EasyComfee instalou.
+    if controle_inteligente_ligado():
+        print(AVISO_CONTROLE)
     try:
         cfg = json.loads((RAIZ / "config.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
@@ -35,6 +56,9 @@ def main() -> None:
                # fica aberta com o erro em vez de sumir.
                ' || (echo. & echo ComfyUI stopped with an error: read the message above. '
                '& echo If it mentions c10.dll or WinError 126, install https://aka.ms/vs/17/release/vc_redist.x64.exe '
+               # Sem ">" nem "&" no texto: dentro do cmd /c eles redirecionariam ou cortariam a linha.
+               '& echo If it says an Application Control policy blocked a file, turn off Smart App Control: '
+               '& echo Windows Security, App and browser control, Smart App Control settings, Off. '
                '& pause)')
     subprocess.Popen(f'start "ComfyUI" /min cmd /c "{comando}"', shell=True, cwd=pasta)
     print("Starting ComfyUI (minimized window \"ComfyUI\")...")
