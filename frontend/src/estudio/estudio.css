@@ -809,3 +809,7 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
 .hf-aviso-comfy b { color: #F5A33C; }
 .hf-aviso-comfy code { background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 .hf-looks-dica { color: var(--hf-apagado); font-size: 11.5px; }
+
+/* ComfyUI ainda subindo: faixa discreta logo abaixo do topo (some sozinha). */
+.hf-aviso-partida { margin: 0; padding: 8px 16px; text-align: center; font-size: 13px; color: var(--hf-texto);
+  background: #2A2133; border-bottom: 1px solid var(--hf-linha); }

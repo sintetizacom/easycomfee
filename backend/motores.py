@@ -40,7 +40,10 @@ _mudanca = threading.Lock()
 # entre tentativas e maior que o tempo de subida (~20 s), entao uma partida
 # sadia nunca cai aqui.
 ESPERA_ENTRE_RELANCES = 180.0
-_ultimo_relance = 0.0
+# None = ainda nao relancou. Era 0.0: no Windows o time.monotonic() conta desde
+# que o PC ligou, entao nos 3 primeiros minutos apos ligar o PC a trava achava
+# que tinha acabado de relancar e o motor so subia na checagem seguinte (29/10/2026).
+_ultimo_relance: float | None = None
 
 # Quantas checagens seguidas com processo de pe mas ninguem atendendo na porta
 # antes de considerar o motor quebrado. Subir leva ~20 s, e com a pasta de
@@ -114,7 +117,8 @@ def _relancar(forcar=False) -> bool:
     global _ultimo_relance
     if not RELANCADOR.exists():
         return False
-    if not forcar and time.monotonic() - _ultimo_relance < ESPERA_ENTRE_RELANCES:
+    if (not forcar and _ultimo_relance is not None
+            and time.monotonic() - _ultimo_relance < ESPERA_ENTRE_RELANCES):
         return False
     _ultimo_relance = time.monotonic()
     # ESPERAR o wscript terminar, e nao só disparar. Ele sai em milissegundos
@@ -288,6 +292,20 @@ def _perfil_configurado(argv, perfil):
     return "--disable-dynamic-vram" not in argv and margem == 2.0 and "--disable-comfy-compiler" in argv
 
 
+def _frase(r: dict) -> str:
+    """O que o vigia fez, em frase legivel na janela do servidor (antes saia
+    "sem_motor: []", que parecia erro mesmo quando era so o motor subindo)."""
+    pids = ", ".join(str(p) for p in r.get("encerrados") or [])
+    return {
+        "relancou": "ComfyUI was not running: starting it (it takes a minute or two to load).",
+        "sem_motor": "ComfyUI is not running and could not be started now; trying again in a minute.",
+        "aguardando_subir": f"ComfyUI is loading; waiting for it to answer (check {r.get('checagens', '?')}).",
+        "encerrou_intrusos": f"Closed a duplicate ComfyUI (process {pids}).",
+        "reiniciou": f"ComfyUI stopped answering: restarted it (closed {pids}).",
+        "encerrou_tudo": f"ComfyUI stopped answering: closed it ({pids}); it will be started again.",
+    }.get(r["acao"], f"{r['acao']} {pids}".strip())
+
+
 async def vigiar(intervalo: float = 60.0) -> None:
     """Repete a checagem em segundo plano enquanto o app estiver de pé."""
     if not GERENCIADO:
@@ -297,7 +315,7 @@ async def vigiar(intervalo: float = 60.0) -> None:
             # subprocess bloqueia; numa thread para não travar o servidor.
             r = await asyncio.to_thread(limpar)
             if r.get("acao") not in (None, "nada"):
-                print(f"[motores] {r['acao']}: {r.get('encerrados')}", flush=True)
+                print(f"[engine] {_frase(r)}", flush=True)
         except Exception as erro:
             print(f"[motores] falha na checagem: {erro}", flush=True)
         await asyncio.sleep(intervalo)

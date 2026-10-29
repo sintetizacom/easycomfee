@@ -157,22 +157,48 @@ export default function Estudio() {
     return () => window.removeEventListener('motor-trocado', ao)
   }, [])
 
+  // O catalogo de modelos. Logo depois de ligar o PC o ComfyUI ainda esta subindo e
+  // o pedido pode falhar ou vir vazio; antes a pagina nao pedia de novo e o menu de
+  // modelos ficava vazio ate recarregar. Agora tenta de novo a cada 5 s ate vir.
+  const [tentativaCatalogo, setTentativaCatalogo] = useState(0)
   useEffect(() => {
+    let vivo = true, timer: number | undefined
+    const deNovo = () => { if (vivo) timer = window.setTimeout(() => setTentativaCatalogo((n) => n + 1), 5000) }
     api.modelos().then((d) => {
+      if (!d?.modelos?.length) { deNovo(); return }
       setModelos(d.modelos); setApiImagem(d.nuvem ?? [])
       // Os de API da interface antiga (MiniMax API, Wan 3.0) + os da lista nova (Kling, Veo, Seedance, Runway, Luma).
       const extras = ((d as unknown as { video_api?: GeradorVideo[] }).video_api ?? [])
       setGeradores([...(d.video?.geradores ?? []), ...extras])
       setLipsyncApi((d as unknown as { lipsync_api?: ModeloLipSync[] }).lipsync_api ?? [])
-    }).catch(() => {})
+    }).catch(deNovo)
     fetch('/api/motor').then((r) => r.json()).then((m) => {
       setNaNuvem(m.modo === 'nuvem'); setSoAbertos(m.so_abertos !== false)
       setTemChave(!!m.chave_nuvem); setLinkRecarga(m.link_recarga)
     }).catch(() => {})
-    fetch('/api/pacotes').then((r) => r.json()).then((d) => {
+    return () => { vivo = false; clearTimeout(timer) }
+  }, [versao, recarga, tentativaCatalogo])
+
+  // Pacotes instalados. Com o ComfyUI ainda subindo (ou fora), o servidor nao sabe
+  // (pronto: null): antes isso virava "nao instalado" em tudo e o Generate desligava.
+  // Agora "nao sei" nao bloqueia nada, o topo avisa e a pergunta se repete ate saber.
+  const [motorSubindo, setMotorSubindo] = useState(false)
+  useEffect(() => {
+    let vivo = true, timer: number | undefined
+    const ler = () => fetch('/api/pacotes').then((r) => r.json()).then((d) => {
+      if (!vivo) return
       const lista: { id: string; pronto: boolean | null }[] = d.pacotes ?? d
-      setInstalados(new Set(lista.filter((p) => p.pronto).map((p) => p.id)))
-    }).catch(() => {})
+      const semSaber = lista.some((p) => p.pronto === null)
+      setMotorSubindo((antes) => {
+        // O ComfyUI acabou de responder: rele o catalogo (pedido durante a subida).
+        if (antes && !semSaber) setTentativaCatalogo((n) => n + 1)
+        return semSaber
+      })
+      setInstalados(semSaber ? undefined : new Set(lista.filter((p) => p.pronto).map((p) => p.id)))
+      if (semSaber) timer = window.setTimeout(ler, 8000)
+    }).catch(() => { if (vivo) timer = window.setTimeout(ler, 8000) })
+    ler()
+    return () => { vivo = false; clearTimeout(timer) }
   }, [versao, recarga])
 
   // A geracao em curso (local ou na nuvem) aparece no topo, com etapa e passos.
@@ -221,6 +247,9 @@ export default function Estudio() {
       </header>
       <AvisoComfy />
 
+      {motorSubindo && !naNuvem && (
+        <p className="hf-aviso-partida" role="status">ComfyUI is starting (or not running yet). It usually takes a minute or two after the PC starts; this message goes away by itself.</p>
+      )}
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
         <ProtegeAba key={aba}>
         {aba === 'image' && <AbaImagem key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} apiOcultos={soAbertos ? apiImagem : []} naNuvem={naNuvem} />}
