@@ -74,9 +74,33 @@ Open **Config Models → Local models**:
 ## Requirements
 
 - **Windows 10/11.** Linux/macOS work with the manual steps below.
-- **[ComfyUI](https://www.comfy.org/download)**, a recent release, running at `http://127.0.0.1:8188`.
-- **Python 3.11–3.13** and **Node.js 20+**, to install the studio.
 - **GPU:** from 4 GB with the light models; 16 GB and 32 GB+ of RAM for LTX 2.5. No GPU at all? Use Comfy Cloud.
+- **ComfyUI:** the one you already have (ComfyUI Desktop, the portable build or a manual install), or none: the installer can download the official portable ComfyUI for you (about 2 GB).
+- **Three free programs, installed before you download EasyComfee:**
+
+| Program | Version | Why | Download |
+|---|---|---|---|
+| **Git** | any recent | downloads EasyComfee and its updates (the **Update** button uses it) | [git-scm.com](https://git-scm.com/download/win) |
+| **Python** | **3.11, 3.12 or 3.13** (not 3.14 yet) | runs the studio | [python.org](https://www.python.org/downloads/) |
+| **Node.js** | **20 or newer** (the LTS version) | builds the interface once, during install and updates | [nodejs.org](https://nodejs.org/) |
+
+When installing Python, tick **"Add python.exe to PATH"** on the first screen. Git and Node.js are fine with the default options.
+
+**Quicker:** in Windows Terminal (or PowerShell), these three lines install all of them:
+
+```bat
+winget install --id Git.Git -e
+winget install --id Python.Python.3.12 -e
+winget install --id OpenJS.NodeJS.LTS -e
+```
+
+Then **close and reopen** the terminal. To check, each of these should print a version (`py` is the Python launcher that `install.bat` uses):
+
+```bat
+git --version
+py --version
+node --version
+```
 
 ### AMD, Mac and other GPUs
 
@@ -90,26 +114,31 @@ Local generation was built and tested on **NVIDIA RTX cards on Windows** only.
 
 ## Quick start (Windows)
 
+Open a terminal in the folder where you want EasyComfee (for example, in File Explorer open *Documents*, click the address bar, type `cmd` and press Enter), then run:
+
 ```bat
 git clone https://github.com/sintetizacom/easycomfee.git easycomfee
 cd easycomfee
 install.bat
 ```
 
-`install.bat` creates the Python environment, builds the interface and creates `config.json`. Open `config.json` and set `comfy_dir` to your ComfyUI folder (the one that contains `main.py` and `models`):
+`install.bat` does the rest:
 
-```json
-{
-  "comfy_url": "http://127.0.0.1:8188",
-  "comfy_dir": "C:/ComfyUI"
-}
-```
+1. **Finds your ComfyUI** (ComfyUI Desktop, the portable build or a manual install) and writes its folder into `config.json`. If it finds more than one, it asks which. If it finds none, it offers to download the official portable ComfyUI into the EasyComfee folder (about 2 GB, checked against Comfy's published checksum).
+2. Creates the Python environment and builds the interface.
+3. Puts an **EasyComfee** shortcut with the app icon on your Desktop and in the Start menu (run `criar-atalho.bat` to recreate it).
 
-`install.bat` also puts an **EasyComfee** shortcut with the app icon on your Desktop and in the Start menu (run `criar-atalho.bat` to recreate it). Start ComfyUI, then open the shortcut (or run `start.bat`). The studio opens at <http://127.0.0.1:8600>. Open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
+**Starting the studio.** Open the **EasyComfee** shortcut (or run `start.bat`). A black window opens: it is the studio's server, **keep it open** while you use the app (closing it closes the studio). Your browser opens <http://127.0.0.1:8600> by itself as soon as the server answers.
+
+- If EasyComfee installed ComfyUI, it starts it for you. Right after turning the PC on, ComfyUI takes a minute or two to load; a strip at the top says *ComfyUI is starting* and goes away by itself, and the model menus fill in on their own.
+- If you use your own ComfyUI, start it first, as usual.
+- **Start ComfyUI with Windows** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI while the PC starts, so it is ready when you open the studio. Off removes it; it also shows in Task Manager → Startup apps.
+
+Then open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
 
 ### Updating
 
-When a new version is on GitHub, an **Update available** button shows in the top bar. Press it: the studio closes, a window downloads the new version (`git pull`), updates the Python packages and rebuilds the interface, then the studio comes back in a minimized window and the page reloads by itself. Your Comfy key, gallery, `config.json` and downloaded models are not touched. The button refuses while something is generating.
+When a new version is on GitHub, an **Update available** button shows in the top bar (the studio checks when it opens, every 15 minutes and when you come back to its tab). Press it: the studio closes, a window downloads the new version (`git pull`), updates the Python packages and rebuilds the interface, then the studio comes back in a minimized window and the page reloads by itself. Your Comfy key, gallery, `config.json` and downloaded models are not touched. The button refuses while something is generating. Without an internet connection it says so and changes nothing; the update window also checks the connection before it touches anything, and if the connection drops halfway, double-click `atualizar.bat` in the EasyComfee folder to finish.
 
 The button needs an install made with `git clone` from GitHub. If you downloaded a .zip, update by downloading the new version, or run `git pull` and `install.bat` by hand.
 
