@@ -2544,6 +2544,8 @@ async def aplicar_atualizacao():
         raise HTTPException(409, "Wait for the current generation to finish, then update.")
     try:
         await asyncio.to_thread(atualizacao.aplicar)
+    except atualizacao.SemInternet as e:
+        raise HTTPException(503, str(e))
     except RuntimeError as e:
         raise HTTPException(400, str(e))
     atualizacao.encerrar_em(1.5)

@@ -21,6 +21,22 @@ RAIZ = config.RAIZ
 # Origem aceita alem do GitHub (so para testar o fluxo com um repositorio local).
 ORIGEM_EXTRA = config._valor("atualizar_de")
 _CACHE: dict = {"quando": 0.0, "dados": None}
+# Sem internet a resposta vale pouco: assim que a conexao volta, a novidade aparece.
+VALIDADE, VALIDADE_SEM_INTERNET = 1800, 120
+SEM_INTERNET = ("No internet connection. Connect to the internet and press Update again. "
+                "Nothing was changed.")
+
+
+class SemInternet(RuntimeError):
+    pass
+
+
+def _eh_falta_de_rede(texto: str) -> bool:
+    """O git diz de varios jeitos que nao chegou ao GitHub."""
+    t = texto.lower()
+    return any(s in t for s in ("could not resolve host", "unable to access", "failed to connect",
+                                "timed out", "connection was reset", "connection reset", "network is unreachable",
+                                "could not connect", "unable to connect", "no route to host"))
 
 
 def _git(*args: str, timeout: float = 60) -> str:
@@ -41,9 +57,10 @@ def _origem_valida(url: str) -> bool:
 def estado(forcar: bool = False) -> dict:
     """{"disponivel": bool, "novos": n, "versao": sha curto, "motivo": texto}.
     Consulta o GitHub no maximo a cada 30 min (git fetch), salvo forcar."""
-    if not forcar and _CACHE["dados"] and time.time() - _CACHE["quando"] < 1800:
+    validade = VALIDADE_SEM_INTERNET if (_CACHE["dados"] or {}).get("sem_internet") else VALIDADE
+    if not forcar and _CACHE["dados"] and time.time() - _CACHE["quando"] < validade:
         return _CACHE["dados"]
-    dados = {"disponivel": False, "novos": 0, "versao": "", "motivo": ""}
+    dados = {"disponivel": False, "novos": 0, "versao": "", "motivo": "", "sem_internet": False}
     try:
         if not (RAIZ / ".git").exists():
             dados["motivo"] = "not a git install"
@@ -54,8 +71,12 @@ def estado(forcar: bool = False) -> dict:
             _git("fetch", "--quiet", "origin", timeout=120)
             dados["novos"] = int(_git("rev-list", "--count", "HEAD..@{u}") or 0)
             dados["disponivel"] = dados["novos"] > 0
+    except subprocess.TimeoutExpired:
+        dados.update(motivo=SEM_INTERNET, sem_internet=True)
     except Exception as e:  # sem git, sem rede, sem upstream: so nao oferece
         dados["motivo"] = str(e)[:200]
+        if _eh_falta_de_rede(str(e)):
+            dados.update(motivo=SEM_INTERNET, sem_internet=True)
     _CACHE.update(quando=time.time(), dados=dados)
     return dados
 
@@ -67,6 +88,9 @@ title EasyComfee update
 echo Waiting for the studio to close...
 REM ping espera ~4 s em qualquer janela (timeout falha quando a entrada nao e um teclado).
 ping -n 5 127.0.0.1 >nul
+echo.
+echo Checking the internet connection...
+git ls-remote --heads origin >nul 2>nul || goto sem_internet
 echo.
 echo Downloading the new version...
 REM Rede instavel (WinError 10054, "connection reset"): tenta de novo antes de desistir.
@@ -108,6 +132,14 @@ REM O app volta numa janela minimizada (fechar ela desliga o estudio) e esta
 REM janela se fecha. Caminho completo: depois do npm, "start.bat" sozinho nao e encontrado.
 start "EasyComfee" /min cmd /c ""%~dp0start.bat" noopen"
 exit /b 0
+:sem_internet
+echo.
+echo No internet connection. Nothing was changed.
+echo Connect to the internet, then double-click atualizar.bat in this folder
+echo (or open EasyComfee with start.bat and press Update again).
+pause
+start "EasyComfee" /min cmd /c ""%~dp0start.bat" noopen"
+exit /b 1
 :erro
 echo.
 echo The update did not finish. Nothing of yours was deleted.
@@ -120,7 +152,10 @@ exit /b 1
 
 def aplicar() -> None:
     """Grava atualizar.bat, abre numa janela propria e encerra este servidor."""
-    if not estado(forcar=True)["disponivel"]:
+    agora = estado(forcar=True)
+    if agora["sem_internet"]:
+        raise SemInternet(SEM_INTERNET)
+    if not agora["disponivel"]:
         raise RuntimeError("no update available")
     caminho = RAIZ / "atualizar.bat"
     caminho.write_text(BAT.replace("\n", "\r\n"), encoding="ascii")
