@@ -63,7 +63,13 @@ def _procurar(raiz: pathlib.Path, fundo: int) -> list[pathlib.Path]:
 
 
 def candidatos() -> list[dict]:
-    achados = _desktop()
+    achados = []
+    # O ComfyUI que o proprio install.bat baixou (instalar_comfy.py) vem primeiro.
+    proprio = RAIZ / "ComfyUI" / "ComfyUI_windows_portable" / "ComfyUI"
+    if _e_comfy(proprio):
+        achados.append({"tipo": "ComfyUI (installed by EasyComfee)", "pasta": proprio,
+                        "url": "http://127.0.0.1:8188", "proprio": True})
+    achados += _desktop()
     casa = pathlib.Path.home()
     raizes = [(casa, 3), (casa / "Desktop", 3), (casa / "Documents", 3), (casa / "Downloads", 3)]
     raizes += [(pathlib.Path(f"{d}:\\"), 3) for d in string.ascii_uppercase if pathlib.Path(f"{d}:\\").exists()]
@@ -93,12 +99,31 @@ def _escolher(achados: list[dict]) -> dict:
             return achados[int(r) - 1]
 
 
+def _quer_instalar() -> bool:
+    print("\nComfyUI was not found on this computer. EasyComfee runs on top of it.")
+    try:
+        r = input("Install ComfyUI now, inside the EasyComfee folder? (about 2 GB download) [Y/n]: ").strip().lower()
+    except EOFError:  # sem teclado (instalacao automatica): instala
+        r = "y"
+    return r in ("", "y", "yes", "s", "sim")
+
+
 def main() -> int:
     achados = candidatos()
     if "--listar" in sys.argv:
         for a in achados:
             print(f"{a['tipo']}: {a['pasta']} ({a['url']})")
         return 0 if achados else 2
+    if not achados and _quer_instalar():
+        import instalar_comfy
+        try:
+            pasta = instalar_comfy.instalar()
+        except Exception as e:  # rede caiu, disco cheio, pacote corrompido
+            print(f"\nComfyUI could not be installed: {e}")
+            pasta = None
+        if pasta:
+            achados = [{"tipo": "ComfyUI (installed by EasyComfee)", "pasta": pasta,
+                        "url": "http://127.0.0.1:8188", "proprio": True}]
     if not achados:
         print("\nComfyUI was not found on this computer.\n"
               "EasyComfee runs on top of ComfyUI, so install it first:\n"
@@ -123,6 +148,8 @@ def main() -> int:
         return 0
     dados["comfy_dir"] = a["pasta"].as_posix()
     dados["comfy_url"] = a["url"]
+    # So o ComfyUI que o EasyComfee instalou e ligado pelo atalho; os outros sao da pessoa.
+    dados["comfy_iniciar"] = bool(a.get("proprio"))
     CONFIG.write_text(json.dumps(dados, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Found {a['tipo']} at {a['pasta']}  (saved in config.json)")
     return 0

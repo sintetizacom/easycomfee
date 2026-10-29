@@ -50,3 +50,6 @@ atualizar.bat
 
 # Receitas de nodes de cada resultado (grafos.py), geradas na maquina de cada um
 dados/grafos/
+
+# ComfyUI portatil que o install.bat baixa (instalar_comfy.py)
+/ComfyUI/
