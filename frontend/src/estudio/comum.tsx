@@ -1,6 +1,6 @@
 import { Children, Component, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { api, ouvirTarefas, referenciaDaGaleria, urlImagem, type Referencia, type Tarefa } from '../api'
-import { abrirVisualizador, reusarPrompt } from './Visualizador'
+import { abrirVisualizador, recriar, reusarPrompt } from './Visualizador'
 import { emIngles } from '../PainelAndamento'
 import { MotorCtx } from './motor'
 
@@ -224,6 +224,12 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
     const d = r.ok ? await r.json() : null
     return (d?.prompt as string | undefined) || ''
   }
+  const refazer = async () => {
+    const r = await fetch(`/api/galeria/arquivo?subpasta=${encodeURIComponent(subpasta)}&nome=${encodeURIComponent(nome)}`)
+    const d = r.ok ? await r.json() : null
+    if (d?.prompt || d?.prompt_final) recriar({ modelo: d.modelo, prompt: d.prompt || d.prompt_final, parametros: d.parametros ?? {} })
+    else avisar('No details saved')
+  }
   const copiar = async (texto: string, ok: string) => {
     try { await navigator.clipboard.writeText(texto); avisar(ok) } catch { avisar('Could not copy') }
   }
@@ -252,6 +258,7 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
       { rotulo: 'Upscale', acao: () => { location.hash = '#ltx/ampliar' } },
       { rotulo: 'Depth map', acao: () => { location.hash = '#apps/mapa_profundidade' } },
     ] : []),
+    ...(imagem ? [{ rotulo: 'Recreate (prompt + images)', acao: refazer }] : []),
     { rotulo: 'Reuse prompt', acao: async () => { const p = await prompt(); if (p) reusarPrompt(p); else avisar('No prompt saved') } },
     { rotulo: 'Copy prompt', acao: async () => { const p = await prompt(); if (p) copiar(p, 'Prompt copied'); else avisar('No prompt saved') } },
     { rotulo: 'Copy link', acao: () => copiar(new URL(url, location.href).href, 'Link copied') },

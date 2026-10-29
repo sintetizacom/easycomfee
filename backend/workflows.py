@@ -2852,10 +2852,12 @@ def ampliar_magnific(imagem, escala=2, prompt="", criatividade=0, hdr=0,
     }
 
 
-def editar_flux3(prompt, refs, seed, steps=25, cfg=3.5, prefixo="saida"):
+def editar_flux3(prompt, refs, seed, steps=25, cfg=3.5, prefixo="saida", largura=0, altura=0):
     """Flux 3 Image Klein com referencias, como o template oficial
     image_flux3_klein_image_edit: as imagens entram no ReferenceMultiLatent,
-    que tambem devolve o latente vazio no tamanho da primeira (~1 MP)."""
+    que tambem devolve o latente vazio no tamanho da primeira (~1 MP).
+    Com largura e altura (a proporcao escolhida), o latente vem do
+    EmptyFlux2LatentImage nesse tamanho e a foto so guia o conteudo."""
     p = EDICAO["flux3ref"]
     g = {
         "unet": {"class_type": "UNETLoader",
@@ -2873,9 +2875,13 @@ def editar_flux3(prompt, refs, seed, steps=25, cfg=3.5, prefixo="saida"):
         g[f"ref{i}"] = {"class_type": "LoadImage", "inputs": {"image": nome}}
         refer[f"images.image{i}"] = [f"ref{i}", 0]
     g["refs"] = {"class_type": "ReferenceMultiLatent", "inputs": refer}
+    if largura and altura:
+        g["lat"] = {"class_type": "EmptyFlux2LatentImage",
+                    "inputs": {"width": largura, "height": altura, "batch_size": 1}}
     g["amostra"] = {"class_type": "KSampler",
                     "inputs": {"model": ["unet", 0], "positive": ["refs", 0],
-                               "negative": ["refs", 1], "latent_image": ["refs", 2],
+                               "negative": ["refs", 1],
+                               "latent_image": ["lat", 0] if largura and altura else ["refs", 2],
                                "seed": seed, "steps": steps, "cfg": cfg,
                                "sampler_name": "euler", "scheduler": "simple",
                                "denoise": 1.0}}

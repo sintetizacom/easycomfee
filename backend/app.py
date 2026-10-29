@@ -1385,6 +1385,7 @@ async def montar(tarefa: Tarefa):
 
         if p.modelo == "flux3ref":
             return workflows.editar_flux3(p.prompt, refs, seed,
+                                          largura=largura, altura=altura,
                                           steps=p.steps or e["steps"],
                                           cfg=p.cfg if p.cfg is not None else e["cfg"],
                                           prefixo=prefixo)

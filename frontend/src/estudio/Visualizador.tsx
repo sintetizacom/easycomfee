@@ -23,6 +23,27 @@ export function reusarPrompt(prompt: string) {
   window.dispatchEvent(new CustomEvent('reusar-prompt', { detail: prompt }))
 }
 
+/** O que o "Recreate" devolve a aba Image: o registro da galeria (prompt e parametros). */
+export type Receita = { modelo: string; prompt: string; parametros: Record<string, unknown> }
+let recriarPendente: Receita | null = null
+
+/** "Recreate": vai para a aba Image e preenche prompt, imagens, modelo e proporcao. */
+export function recriar(r: Receita, destino = '#image') {
+  recriarPendente = r
+  if (location.hash !== destino && !location.hash.startsWith(destino + '/')) { location.hash = destino; return }  // a aba monta e pega
+  window.dispatchEvent(new Event('recriar'))
+}
+
+/** A aba Image pega a receita ao montar e quando o evento chega com ela aberta. */
+export function useRecriar(aoRecriar: (r: Receita) => void) {
+  useEffect(() => {
+    const pegar = () => { if (recriarPendente) { const r = recriarPendente; recriarPendente = null; aoRecriar(r) } }
+    pegar()
+    window.addEventListener('recriar', pegar)
+    return () => window.removeEventListener('recriar', pegar)
+  }, [aoRecriar])
+}
+
 export function useReusarPrompt(aoReusar: (prompt: string) => void) {
   useEffect(() => {
     const ao = (e: Event) => aoReusar((e as CustomEvent<string>).detail)
@@ -200,6 +221,9 @@ export default function Visualizador() {
             <a className="hf-vis-botao" href={url} download={atual.nome}>⬇ Download</a>
             {receita && <a className="hf-vis-botao" href={`/api/galeria/receita?subpasta=${encodeURIComponent(atual.subpasta)}&nome=${encodeURIComponent(atual.nome)}`}
               download title="The exact ComfyUI graph that made this file. Drag it onto the ComfyUI canvas.">⬡ Node recipe</a>}
+            {prompt && info && !eVideo(atual.nome) && !eAudio(atual.nome) && <button className="hf-vis-botao"
+              title="Back to the Image tab with this prompt, its reference images, model and aspect ratio"
+              onClick={() => { recriar({ modelo: info.modelo, prompt, parametros: p }); setLista([]) }}>⟲ Recreate</button>}
             {prompt && <button className="hf-vis-botao" onClick={() => { reusarPrompt(prompt); setLista([]) }}>↺ Reuse prompt</button>}
             {prompt && <button className="hf-vis-botao" onClick={() => copiar(prompt, 'prompt')}>{copiado === 'prompt' ? '✓ Copied' : '⧉ Copy prompt'}</button>}
             <button className="hf-vis-botao" onClick={() => copiar(resumo, 'resumo')}>{copiado === 'resumo' ? '✓ Copied' : '⧉ Copy summary'}</button>

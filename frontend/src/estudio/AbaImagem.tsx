@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { useReusarPrompt } from './Visualizador'
-import { api, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
+import { useCallback, useEffect, useState } from 'react'
+import { recriar, useRecriar, useReusarPrompt, type Receita } from './Visualizador'
+import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
@@ -88,6 +88,20 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const [proporcao, setProporcao] = useState('1:1')
   const [lote, setLote] = useState(1)
   const [refs, setRefs] = useState<Referencia[]>([])
+  // "Recreate" (galeria/visualizador): volta prompt, imagens, proporcao e modelo.
+  // Com imagens o pedido foi no modo de referencia (flux3ref...): volta ao modelo do menu.
+  // Trocar de modelo muda o endereco e remonta a aba: entao primeiro vai ao modelo
+  // certo, e a aba nova (ja nele) preenche o resto.
+  useRecriar(useCallback((r: Receita) => {
+    const doMenu = Object.entries(REFERENCIAS).find(([, u]) => u.modo === r.modelo)?.[0] ?? r.modelo
+    if (doMenu && doMenu !== parteDoHash(1)) { recriar(r, `#image/${doMenu}`); return }
+    const q = r.parametros
+    setPrompt(r.prompt.replace(/\bimage (\d)/g, '@image$1'))
+    setLook('')
+    const nomes = ([q.referencias_usadas, q.referencias].find((x) => Array.isArray(x) && x.length) ?? []) as string[]
+    setRefs(nomes.map((n) => ({ nome: n, url: urlEntrada(n) })))
+    if (typeof q.proporcao === 'string') setProporcao(q.proporcao)
+  }, [setPrompt]))
   // Ideogram 4: optional hand-drawn layout (boxes) sent as its caption.
   const [comLayout, setComLayout] = useState(false)
   const [elementos, setElementos] = useState<Elemento[]>([])
