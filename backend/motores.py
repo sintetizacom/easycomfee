@@ -151,6 +151,15 @@ def inspecionar() -> dict:
             "duplicado": len(grupos) > 1}
 
 
+def _responde() -> bool:
+    """O ComfyUI atende na porta? Pergunta a ele, sem depender da tabela do Windows."""
+    try:
+        with httpx.Client(timeout=5) as c:
+            return c.get(f"{config.COMFY_URL}/system_stats").status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
 def _limpar() -> dict:
     """Desfaz a duplicação. Devolve o que foi feito, para registrar no log."""
     global _sem_dono_seguidas
@@ -173,6 +182,13 @@ def _limpar() -> dict:
         # Caminho comum: a instância boa segue servindo, a intrusa sai inteira.
         _encerrar(e["intrusos"])
         return {**e, "acao": "encerrou_intrusos", "encerrados": e["intrusos"]}
+
+    # O Windows as vezes deixa de listar quem escuta na porta (netstat e
+    # Get-NetTCPConnection vazios com o ComfyUI atendendo; 29/10/2026). Sem esta
+    # pergunta direta, o vigia derrubava um motor sadio a cada 3 minutos.
+    if _responde():
+        _sem_dono_seguidas = 0
+        return {**e, "acao": "nada"}
 
     # Ha processo, mas ninguem atende ainda: quase sempre e o boot. Esperar.
     _sem_dono_seguidas += 1

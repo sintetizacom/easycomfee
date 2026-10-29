@@ -146,8 +146,8 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
     } catch (e) { setErro(mensagem(e)) } finally { setPensando(false) }
   }
 
-  // Com foto na caixa, so valem os looks que usam a foto.
-  const lookAtual = LOOKS.find((l) => l.id === look && (!comRefs || l.comImagem))
+  // Com foto na caixa, o look usa a versao "foto" (transforma a foto); sem foto, cria do zero.
+  const lookAtual = LOOKS.find((l) => l.id === look)
   // Look que usa a foto: sem modelo que aceite imagem, passa para o Flux 3 Klein.
   const escolherLook = (l: typeof LOOKS[number]) => {
     if (look === l.id) { setLook(''); return }
@@ -161,7 +161,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const gerar = async () => {
     setErro(null)
     try {
-      await api.gerar({ ...pedido, prompt: aplicarLook(lookAtual, prompt) } as Parameters<typeof api.gerar>[0])
+      await api.gerar({ ...pedido, prompt: aplicarLook(lookAtual, prompt, comRefs) } as Parameters<typeof api.gerar>[0])
     } catch (e) { setErro(mensagem(e)) }
   }
 
@@ -191,13 +191,17 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
               <button type="button" role="radio" aria-checked={look === ''} tabIndex={look === '' || !lookAtual ? 0 : -1} className="hf-look" data-ativo={look === ''} onClick={() => setLook('')}>
                 <span className="hf-look-nada" aria-hidden>⊘</span><span>None</span>
               </button>
-              {LOOKS.filter((l) => !comRefs || l.comImagem).map((l) => (
+              {/* Todos valem com ou sem foto: com foto, cada um transforma a foto (looks.ts, campo foto). */}
+              {LOOKS.map((l) => (
                 <button key={l.id} type="button" role="radio" aria-checked={look === l.id} tabIndex={look === l.id ? 0 : -1} className="hf-look" data-ativo={look === l.id}
-                  onClick={() => escolherLook(l)} title={`${l.rotulo}: e.g. ${l.exemplo}`}>
+                  onClick={() => escolherLook(l)}
+                  title={l.comImagem ? `${l.rotulo}: uses the photo in the box below`
+                    : comRefs ? `${l.rotulo}: restyles the photo in the box` : `${l.rotulo}: e.g. ${l.exemplo}`}>
                   <img src={`/looks/${l.id}.webp`} alt="" /><span>{l.rotulo}</span>
                 </button>
               ))}
             </div>
+            {comRefs && <small className="hf-looks-dica">With an image in the box, the look restyles your photo. Remove the image to make a new picture from text.</small>}
           </div>
         )}
         {maxRefs > 0 && (
@@ -213,7 +217,8 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           </div>
         )}
         <textarea aria-label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
-          placeholder={comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
+          placeholder={comRefs && lookAtual ? `Optional: an extra touch for ${lookAtual.rotulo}, e.g. "smiling" or "blue background"`
+            : comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
             : faltaFoto ? 'Add your photo in the box above (+ Character), then press Generate. Optional: extra direction here.'
             : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !desligado) gerar() }} />
