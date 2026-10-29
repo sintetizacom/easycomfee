@@ -553,7 +553,7 @@
   },
   "340:319": {
     "inputs": {
-      "value": "A person speaks naturally to the camera. Static camera, locked-off tripod shot: the camera does not move, zoom or pan, and the framing does not change."
+      "value": "A person speaks naturally to the camera. The person is speaking out loud to the camera, with a neutral expression: the lips, mouth and jaw move naturally in sync with every word. Static shot with fixed framing: the view does not move, zoom or pan, and the framing does not change."
     },
     "class_type": "PrimitiveStringMultiline"
   },
