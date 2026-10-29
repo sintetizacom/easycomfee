@@ -14,6 +14,14 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 | **Add water** | **Expand frame** (inside the green box is the original vertical clip) | **Follow depth** |
 | ![A street flooded with water](docs/galeria/agua.gif) | ![A vertical clip expanded to widescreen](docs/galeria/expandir.gif) | ![The same street turned into a snowy night](docs/galeria/profundidade.gif) |
 
+### From a Blender blockout to a finished shot
+
+**3D render → Video** (in **VFX Studio**) is made for 3D artists. Animate only grey blocks in Blender, Unreal or any 3D app, with the camera and the motion you want, and add one style image that says how the scene should look. LTX 2.5 with the *layout-to-render* IC-LoRA turns the blockout into a film shot that follows it frame by frame. Optional keyframes pin the look at chosen moments.
+
+- Tested with real Blender renders on a 16 GB card: up to 353 frames (14.7 s) in about 4 minutes.
+- **Follow depth** takes a depth video too: estimated from any footage, or a ready one such as Blender's depth pass.
+- **Video → Depth map** goes the other way: a stable depth map of any video, with optional 32-bit EXR frames for Blender or After Effects.
+
 ### The studio
 
 | LTX Studio | VFX Apps |
