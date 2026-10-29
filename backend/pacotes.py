@@ -95,6 +95,9 @@ async def _listar_pastas_cruas(pastas: set[str]) -> dict[str, list[str]] | None:
             saida = {}
             for pasta in pastas:
                 r = await c.get(f"{comfy.BASE_PRINCIPAL}/models/{pasta}")
+                if r.status_code == 404:  # pasta que este ComfyUI nao tem (ex.: seedvr2)
+                    saida[pasta] = []
+                    continue
                 r.raise_for_status()
                 saida[pasta] = r.json()
             return saida
@@ -112,6 +115,11 @@ async def _listar_pastas(pastas: set[str]) -> dict[str, set[str]] | None:
         async with httpx.AsyncClient(timeout=15) as c:
             for pasta in pastas:
                 r = await c.get(f"{comfy.BASE_PRINCIPAL}/models/{pasta}")
+                # Pasta que este ComfyUI nao conhece (seedvr2 sem o no instalado)
+                # responde 404: so ela fica vazia; as outras continuam valendo.
+                if r.status_code == 404:
+                    vistos[pasta] = set()
+                    continue
                 r.raise_for_status()
                 vistos[pasta] = {n.replace("\\", "/") for n in r.json()}
     except Exception:
