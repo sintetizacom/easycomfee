@@ -12,12 +12,12 @@ import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
+# Ligado nem sempre bloqueia: num PC de teste (29/10/2026) bloqueou logo apos instalar e,
+# horas depois, com ele ainda ligado, o ComfyUI abriu (a Microsoft passou a reconhecer os arquivos).
 AVISO_CONTROLE = """
-WARNING: Windows Smart App Control is ON on this PC.
-It blocks the PyTorch/CUDA files that ComfyUI needs ("An Application Control policy
-has blocked this file"), and it has no exceptions, so ComfyUI cannot start locally.
-To turn it off: Windows Security > App & browser control > Smart App Control settings > Off.
-(Windows does not let you turn it back on without reinstalling. Microsoft Defender keeps working.)
+Note: Windows Smart App Control is on. It may block ComfyUI's files ("An Application
+Control policy has blocked this file"). This often clears up by itself after a while or
+a restart. If ComfyUI keeps failing, see "Smart App Control" in the README.
 """
 
 
@@ -57,8 +57,8 @@ def main() -> None:
                ' || (echo. & echo ComfyUI stopped with an error: read the message above. '
                '& echo If it mentions c10.dll or WinError 126, install https://aka.ms/vs/17/release/vc_redist.x64.exe '
                # Sem ">" nem "&" no texto: dentro do cmd /c eles redirecionariam ou cortariam a linha.
-               '& echo If it says an Application Control policy blocked a file, turn off Smart App Control: '
-               '& echo Windows Security, App and browser control, Smart App Control settings, Off. '
+               '& echo If it says an Application Control policy blocked a file, that is Windows Smart App Control: '
+               '& echo try again after a while or a restart, or see Smart App Control in the README. '
                '& pause)')
     subprocess.Popen(f'start "ComfyUI" /min cmd /c "{comando}"', shell=True, cwd=pasta)
     print("Starting ComfyUI (minimized window \"ComfyUI\")...")

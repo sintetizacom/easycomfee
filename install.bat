@@ -28,18 +28,15 @@ echo then run install.bat again.
 goto falhou
 :vc_ok
 
-REM Smart App Control (Windows 11) blocks ComfyUI's PyTorch/CUDA files ("An Application Control
-REM policy has blocked this file") and has no exceptions. Warn now; setup can go on.
+REM Smart App Control (Windows 11) may block ComfyUI's PyTorch/CUDA files ("An Application Control
+REM policy has blocked this file"), often only at first: just a note, setup goes on.
 set SAC=
 for /f "tokens=3" %%e in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy" /v VerifiedAndReputablePolicyState 2^>nul ^| find "0x"') do set SAC=%%e
 if not "%SAC%"=="0x1" goto sac_ok
 echo.
-echo WARNING: Windows Smart App Control is ON on this PC.
-echo It blocks the files ComfyUI needs to run locally, and it has no exceptions.
-echo To turn it off: Windows Security ^> App ^& browser control ^> Smart App Control settings ^> Off.
-echo Windows does not let you turn it back on without reinstalling; Microsoft Defender keeps working.
-echo Setup will continue. Turn it off before starting EasyComfee.
-pause
+echo Note: Windows Smart App Control is on. It may block ComfyUI's files at first
+echo ("An Application Control policy has blocked this file"). This often clears up by itself
+echo after a while or a restart. If ComfyUI keeps failing, see "Smart App Control" in the README.
 :sac_ok
 
 REM EasyComfee runs on top of ComfyUI: find it first (Desktop, portable or manual install)

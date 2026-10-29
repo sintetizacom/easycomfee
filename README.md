@@ -106,9 +106,11 @@ node --version
 
 ### Windows 11: Smart App Control
 
-On some Windows 11 PCs (mostly fresh installs), **Smart App Control** is on. It blocks the PyTorch and CUDA files that ComfyUI needs, so ComfyUI stops at start with *"An Application Control policy has blocked this file"*. It has no exceptions: no app can be allowed one by one, and this happens with any local ComfyUI, not only EasyComfee.
+On some Windows 11 PCs (mostly fresh installs), **Smart App Control** is on. It may block the PyTorch and CUDA files that ComfyUI needs, so ComfyUI stops at start with *"An Application Control policy has blocked this file"*. This happens with any local ComfyUI, not only EasyComfee, and `install.bat` and `start.bat` mention it when it is on.
 
-To check and turn it off: **Windows Security → App & browser control → Smart App Control settings → Off**. Windows does not let you turn it back on without reinstalling Windows; Microsoft Defender keeps protecting the PC. `install.bat` and `start.bat` warn you when it is on.
+It often clears up by itself: on one of our test PCs ComfyUI was blocked right after setup and started fine a few hours later, after a restart, with Smart App Control still on (Windows checks each file's reputation online). So first try again later or after a restart.
+
+If it keeps blocking, the only fix is to turn it off: **Windows Security → App & browser control → Smart App Control settings → Off**. It has no per-app exceptions, and Windows does not let you turn it back on without reinstalling Windows; Microsoft Defender keeps protecting the PC.
 
 ### AMD, Mac and other GPUs
 
