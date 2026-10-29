@@ -1435,9 +1435,19 @@ async def montar(tarefa: Tarefa):
                 refs, instrucao, seed, steps=p.steps or e["steps"],
                 prefixo=prefixo)
         if p.modelo == "qwen21edit":
+            # Proporcao diferente da foto 1: sai na escolhida. Igual (ou com mascara,
+            # que recorta a propria foto): edita a foto no tamanho dela.
+            outra = False
+            if not mascara:
+                try:
+                    w, h = await comfy.dimensoes_imagem(refs[0], "", "input")
+                    outra = abs((w / h) / (largura / altura) - 1) > 0.05
+                except Exception:  # sem medida: edita no tamanho da foto, como antes
+                    pass
             return workflows.editar_qwen21(
                 p.prompt, refs, seed, steps=p.steps, cfg=p.cfg,
-                prefixo=prefixo, mascara=mascara)
+                prefixo=prefixo, mascara=mascara,
+                largura=largura if outra else 0, altura=altura if outra else 0)
 
         if p.modelo == "qwen":
             mp = {r["id"]: r["megapixels"] for r in e["resolucoes"]}

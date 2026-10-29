@@ -2768,7 +2768,7 @@ def girar_camera(referencia, yaw, elevation, distance, extra="", seed=0,
 
 
 def editar_qwen21(instrucao, referencias, seed, steps=None, cfg=None,
-                  prefixo="edicao", mascara=None):
+                  prefixo="edicao", mascara=None, largura=0, altura=0):
     """Edicao por instrucao com o Qwen Image 2.1.
 
     TRES COISAS LIDAS DO TEMPLATE OFICIAL, nao deduzidas:
@@ -2785,6 +2785,11 @@ def editar_qwen21(instrucao, referencias, seed, steps=None, cfg=None,
     3. O `QwenImage21Cache` fica entre a UNET e o amostrador. Ele guarda o
        calculo das referencias, e e o que torna a segunda referencia barata:
        21 s com uma, 27 s com duas.
+
+    Com largura e altura de uma proporcao DIFERENTE da imagem 1, o latente vem de
+    um EmptyLatentImage nesse tamanho: a foto guia o conteudo e a proporcao e a
+    escolhida (o latente da referencia teria o formato da foto). Na mesma
+    proporcao (ou sem tamanho) fica o latente da referencia, para editar a foto.
     """
     p = EDICAO["qwen21edit"]
     g = {
@@ -2807,10 +2812,14 @@ def editar_qwen21(instrucao, referencias, seed, steps=None, cfg=None,
                  "inputs": {"clip": ["clip", 0], "vae": ["vae", 0],
                             "prompt": instrucao, "negative_prompt": "",
                             "resolution": p["resolucao_referencia"], **imagens}}
+    if largura and altura:
+        g["vazio"] = {"class_type": "EmptyLatentImage",
+                      "inputs": {"width": largura, "height": altura, "batch_size": 1}}
     g["amostra"] = {"class_type": "KSampler",
                     "inputs": {"model": ["cache", 0], "positive": ["cond", 0],
                                "negative": ["cond", 1],
-                               "latent_image": ["cond", 2], "seed": seed,
+                               "latent_image": ["vazio", 0] if largura and altura else ["cond", 2],
+                               "seed": seed,
                                "steps": steps or p["steps"],
                                "cfg": cfg if cfg is not None else p["cfg"],
                                "sampler_name": p["sampler"],
