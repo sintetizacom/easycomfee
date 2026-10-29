@@ -12,6 +12,22 @@ if not defined PY (echo Python 3.11, 3.12 or 3.13 is required: https://www.pytho
 echo Using %PY%
 where npm >nul 2>nul || (echo Node.js 20+ is required: https://nodejs.org/ & goto falhou)
 
+REM ComfyUI (PyTorch) needs the Microsoft Visual C++ Redistributable. Without it ComfyUI
+REM installs fine but stops at start with "WinError 126 ... c10.dll" (seen on 29/10/2026).
+set VCDIR=%SystemRoot%\System32
+if exist "%VCDIR%\msvcp140.dll" if exist "%VCDIR%\vcruntime140_1.dll" goto vc_ok
+echo.
+echo ComfyUI needs the Microsoft Visual C++ Redistributable, which is missing on this PC.
+where winget >nul 2>nul || goto vc_link
+echo Installing it now (Windows may ask for permission)...
+winget install --id Microsoft.VCRedist.2015+.x64 -e --accept-source-agreements --accept-package-agreements
+if exist "%VCDIR%\msvcp140.dll" if exist "%VCDIR%\vcruntime140_1.dll" goto vc_ok
+:vc_link
+echo Install it from Microsoft: https://aka.ms/vs/17/release/vc_redist.x64.exe
+echo then run install.bat again.
+goto falhou
+:vc_ok
+
 REM EasyComfee runs on top of ComfyUI: find it first (Desktop, portable or manual install)
 REM and save its folder in config.json. Without ComfyUI, stop here with a link to install it.
 echo.

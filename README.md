@@ -83,15 +83,17 @@ Open **Config Models → Local models**:
 | **Git** | any recent | downloads EasyComfee and its updates (the **Update** button uses it) | [git-scm.com](https://git-scm.com/download/win) |
 | **Python** | **3.11, 3.12 or 3.13** (not 3.14 yet) | runs the studio | [python.org](https://www.python.org/downloads/) |
 | **Node.js** | **20 or newer** (the LTS version) | builds the interface once, during install and updates | [nodejs.org](https://nodejs.org/) |
+| **Microsoft Visual C++ Redistributable** (x64) | 2015-2022 | ComfyUI's PyTorch needs it; without it ComfyUI stops with `WinError 126 ... c10.dll`. Most PCs already have it, and `install.bat` installs it if missing | [microsoft.com](https://aka.ms/vs/17/release/vc_redist.x64.exe) |
 
 When installing Python, tick **"Add python.exe to PATH"** on the first screen. Git and Node.js are fine with the default options.
 
-**Quicker:** in Windows Terminal (or PowerShell), these three lines install all of them:
+**Quicker:** in Windows Terminal (or PowerShell), these lines install all of them:
 
 ```bat
 winget install --id Git.Git -e
 winget install --id Python.Python.3.12 -e
 winget install --id OpenJS.NodeJS.LTS -e
+winget install --id Microsoft.VCRedist.2015+.x64 -e
 ```
 
 Then **close and reopen** the terminal. To check, each of these should print a version (`py` is the Python launcher that `install.bat` uses):

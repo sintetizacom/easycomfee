@@ -30,7 +30,12 @@ def main() -> None:
     porta = url.rsplit(":", 1)[-1]
     app = f"http://127.0.0.1:{cfg.get('app_porta', 8600)}"
     comando = (f'cd /d "{pasta}" && .\\python_embeded\\python.exe -s ComfyUI\\main.py --windows-standalone-build '
-               f'--listen 127.0.0.1 --port {porta} --disable-auto-launch --enable-cors-header {app}')
+               f'--listen 127.0.0.1 --port {porta} --disable-auto-launch --enable-cors-header {app}'
+               # Se o ComfyUI cair (ex.: "WinError 126 ... c10.dll" sem o Visual C++), a janela
+               # fica aberta com o erro em vez de sumir.
+               ' || (echo. & echo ComfyUI stopped with an error: read the message above. '
+               '& echo If it mentions c10.dll or WinError 126, install https://aka.ms/vs/17/release/vc_redist.x64.exe '
+               '& pause)')
     subprocess.Popen(f'start "ComfyUI" /min cmd /c "{comando}"', shell=True, cwd=pasta)
     print("Starting ComfyUI (minimized window \"ComfyUI\")...")
 
