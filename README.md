@@ -150,6 +150,10 @@ When a new version is on GitHub, an **Update available** button shows in the top
 
 The button needs an install made with `git clone` from GitHub. If you downloaded a .zip, update by downloading the new version, or run `git pull` and `install.bat` by hand.
 
+### Uninstalling
+
+Double-click **`uninstall.bat`** in the EasyComfee folder. It lists what goes, asks you to type `YES`, closes the studio and the ComfyUI it started, removes the EasyComfee shortcuts (Desktop, Start menu, start with Windows) and deletes the folder. If setup downloaded ComfyUI into that folder, ComfyUI, its models and everything you generated go with it: copy what you want to keep first. A ComfyUI you already had is never touched. Git, Python, Node.js and the Visual C++ Redistributable stay installed; remove them in **Settings → Apps** if nothing else uses them.
+
 ### Manual setup (any OS)
 
 ```bash
