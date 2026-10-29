@@ -2637,6 +2637,26 @@ async def trocar_motor(pedido: PedidoMotor):
     return await motor_atual()
 
 
+class PedidoInicializacao(Pedido):
+    ativo: bool
+
+
+@app.get("/api/inicializacao")
+async def estado_inicializacao():
+    """Se o ComfyUI liga junto com o Windows (botao em Config Models)."""
+    import inicializacao
+    return await asyncio.to_thread(inicializacao.estado)
+
+
+@app.post("/api/inicializacao")
+async def mudar_inicializacao(pedido: PedidoInicializacao):
+    import inicializacao
+    try:
+        return await asyncio.to_thread(inicializacao.mudar, pedido.ativo)
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(409, str(e))
+
+
 @app.get("/api/maquina")
 async def ver_maquina():
     import maquina

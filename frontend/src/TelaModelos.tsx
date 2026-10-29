@@ -54,6 +54,44 @@ const SELOS: Record<string, { texto: string; classe: string }> = {
   nuvem: { texto: 'Cloud only (no downloads)', classe: 'nuvem' },
 }
 
+/** Botao seletor: ligar o ComfyUI junto com o Windows (atalho na pasta Inicializar,
+ *  backend/inicializacao.py). Com ele ligado, o motor ja esta pronto ao abrir o app. */
+function InicioComWindows() {
+  const [est, setEst] = useState<{ disponivel: boolean; ativo: boolean; motivo: string } | null>(null)
+  const [mudando, setMudando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  useEffect(() => {
+    fetch('/api/inicializacao').then((r) => r.json()).then(setEst).catch(() => setEst(null))
+  }, [])
+  if (!est) return null
+  const alternar = async () => {
+    setMudando(true); setErro(null)
+    try {
+      const r = await fetch('/api/inicializacao', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: !est.ativo }) })
+      const d = await r.json()
+      if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Could not change it.')
+      setEst(d)
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)) } finally { setMudando(false) }
+  }
+  return (
+    <section className="mq-cartao mq-interruptor">
+      <div>
+        <span className="mq-rotulo" id="mq-inicio-rotulo">Start ComfyUI with Windows</span>
+        <p className="mq-sub">{est.disponivel
+          ? 'ComfyUI loads while the PC starts, so it is ready when you open EasyComfee. It uses some memory even on days you do not open the app.'
+          : est.motivo}</p>
+        {erro && <p className="mq-aviso erro">{erro}</p>}
+      </div>
+      <button type="button" role="switch" aria-checked={est.ativo} aria-labelledby="mq-inicio-rotulo"
+        className="mq-seletor" data-ligado={est.ativo} disabled={!est.disponivel || mudando} onClick={alternar}>
+        <span className="mq-seletor-bola" aria-hidden />
+        <span className="mq-seletor-texto">{est.ativo ? 'On' : 'Off'}</span>
+      </button>
+    </section>
+  )
+}
+
 function Maquina({ aoSalvar }: { aoSalvar: (p: PerfilMaquina) => void }) {
   const [det, setDet] = useState<Detectado | null>(null)
   const [salvo, setSalvo] = useState<PerfilMaquina | null>(null)
@@ -273,6 +311,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         <div role={conta ? 'tabpanel' : undefined} id="mq-painel" aria-labelledby={conta ? `mq-aba-${aba}` : undefined}>
         {aba === 'api' ? conta : <>
         {topoLocais && <section className="mq-cartao">{topoLocais}</section>}
+        <InicioComWindows />
 
         <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
 

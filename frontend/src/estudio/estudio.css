@@ -813,3 +813,16 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
 /* ComfyUI ainda subindo: faixa discreta logo abaixo do topo (some sozinha). */
 .hf-aviso-partida { margin: 0; padding: 8px 16px; text-align: center; font-size: 13px; color: var(--hf-texto);
   background: #2A2133; border-bottom: 1px solid var(--hf-linha); }
+
+/* Botao seletor (Config Models > Start ComfyUI with Windows): trilho com bolinha e On/Off. */
+html .mq-interruptor { display: flex; align-items: center; gap: 16px; justify-content: space-between; }
+html .mq-seletor { flex: none; position: relative; display: inline-flex; align-items: center; width: 74px; height: 34px;
+  padding: 0 10px; border-radius: 999px; border: 1px solid #5A4F66; background: #2A2133; cursor: pointer; transition: background .2s, border-color .2s; }
+html .mq-seletor-bola { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%;
+  background: #CFC7D8; transition: transform .2s, background .2s; }
+html .mq-seletor-texto { margin-left: auto; font-size: 12px; font-weight: 700; color: #CFC7D8; }
+html .mq-seletor[data-ligado='true'] { background: var(--hf-neon); border-color: var(--hf-neon); }
+html .mq-seletor[data-ligado='true'] .mq-seletor-bola { transform: translateX(40px); background: #191220; }
+html .mq-seletor[data-ligado='true'] .mq-seletor-texto { margin-left: 0; margin-right: auto; color: #191220; }
+html .mq-seletor:disabled { opacity: .5; cursor: not-allowed; }
+html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 3px; }
