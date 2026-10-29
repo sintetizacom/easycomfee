@@ -22,13 +22,13 @@
 }
 .hf-topo { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 24px; padding: 12px 24px;
   background: rgba(30, 23, 36, 0.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--hf-linha); }
-/* Marca (GUIA-DE-MARCA-EASYCOMFEE.md): assinatura horizontal com 34 px de altura, proporcao do proprio SVG.
+/* Marca (GUIA-DE-MARCA-EASYCOMFEE.md): assinatura horizontal com 32 px de altura, proporcao do proprio SVG.
    Area clicavel de pelo menos 44x44 e foco visivel. Sem filtro, sombra ou recoloracao sobre o SVG. */
 .hf-marca { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 44px; min-height: 44px;
   padding: 0 4px; margin-right: 8px; border-radius: 10px; text-decoration: none; }
 .hf-marca:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }
-.hf-marca-completa { display: block; height: 38px; width: auto; }
-.hf-marca-simbolo { display: none; height: 32px; width: auto; }
+.hf-marca-completa { display: block; height: 32px; width: auto; }
+.hf-marca-simbolo { display: none; height: 28px; width: auto; }
 @media (max-width: 700px) {
   .hf-marca-completa { display: none; }
   .hf-marca-simbolo { display: block; }
@@ -43,11 +43,11 @@
 .hf-nav sup { font-size: 9px; color: var(--hf-apagado); margin-left: 3px; font-weight: 500; }
 /* O medidor assenta na linha de base do nome: o E da logo termina a 85% da altura do SVG (255/300). */
 .hf-esquerda { display: flex; align-items: flex-end; gap: 16px; }
-/* + 3 px: o link da logo tem 44 px de area clicavel em volta da imagem de 38 px; - 5 px: o
+/* + 6 px: o link da logo tem 44 px de area clicavel em volta da imagem de 32 px; - 5 px: o
    usuario preferiu os botoes 5 px abaixo da linha de base (28/10/2026). */
-.hf-esquerda .hf-recursos { margin-bottom: calc(38px * 0.15 + 3px - 5px); }
+.hf-esquerda .hf-recursos { margin-bottom: calc(32px * 0.15 + 6px - 5px); }
 /* A direita (saldo e Config Models) na mesma linha de base: tudo no mesmo esquadro. */
-.hf-topo > .hf-direita { align-self: end; margin-bottom: calc(38px * 0.15 + 3px - 5px); }
+.hf-topo > .hf-direita { align-self: end; margin-bottom: calc(32px * 0.15 + 6px - 5px); }
 .hf-direita { display: flex; gap: 10px; align-items: center; }
 .hf-direita .seletor-motor { border-color: var(--hf-linha); border-radius: 10px; }
 .hf-direita .seletor-motor button { color: var(--hf-apagado); padding: 6px 12px; font-size: 13px; }
