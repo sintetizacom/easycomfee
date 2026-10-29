@@ -8,7 +8,8 @@ for /f %%p in ('backend\.venv\Scripts\python.exe -c "import sys; sys.path.insert
 REM ComfyUI instalado pelo proprio EasyComfee: liga junto (ver backend\iniciar_comfy.py).
 backend\.venv\Scripts\python.exe backend\iniciar_comfy.py
 REM "start.bat noopen" (usado pelo Update) nao abre outra aba: a pagina aberta se recarrega sozinha.
-if /i not "%~1"=="noopen" start "" http://127.0.0.1:%PORT%
+REM O navegador so abre quando o servidor responde (espera ate 2 minutos, em segundo plano).
+if /i not "%~1"=="noopen" start "" backend\.venv\Scripts\pythonw.exe backend\abrir_navegador.py %PORT%
 cd backend
 REM So avisos e erros: sem uma linha por pedido de rotina nem por conexao de pagina (WebSocket),
 REM e sem codigos de cor, que a janela do Windows mostrava como "<-[32m".
