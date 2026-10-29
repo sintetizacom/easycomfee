@@ -69,14 +69,32 @@ REM ping espera ~4 s em qualquer janela (timeout falha quando a entrada nao e um
 ping -n 5 127.0.0.1 >nul
 echo.
 echo Downloading the new version...
-git pull --ff-only || goto erro
+REM Rede instavel (WinError 10054, "connection reset"): tenta de novo antes de desistir.
+REM Sem nada novo, o git pull so diz "Already up to date": rodar este .bat de novo termina o que faltou.
+set N=0
+:pull
+git pull --ff-only && goto pip
+set /a N+=1
+if %N% geq 3 goto erro
+echo Connection problem. Trying again...
+ping -n 6 127.0.0.1 >nul
+goto pull
+:pip
 echo.
 echo Updating Python packages...
-backend\.venv\Scripts\python.exe -m pip install -q -r backend\requirements.txt || goto erro
+set N=0
+:pip_de_novo
+backend\.venv\Scripts\python.exe -m pip install -q --retries 10 --timeout 60 -r backend\requirements.txt && goto interface
+set /a N+=1
+if %N% geq 3 goto erro
+echo Connection problem. Trying again...
+ping -n 6 127.0.0.1 >nul
+goto pip_de_novo
+:interface
 echo.
 echo Building the interface...
 pushd frontend
-call npm ci --no-audit --no-fund || (popd & goto erro)
+call npm ci --no-audit --no-fund || call npm ci --no-audit --no-fund || (popd & goto erro)
 call npm run build || (popd & goto erro)
 popd
 echo.
@@ -90,7 +108,8 @@ exit /b 0
 :erro
 echo.
 echo The update did not finish. Nothing of yours was deleted.
-echo Run start.bat to open the studio again, or update by hand with "git pull".
+echo Usually the internet connection dropped. Double-click atualizar.bat in this folder
+echo to try again (it continues from where it stopped), then start.bat opens the studio.
 pause
 exit /b 1
 """
