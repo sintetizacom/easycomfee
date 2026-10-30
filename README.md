@@ -19,12 +19,23 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 **3D render → Video** (in **VFX Studio**) is made for 3D artists. Animate only grey blocks in Blender, Unreal or any 3D app, with the camera and the motion you want, and add one style image that says how the scene should look. LTX 2.5 with the *layout-to-render* IC-LoRA turns the blockout into a film shot that follows it frame by frame. Optional keyframes pin the look at chosen moments.
 
 - Tested with real Blender renders on a 16 GB card: up to 353 frames (14.7 s) in about 4 minutes.
+
+#### Advanced mode: no style image needed (experimental)
+
+Turn on **Advanced** in the 3D render → Video box and the app makes the look with you, in three steps:
+
+1. **Frames**: play the render, choose the part that becomes video (start and length, up to 14.7 s) and take up to 4 screenshots where the camera shows something new, or let **Auto screenshot** pick them.
+2. **Cinema Studio**: describe the scene, add a **character sheet** of each element (a car, a plane, a person) with its name, and optionally a picture of the place. Each grey screenshot is redrawn as a realistic frame with the same camera angle, by **FLUX 3** or **Qwen Image Edit** on your GPU, or by GPT Image 2.5, Nano Banana 2 or Seedream 5 Pro on Comfy Cloud. Shoot each frame until it looks right, compare it with the render using the slider, pick the side the object is seen from, edit the prompt, or replace a take with your own fix.
+3. **Video**: LTX 2.5 keeps the camera and the motion of your render and passes through the chosen frames at their moments.
+
+Notes: still in development and tested only on NVIDIA (RTX 5070 Ti, 16 GB). It needs 16 GB of VRAM or more; on 16 GB keep 720p videos to 10 s or less (576p handles the full 14.7 s). About 1 to 1.5 min per frame and 5 to 8 min per video.
+
 - **Follow depth** takes a depth video too: estimated from any footage, or a ready one such as Blender's depth pass.
 - **Video → Depth map** goes the other way: a stable depth map of any video, with optional 32-bit EXR frames for Blender or After Effects.
 
 ### The studio
 
-| LTX Studio | VFX Apps |
+| LTX Studio | VFX Studio |
 |---|---|
 | ![LTX Studio tab](docs/galeria/tela-ltx.png) | ![VFX Studio tab](docs/galeria/tela-apps.png) |
 | **Cinema Studio** | **Music** |
