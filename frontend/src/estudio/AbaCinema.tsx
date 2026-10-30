@@ -191,7 +191,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const gerarPlano = async (p: Plano) => {
     const prompt = await promptDo(p)
     // With one image and no @ in the text, say who it is; with several, the scene names them (@image1, @image2…).
-    const comCast = castOk.length === 1 && !cena.includes('@') ? `The same person from @image1. ${prompt}` : prompt
+    const comCast = castOk.length === 1 && !cena.includes('@') ? `The same subject from @image1. ${prompt}` : prompt
     const t = await api.gerar({ ...(video ? pedidoVideo : pedidoImagem), prompt: comCast } as Parameters<typeof api.gerar>[0])
     mudarPlano(p.id, { tarefa: t.id })
   }

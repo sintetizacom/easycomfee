@@ -212,3 +212,14 @@ def teste_prompt_tem_limite_de_12000_caracteres():
     assert len(A.PedidoGeracao(modelo="krea", prompt="x" * 12000).prompt) == 12000
     with pytest.raises(pydantic.ValidationError):
         A.PedidoGeracao(modelo="krea", prompt="x" * 12001)
+
+
+def test_diretor_mantem_as_tags_das_imagens():
+    """Cinema Studio, Director mode: o LLM nao ve as imagens e trocava "@image1" (um aviao)
+    por "a lone figure"; o close-up saia uma pessoa. A tag perdida volta para o texto."""
+    import prompting as P
+    assert P._manter_tags("@image1 flies between towers", "A lone figure glides.") == \
+        "@image1 from the reference image: A lone figure glides."
+    assert P._manter_tags("@image1 meets @image2", "Two people talk.").startswith("@image1 and @image2 from the reference images:")
+    assert P._manter_tags("@image1 flies", "@image1 glides low.") == "@image1 glides low."
+    assert P._manter_tags("a plane flies", "A plane glides.") == "A plane glides."

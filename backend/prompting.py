@@ -199,9 +199,22 @@ DIRETOR = (
     "object. The image is seen through the camera: never mention cameras, "
     "lenses, film stock, brands, crews or filmmaking equipment, and nobody in "
     "the frame holds or uses a camera. Keep every person, object and action of "
-    "the scene. If the scene is in Portuguese, write in English anyway. Output "
-    "only the paragraph, no title, no quotes."
+    "the scene. Tags like @image1 or @image2 stand for reference pictures the "
+    "user attached (a person, an object, a vehicle or a place): write each tag "
+    "exactly as it is every time that subject appears, and never replace it with "
+    "a guess such as 'a figure' or 'a person'. If the scene is in Portuguese, "
+    "write in English anyway. Output only the paragraph, no title, no quotes."
 )
+
+
+def _manter_tags(cena: str, texto: str) -> str:
+    """Recoloca no texto as tags @image1, @image2... da cena que o LLM perdeu.
+    Ele nao ve as imagens: no teste de 30/10/2026 trocou "@image1" (um aviao) por
+    "a lone figure" e o close-up saiu uma mulher."""
+    faltam = [t for t in dict.fromkeys(re.findall(r"@image\d+", cena)) if t not in texto]
+    if not faltam:
+        return texto
+    return f"{' and '.join(faltam)} from the reference {'image' if len(faltam) == 1 else 'images'}: {texto}"
 
 
 async def diretor(cena: str, enquadramento: str, visual: str, seed: int = 0) -> str:
@@ -211,7 +224,7 @@ async def diretor(cena: str, enquadramento: str, visual: str, seed: int = 0) -> 
     saidas = await comfy.executar(
         workflows.escrever_texto(instrucao, 400, criativo=True, seed=seed))
     texto = (await comfy.texto_de(saidas)).strip().strip('"')
-    return neutralizar(texto, cena) if texto else ""
+    return _manter_tags(cena, neutralizar(texto, cena)) if texto else ""
 
 
 # 3D render -> Video, botao "Write it for me" (30/10/2026): o leigo digita poucas palavras
