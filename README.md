@@ -10,7 +10,7 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 
 | Day → Night | 3D render → Video | Remove compression |
 |---|---|---|
-| ![Day to Night: the same shot at night](docs/galeria/noite.gif) | ![A grey Blender blockout becomes a finished film shot](docs/galeria/maquete.gif) | ![Blocky compressed footage cleaned up](docs/galeria/compressao.gif) |
+| ![Day to Night: the same shot at night](docs/galeria/noite.gif) | ![A grey Blender blockout becomes a finished film shot](docs/galeria/maquete-blender.gif) | ![Blocky compressed footage cleaned up](docs/galeria/compressao.gif) |
 | **Add water** | **Expand frame** (inside the green box is the original vertical clip) | **Follow depth** |
 | ![A street flooded with water](docs/galeria/agua.gif) | ![A vertical clip expanded to widescreen](docs/galeria/expandir.gif) | ![The same street turned into a snowy night](docs/galeria/profundidade.gif) |
 
