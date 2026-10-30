@@ -12,6 +12,15 @@ import { MotorCtx } from './motor'
 /** Setas num role="radiogroup" (padrao ARIA): escolhem e focam a opcao vizinha;
  *  Home/End vao as pontas. Com tabIndex so na opcao marcada, o Tab entra e sai do
  *  grupo de uma vez em vez de parar em cada opcao. */
+/** X desenhado (o caractere × fica baixo no circulo, conforme a fonte). */
+export function IconeX({ tamanho = 12 }: { tamanho?: number }) {
+  return (
+    <svg width={tamanho} height={tamanho} viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block' }}>
+      <path d="M2 2 L10 10 M10 2 L2 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function teclasRadio(e: KeyboardEvent<HTMLElement>) {
   const radios = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')]
   const i = radios.indexOf(document.activeElement as HTMLElement)
@@ -250,6 +259,7 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
 
   const itens: { rotulo: string; acao: () => void; perigo?: boolean }[] = [
     { rotulo: 'Open', acao: abrir },
+    ...(imagem ? [{ rotulo: 'Recreate (prompt + images)', acao: refazer }] : []),
     ...(imagem ? [
       { rotulo: 'Use as reference here', acao: usar },
       { rotulo: 'Animate (Image → Video)', acao: () => irComImagem('#video/imagem', arq) },
@@ -263,7 +273,6 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
       { rotulo: 'Upscale', acao: () => { location.hash = '#ltx/ampliar' } },
       { rotulo: 'Depth map', acao: () => { location.hash = '#apps/mapa_profundidade' } },
     ] : []),
-    ...(imagem ? [{ rotulo: 'Recreate (prompt + images)', acao: refazer }] : []),
     { rotulo: 'Reuse prompt', acao: async () => { const p = await prompt(); if (p) reusarPrompt(p); else avisar('No prompt saved') } },
     { rotulo: 'Copy prompt', acao: async () => { const p = await prompt(); if (p) copiar(p, 'Prompt copied'); else avisar('No prompt saved') } },
     { rotulo: 'Copy link', acao: () => copiar(new URL(url, location.href).href, 'Link copied') },
@@ -389,7 +398,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
         if (entrega) void receber(entrega)
       }}>
       {valor ? <img src={valor.url} alt="" /> : <span>{enviando ? 'Uploading…' : `+ ${rotulo}`}</span>}
-      {valor && <button type="button" className="hf-slot-x" onClick={(e) => { e.preventDefault(); aoMudar(null) }}>×</button>}
+      {valor && <button type="button" className="hf-slot-x" aria-label="Remove image" onClick={(e) => { e.preventDefault(); aoMudar(null) }}><IconeX tamanho={10} /></button>}
       <input type="file" accept="image/*" className="hf-arquivo" onChange={async (e) => {
         const f = e.target.files?.[0]
         if (!f) return

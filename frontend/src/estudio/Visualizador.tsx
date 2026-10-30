@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { urlEntrada, urlImagem, type ItemGaleria } from '../api'
-import { eAudio, eVideo } from './comum'
+import { IconeX, eAudio, eVideo } from './comum'
 
 // Full-size viewer for every generated file of the new studio, local or cloud.
 // Any <Midia> opens it; the arrows walk through the files on the page, in the
@@ -187,7 +187,7 @@ export default function Visualizador() {
           {lista.length > 1 && <span className="hf-vis-conta">{i + 1} / {lista.length}</span>}
         </div>
         <aside className="hf-vis-lado">
-          <button className="hf-vis-fechar" onClick={() => setLista([])} aria-label="Close">×</button>
+          <button className="hf-vis-fechar" onClick={() => setLista([])} aria-label="Close"><IconeX tamanho={14} /></button>
           <span className="hf-vis-titulo">Details</span>
           {info ? <>
             <Linha rotulo="Resolution" valor={info.largura ? `${info.largura} × ${info.altura} · ${((info.largura * info.altura) / 1e6).toFixed(1)} MP` : null} />
