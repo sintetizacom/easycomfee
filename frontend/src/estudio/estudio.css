@@ -851,3 +851,4 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 /* Dentro do rotulo o menu nao estica na altura (flex em coluna); quem estica e o rotulo. */
 .hf-campo > .hf-select { flex: none; max-width: none; width: 100%; }
 .hf-cinema-topo .hf-campo { flex: 1 1 220px; max-width: 320px; }
+.hf-ajustes-nota { color: var(--hf-apagado); }

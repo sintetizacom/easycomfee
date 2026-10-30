@@ -5,7 +5,7 @@ import {
   ABERTURAS, CAMERAS, ENQUADRAMENTOS, FILMES, FOCAIS, GENEROS, GRADES, LENTES, LUZES, MOVIMENTOS,
   montarPrompt, texto, visualDe, type Cor, type Direcao, type Opcao,
 } from './cinema'
-import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT } from './comum'
+import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes } from './comum'
 import { IconeCamera } from './IconesCamera'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 
@@ -112,7 +112,9 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const [erro, setErro] = useState<string | null>(null)
   // One seed for the whole shot list: same cast and light from shot to shot.
   // Sorteada uma vez, ao montar (useState com funcao: fora do desenho, como o React pede).
-  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 31))
+  const [seedSorteada] = useState(() => Math.floor(Math.random() * 2 ** 31))
+  // "Advanced" (so modelos locais): a seed digitada vale para a lista toda.
+  const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_VAZIOS)
 
   // ---- image model: never default to one that cannot run where we are
   const roda = (m: Modelo) => !(naNuvem && m.nuvem === false)
@@ -149,15 +151,19 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const maxCast = video ? maxVideo : maxImagem
   const castOk = cast.slice(0, maxCast)
   const refVideo = video && castOk.length > 0
+  const local = video ? !gApi : !apiAtual
+  const seed = local && ajustes.seed ? Number(ajustes.seed) : seedSorteada
   const pedidoVideo = {
     modelo: 'video', modelo_video: motorVideo, modo_video: refVideo ? 'referencia' : 'texto', proporcao: '1:1',
     proporcao_video: escolherDe(proporcoesVideo, proporcao), resolucao_video: escolherDe(resolucoesVideo, resolucao),
     duracao_video: Math.max(dMin, Math.min(dMax, duracao)), com_audio: audio,
     referencias: refVideo ? castOk.map((r) => r.nome) : [],
+    ...(gApi ? {} : { ...camposAjustes(ajustes, false), seed }),
   }
   const pedidoImagem = {
     modelo: castOk.length ? modoRef : modelo, proporcao: escolherDe(PROPORCOES_IMAGEM, proporcao), lote,
     referencias: castOk.map((r) => r.nome), seed, ...extraApi,
+    ...(apiAtual ? {} : { ...camposAjustes(ajustes, true), seed }),
   }
 
   const custo = useCusto(video ? { ...pedidoVideo, prompt: 'x' } : { ...pedidoImagem, prompt: 'x' })
@@ -361,6 +367,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
           <BotaoGerar rotulo={trabalhando || `Shoot ${planos.length} ${video ? 'clip' : 'still'}${planos.length === 1 ? '' : 's'} ✦`}
             est={custoTotal} desligado={!!naoInstalado || !cena.trim() || !!trabalhando} aoClicar={gerarTodos} />
         </div>
+        {local && <Avancado valor={ajustes} aoMudar={setAjustes} comPassos={!video}
+          nota="Applies to every shot in the list, so light and cast stay the same." />}
         {naoInstalado && <AvisoInstalar rotulo={naoInstalado} />}
         {erro && <p className="hf-erro">{erro}</p>}
       </div>

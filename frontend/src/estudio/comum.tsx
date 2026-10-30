@@ -582,7 +582,7 @@ export function camposAjustes(a: Ajustes, comPassos: boolean): { seed?: number; 
 }
 
 /** "Advanced": um link discreto que abre seed, passos e CFG. Fechado, nada muda. */
-export function Avancado({ valor, aoMudar, comPassos }: { valor: Ajustes; aoMudar: (a: Ajustes) => void; comPassos: boolean }) {
+export function Avancado({ valor, aoMudar, comPassos, nota }: { valor: Ajustes; aoMudar: (a: Ajustes) => void; comPassos: boolean; nota?: string }) {
   const [aberto, setAberto] = useState(false)
   const ativo = !!(valor.seed || (comPassos && (valor.steps || valor.cfg)))
   return (
@@ -606,6 +606,7 @@ export function Avancado({ valor, aoMudar, comPassos }: { valor: Ajustes; aoMuda
                 onChange={(e) => aoMudar({ ...valor, cfg: e.target.value.replace(/[^\d.]/g, '').slice(0, 4) })} />
             </label>
           </>}
+          {nota && <small className="hf-ajustes-nota">{nota}</small>}
           {ativo && <button type="button" className="hf-ajustes-limpar" onClick={() => aoMudar(AJUSTES_VAZIOS)}>Reset</button>}
         </div>
       )}
