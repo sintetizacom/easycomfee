@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useReusarPrompt } from './Visualizador'
-import { api, type GeradorVideo, type Modelo, type ModeloNuvem, type Referencia } from '../api'
+import { api, referenciaDaGaleria, type GeradorVideo, type Modelo, type ModeloNuvem, type Referencia, type Tarefa } from '../api'
 import {
   ABERTURAS, CAMERAS, ENQUADRAMENTOS, FILMES, FOCAIS, GENEROS, GRADES, LENTES, LUZES, MOVIMENTOS,
   montarPrompt, texto, visualDe, type Cor, type Direcao, type Opcao,
 } from './cinema'
-import { BotaoGerar, CartaoTarefa, SlotImagem, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes } from './comum'
+import { BotaoGerar, CartaoTarefa, SlotImagem, arquivos, eVideo, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes } from './comum'
 import { IconeCamera } from './IconesCamera'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 
@@ -31,7 +31,10 @@ const PROPORCOES_IMAGEM = ['16:9', '9:16', '1:1', '4:5', '3:2']
 
 type Grupo = 'camera' | 'luz' | 'filme' | 'genero' | 'grade'
 // duracao: segundos so deste plano (modo Video); sem ela vale o Length do rodape.
-type Plano = { id: number; enquadramento: string; acao: string; movimento: string; duracao?: number; tarefa?: string }
+// inicio: a foto do plano (feita no modo Image) que vira o primeiro quadro do clipe no modo Video;
+// semInicio: a pessoa tirou a foto e o clipe sai so do texto.
+type Plano = { id: number; enquadramento: string; acao: string; movimento: string; duracao?: number; tarefa?: string;
+  inicio?: Referencia; semInicio?: boolean; takes?: string[] }
 
 // Bump when the card pictures change: the browser keeps a 404 for a picture
 // asked for before it existed.
@@ -178,25 +181,46 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const tarefa = (id?: string) => tarefas.find((t) => t.id === id)
 
   /** Director mode asks the local language model; if it fails, the plain prompt goes. */
-  const promptDo = async (p: Plano) => {
+  const promptDo = async (p: Plano, s = seed) => {
     const cenaPlano = [cena.trim(), p.acao.trim()].filter(Boolean).join('. ')
     let base: string
     if (!diretor) base = montarPrompt(cenaPlano, d, p.enquadramento)
     else {
       try {
-        base = (await api.cinemaDiretor(cenaPlano, texto(ENQUADRAMENTOS, p.enquadramento), visualDe(d), seed)).prompt
+        base = (await api.cinemaDiretor(cenaPlano, texto(ENQUADRAMENTOS, p.enquadramento), visualDe(d), s)).prompt
       } catch { base = montarPrompt(cenaPlano, d, p.enquadramento) }
     }
     return video ? `${base} ${texto(MOVIMENTOS, p.movimento)}` : base
   }
 
-  const gerarPlano = async (p: Plano) => {
-    const prompt = await promptDo(p)
+  // Image -> Video: o still pronto de um plano vira o primeiro quadro do clipe dele (30/10/2026).
+  const aceitaInicio = gApi ? gApi.modos.includes('imagem') : true
+  const stillDe = (p: Plano) => {
+    const t: Tarefa | undefined = tarefa(p.tarefa)
+    const a = t && t.estado === 'pronto' ? arquivos(t)[0] : undefined
+    return a && !eVideo(a.nome) ? a : undefined
+  }
+  const temInicio = (p: Plano) => video && aceitaInicio && !p.semInicio && !!(p.inicio || stillDe(p))
+
+  // Reshoot (o plano ja tem um take): semente nova, para nao sair a mesma imagem de novo. O primeiro
+  // take usa a semente da lista, que mantem luz e elenco iguais entre os planos (30/10/2026).
+  const gerarPlano = async (p: Plano, novaSemente = false) => {
+    const seedPlano = novaSemente ? Math.floor(Math.random() * 2 ** 31) : seed
+    const prompt = await promptDo(p, seedPlano)
     // With one image and no @ in the text, say who it is; with several, the scene names them (@image1, @image2…).
     const comCast = castOk.length === 1 && !cena.includes('@') ? `The same subject from @image1. ${prompt}` : prompt
-    const pedido = video ? { ...pedidoVideo, duracao_video: duracaoDe(p) } : pedidoImagem
-    const t = await api.gerar({ ...pedido, prompt: comCast } as Parameters<typeof api.gerar>[0])
-    mudarPlano(p.id, { tarefa: t.id })
+    let inicio: Referencia | undefined
+    if (temInicio(p)) {
+      const s = stillDe(p)
+      inicio = s ? await referenciaDaGaleria({ arquivo: s.nome, subpasta: s.subpasta }) : p.inicio
+    }
+    const pedido = !video ? pedidoImagem
+      : { ...pedidoVideo, duracao_video: duracaoDe(p), ...(inicio ? { modo_video: 'imagem', referencias: [inicio.nome] } : {}) }
+    const t = await api.gerar({ ...pedido, prompt: comCast, ...(novaSemente ? { seed: seedPlano } : {}) } as Parameters<typeof api.gerar>[0])
+    // Cada take fica guardado no plano para escolher o melhor; o novo vira o escolhido.
+    const takes = [...(p.takes ?? (p.tarefa ? [p.tarefa] : [])), t.id]
+    // A foto fica guardada: depois do clipe a tarefa do plano passa a ser o video.
+    mudarPlano(p.id, video ? { tarefa: t.id, takes, ...(inicio ? { inicio } : {}) } : { tarefa: t.id, takes, inicio: undefined, semInicio: false })
   }
 
   const gerarTodos = async () => {
@@ -330,6 +354,25 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             <div key={p.id} className="hf-plano">
               <div className="hf-plano-quadro">
                 {t ? <CartaoTarefa t={t} /> : <img src={foto('enquadramento', p.enquadramento)} alt={`Shot ${i + 1}: ${rot(ENQUADRAMENTOS, p.enquadramento)}`} />}
+                {(() => {
+                  // So os takes do modo atual (fotos no Image, clipes no Video); clicar escolhe qual fica no plano.
+                  const lista = (p.takes ?? []).map((id) => tarefa(id)).filter((x): x is Tarefa => !!x)
+                    .filter((x) => { const a = x.estado === 'pronto' ? arquivos(x)[0] : undefined; return !a || eVideo(a.nome) === video })
+                  if (lista.length < 2) return null
+                  return (
+                    <div className="hf-plano-takes" role="group" aria-label={`Takes of shot ${i + 1}`}>
+                      {(() => {
+                        const n = Math.max(0, lista.findIndex((x) => x.id === p.tarefa))
+                        const ir = (k: number) => mudarPlano(p.id, { tarefa: lista[(k + lista.length) % lista.length].id })
+                        return <>
+                          <button type="button" aria-label="Previous take" onClick={() => ir(n - 1)}>‹</button>
+                          <span>{n + 1} / {lista.length}</span>
+                          <button type="button" aria-label="Next take" onClick={() => ir(n + 1)}>›</button>
+                        </>
+                      })()}
+                    </div>
+                  )
+                })()}
               </div>
               <div className="hf-plano-campos">
                 <div className="hf-linha-controles">
@@ -346,6 +389,21 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                   <div className="hf-painel-op hf-painel-enq">
                     {ENQUADRAMENTOS.map((o) => <Cartao key={o.id} grupo="enquadramento" o={o} ativo={p.enquadramento === o.id}
                       aoEscolher={() => { mudarPlano(p.id, { enquadramento: o.id }); setEnqAberto(null) }} />)}
+                  </div>
+                )}
+                {video && aceitaInicio && (p.inicio || stillDe(p)) && (
+                  <div className="hf-inicio-plano">
+                    {p.semInicio ? (
+                      <button type="button" className="hf-botao-sec" onClick={() => mudarPlano(p.id, { semInicio: false })}>
+                        Use its still as the start frame</button>
+                    ) : (
+                      <span className="hf-selo-inicio" title="This shot's still is the first frame of the clip">
+                        <img src={p.inicio && !stillDe(p) ? p.inicio.url : `/api/imagem?${new URLSearchParams({ nome: stillDe(p)!.nome, subpasta: stillDe(p)!.subpasta, tipo: 'output' })}`} alt="" />
+                        ▶ Starts from its still
+                        <button type="button" aria-label={`Do not use the still in shot ${i + 1}`} title="Make the clip from the text only"
+                          onClick={() => mudarPlano(p.id, { semInicio: true })}>×</button>
+                      </span>
+                    )}
                   </div>
                 )}
                 {video && (
@@ -365,7 +423,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                   <input className="hf-campo" value={p.acao} onChange={(e) => mudarPlano(p.id, { acao: e.target.value })}
                     placeholder="What happens in this shot (optional): he lights a cigarette…" />
                   <button type="button" className="hf-gerar hf-shoot-plano" disabled={!cena.trim() || !!trabalhando || !!naoInstalado}
-                    onClick={async () => { setErro(null); try { await gerarPlano(p) } catch (e) { setErro(mensagem(e)) } }}>
+                    onClick={async () => { setErro(null); try { await gerarPlano(p, !!t) } catch (e) { setErro(mensagem(e)) } }}>
                     {t ? '↻ Reshoot' : '✦ Shoot this one'}
                   </button>
                 </div>

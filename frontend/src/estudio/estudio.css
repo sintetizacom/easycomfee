@@ -1153,3 +1153,16 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-campo-linha > span { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--hf-neon); }
 .hf-campo-linha .hf-select { width: auto; min-width: 0; padding-top: 6px; padding-bottom: 6px; }
 .hf-dicas-cinema { max-width: 920px; margin: 0 auto 16px; box-sizing: border-box; }
+/* Cinema Studio, modo Video: o still do plano como primeiro quadro do clipe. */
+.hf-inicio-plano { display: flex; }
+.hf-selo-inicio { display: inline-flex; align-items: center; gap: 8px; padding: 3px 4px 3px 3px; border-radius: 999px;
+  border: 1px solid var(--hf-neon); background: #F2FF3D14; color: var(--hf-neon); font-size: 12px; font-weight: 700; }
+.hf-selo-inicio img { width: 36px; height: 22px; object-fit: cover; border-radius: 999px; }
+.hf-selo-inicio button { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: #0006; color: #fff;
+  cursor: pointer; display: grid; place-items: center; font-size: 13px; line-height: 1; }
+.hf-selo-inicio button:hover { background: #E5484D; }
+/* Cinema Studio: os takes de cada plano, no padrao  < 1 / 3 >. */
+.hf-plano-takes { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; font-size: 13px; font-weight: 700; }
+.hf-plano-takes button { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid var(--hf-linha); background: #ffffff10;
+  color: var(--hf-texto); cursor: pointer; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.hf-plano-takes button:hover { border-color: var(--hf-neon); color: var(--hf-neon); }
