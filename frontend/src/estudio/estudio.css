@@ -691,7 +691,7 @@
    arquivo, entao estas regras levam "html" na frente para vencer as antigas. */
 html .mq { --neon: #F2FF3D; --neon-escuro: #34331F; --cartao: #261D2E; --linha: #382D42; background: #1E1724; }
 html .mq-sub { color: var(--hf-apagado); }
-html .mq-rotulo { color: var(--hf-apagado); }
+html .mq-rotulo { color: var(--hf-neon); font-weight: 700; }
 html .mq-campos label { color: var(--hf-apagado); }
 html .mq-campos input, html .mq-campos select, html .mq-token { background: #2A2133; color: #F4F0E8; }
 html .mq-botao { color: #191220; }
