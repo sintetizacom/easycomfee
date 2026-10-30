@@ -123,7 +123,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
       <div className="hf-apps">
         {APPS.map((a) => (
           <button key={a.id} className="hf-app" data-ativo={app?.id === a.id} aria-pressed={app?.id === a.id} onClick={() => abrir(a)}>
-            <video src={`/exemplos/${a.id}.mp4?v=5`} muted loop autoPlay playsInline
+            <video src={`/exemplos/${a.id}.mp4?v=6`} muted loop autoPlay playsInline
               onError={(e) => { (e.currentTarget as HTMLVideoElement).style.visibility = 'hidden' }} />
             {a.id === 'maquete' && <small className="hf-selo-neon">Experimental</small>}
             <b>{a.nome}{naNuvem && SO_LOCAL.has(a.id) && <small> · local GPU only</small>}</b>
