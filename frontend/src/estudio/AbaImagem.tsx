@@ -134,8 +134,14 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const refsOk = refs.slice(0, maxRefs)
   // With images, open models run in their reference/edit mode, one image per run.
   const comRefs = refsOk.length > 0
+  // Flux 3 na placa: o tamanho padrao e ~1 MP (1344x768 no 16:9). "2 MP" usa a escala do servidor
+  // (x1,4) e "4K" o modo nativo (~8,3 MP, uns 7,5 min em 16 GB), so sem imagens de referencia.
+  const flux3Local = !apiAtual && !naNuvem && modelo === 'flux3'
+  const [tamanho, setTamanho] = useState('padrao')
+  const tamanhoOk = tamanho === '4k' && comRefs ? 'padrao' : tamanho
   const pedido = {
     modelo: comRefs && usoRefs ? usoRefs.modo : modelo, prompt: prompt || 'x', proporcao,
+    ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),
     lote: comRefs && !apiAtual ? 1 : lote, referencias: refsOk.map((r) => r.nome),
     ...(apiAtual ? {} : camposAjustes(ajustes, true)),
     ...(apiAtual ? { resolucao_nuvem: nivelOk } : {}),
@@ -246,6 +252,11 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           </select></label>
           <Chips rotulo="Aspect ratio" opcoes={PROPORCOES.map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           {!(comRefs && !apiAtual) && <Chips rotulo="Images" opcoes={[1, 2, 4].map((n) => ({ id: n, rotulo: `×${n}` }))} valor={lote} aoMudar={setLote} />}
+          {flux3Local && (
+            <Chips rotulo="Resolution" valor={tamanhoOk} aoMudar={setTamanho} opcoes={[
+              { id: 'padrao', rotulo: '1 MP · fast' }, { id: 'alta', rotulo: '2 MP' },
+              { id: '4k', rotulo: '4K · slow', ...(comRefs ? { desligado: true, dica: '4K works without reference images' } : { dica: 'About 8 MP; 7 to 17 min per image on a 16 GB card' }) }]} />
+          )}
           {apiAtual && niveis.length > 1 && (
             <Chips rotulo="Resolution" opcoes={niveis.map((n) => ({ id: n, rotulo: n }))} valor={nivelOk} aoMudar={setNivel} />
           )}

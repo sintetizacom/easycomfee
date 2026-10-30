@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { api, type Andamento, type Tarefa } from './api'
+import { MotorCtx } from './estudio/motor'
 
 function tempo(segundos: number) {
   const s = Math.max(0, Math.floor(segundos))
@@ -99,6 +100,15 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
   const pct = conhecido ? Math.min(100, passo / total * 100) : 0
   const modelo = MODELOS[tarefa.modelo_video || ''] || (tarefa.modelo === 'video' ? 'Video' : 'Generation')
   const etapa = falhou ? 'Generation stopped' : naEspera ? 'In queue' : emIngles(tarefa.detalhe) || 'Preparing'
+  // Parar (30/10/2026): o servidor ja sabia (/api/cancelar), faltava o botao. So com o motor local:
+  // na Comfy Cloud o trabalho pode seguir (e ser cobrado) mesmo com o app parando de acompanhar.
+  const { naNuvem } = useContext(MotorCtx)
+  const [parando, setParando] = useState(false)
+  const parar = async () => {
+    if (!window.confirm('Stop this generation? Anything waiting in line is cancelled too.')) return
+    setParando(true)
+    try { await api.cancelar() } catch { /* o estado da tarefa avisa se nao parou */ } finally { setParando(false) }
+  }
 
   return (
     <div className="andamento-topo" ref={raiz}>
@@ -111,6 +121,8 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
         <span className="andamento-tempo">{falhou ? tempo(tarefa.duracao) : tempo(agora - inicio)}</span>
         <span aria-hidden="true">{aberto ? '⌃' : '⌄'}</span>
       </button>
+      {!falhou && !naNuvem && <button type="button" className="andamento-parar" onClick={parar} disabled={parando}
+        title="Stop the generation running on your GPU (and anything waiting in line)">{parando ? 'Stopping…' : '■ Stop'}</button>}
       {!falhou && <div className="andamento-barra andamento-barra-topo" data-indeterminado={!conhecido}
         {...(conhecido ? { role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': total, 'aria-valuenow': passo,
           'aria-label': 'Steps done in the current stage' } : { 'aria-label': 'Generating, progress unknown' })}>
@@ -129,7 +141,8 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
         </>}
         </div>
       </div>
-      {falhou ? <p className="andamento-alerta" role="alert">{tarefa.erro || 'The generation stopped. Check the engine before trying again.'}</p> : <>
+      {falhou ? <p className="andamento-alerta" role="alert">{/interrompida|cancelada/i.test(tarefa.erro) ? 'Stopped by you.'
+        : tarefa.erro || 'The generation stopped. Check the engine before trying again.'}</p> : <>
       <div className="andamento-metricas">
         <div><span>{tarefa.iniciada_em ? 'Generating for' : 'Since sent'}</span><strong>{tempo(agora - inicio)}</strong></div>
         <div><span>Stage steps</span><strong>{total ? `${passo} / ${total}` : 'Waiting'}</strong></div>

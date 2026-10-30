@@ -165,9 +165,15 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
     referencias: refVideo ? castOk.map((r) => r.nome) : [],
     ...(gApi ? {} : { ...camposAjustes(ajustes, false), seed }),
   }
+  // Flux 3 na placa: o tamanho padrao e ~1 MP (1344x768 no 16:9). "2 MP" usa a escala do servidor
+  // (x1,4) e "4K" o modo nativo (~8,3 MP, uns 7,5 min em 16 GB), so sem imagens de referencia.
+  const flux3Local = !apiAtual && !naNuvem && modelo === 'flux3'
+  const [tamanho, setTamanho] = useState('padrao')
+  const tamanhoOk = tamanho === '4k' && castOk.length > 0 ? 'padrao' : tamanho
   const pedidoImagem = {
     modelo: castOk.length ? modoRef : modelo, proporcao: escolherDe(PROPORCOES_IMAGEM, proporcao), lote,
     referencias: castOk.map((r) => r.nome), seed, ...extraApi,
+    ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),
     ...(apiAtual ? {} : { ...camposAjustes(ajustes, true), seed }),
   }
 
@@ -453,10 +459,13 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                 <small>Sound</small><b>{audio ? '🔊 On' : '🔇 Off'}</b>
               </button>
             )}
-          </> : (
+          </> : <>
+            {flux3Local && <Controle icone="⛶" rotulo="Resolution" valor={tamanhoOk} aoMudar={setTamanho}
+              opcoes={[{ id: 'padrao', rotulo: '1 MP · fast' }, { id: 'alta', rotulo: '2 MP' },
+                ...(castOk.length ? [] : [{ id: '4k', rotulo: '4K · slow' }])]} />}
             <Controle icone="▦" rotulo="Takes per shot" valor={String(lote)} aoMudar={(v) => setLote(Number(v))}
               opcoes={[1, 2, 4].map((n) => ({ id: String(n), rotulo: `${n}` }))} />
-          )}
+          </>}
           <BotaoGerar rotulo={trabalhando || `Shoot ${planos.length} ${video ? 'clip' : 'still'}${planos.length === 1 ? '' : 's'} ✦`}
             est={custoTotal} desligado={!!naoInstalado || !cena.trim() || !!trabalhando} aoClicar={gerarTodos} />
         </div>

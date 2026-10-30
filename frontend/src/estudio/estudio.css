@@ -1166,3 +1166,9 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-plano-takes button { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid var(--hf-linha); background: #ffffff10;
   color: var(--hf-texto); cursor: pointer; display: grid; place-items: center; font-size: 16px; line-height: 1; }
 .hf-plano-takes button:hover { border-color: var(--hf-neon); color: var(--hf-neon); }
+/* Pilula de progresso: botao para parar a geracao local. */
+.andamento-topo { display: flex; align-items: center; gap: 6px; }
+.andamento-parar { border: 1px solid #E5484D99; background: #E5484D1F; color: #FF8A8E; border-radius: 999px; padding: 5px 12px;
+  font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.andamento-parar:hover { background: #E5484D; color: #fff; }
+.andamento-parar:disabled { opacity: .6; cursor: default; }
