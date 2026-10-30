@@ -181,7 +181,7 @@
 .hf-grupo-rotulo { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hf-apagado); }
 .hf-barra-prompt > .hf-select, .hf-barra-prompt > div > .hf-select { justify-self: start; width: auto; min-width: 200px; }
 
-.hf-gerar { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.1; }
+.hf-gerar { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.1; }
 .hf-custo { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; opacity: 0.75; }
 
 .hf-audio { width: 100%; margin: 12px 0 4px; }
