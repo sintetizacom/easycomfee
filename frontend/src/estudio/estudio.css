@@ -826,3 +826,10 @@ html .mq-seletor[data-ligado='true'] .mq-seletor-bola { transform: translateX(40
 html .mq-seletor[data-ligado='true'] .mq-seletor-texto { margin-left: 0; margin-right: auto; color: #191220; }
 html .mq-seletor:disabled { opacity: .5; cursor: not-allowed; }
 html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 3px; }
+
+/* Aviso do 3D render -> Video (AbaApps): experimental, com as dicas que mais evitam erro. */
+.hf-experimental { flex-basis: 100%; margin: 4px 0 8px; padding: 10px 14px; border: 1px solid var(--hf-neon); border-radius: 10px;
+  font-size: 13px; line-height: 1.5; color: var(--hf-texto); }
+.hf-experimental > b { color: var(--hf-neon); }
+.hf-experimental ul { margin: 6px 0 0; padding-left: 18px; }
+.hf-experimental li { margin: 2px 0; }

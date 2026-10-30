@@ -125,7 +125,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           <button key={a.id} className="hf-app" data-ativo={app?.id === a.id} aria-pressed={app?.id === a.id} onClick={() => abrir(a)}>
             <video src={`/exemplos/${a.id}.mp4?v=5`} muted loop autoPlay playsInline
               onError={(e) => { (e.currentTarget as HTMLVideoElement).style.visibility = 'hidden' }} />
-            <b>{a.nome}{naNuvem && SO_LOCAL.has(a.id) && <small> · local GPU only</small>}</b>
+            <b>{a.nome}{a.id === 'maquete' && <small> · experimental</small>}{naNuvem && SO_LOCAL.has(a.id) && <small> · local GPU only</small>}</b>
             <span>{a.frase}</span>
           </button>
         ))}
@@ -134,6 +134,18 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
       {app && (
         <div className="hf-barra-prompt" style={{ marginTop: 20 }}>
           <span className="hf-passo">{app.nome}</span>
+          {app.id === 'maquete' && (
+            <div className="hf-experimental">
+              <b>Experimental</b>: results vary from shot to shot. For fewer errors:
+              <ul>
+                <li><b>Make the Look from frame 1 of your render</b>: capture it, restyle it in the Image tab with the gray frame as the base, and drop it here. Same framing, same aspect ratio.</li>
+                <li><b>Keep the render simple</b>: clear blocks, a visible ground, smooth camera moves, 5 to 10 s at 24 fps.</li>
+                <li><b>Add a keyframe whenever a new side of the object shows</b> (it turns, the camera goes around it): the model only invents what it never saw.</li>
+                <li><b>Describe the scene in the prompt</b> (“a green sports car on a desert road at sunset”), not the camera.</li>
+                <li>Try 2 or 3 seeds before changing the setup.</li>
+              </ul>
+            </div>
+          )}
           <div className="hf-slots">
             {precisaVideo && (
               <label className="hf-slot" data-cheio={!!video}>
