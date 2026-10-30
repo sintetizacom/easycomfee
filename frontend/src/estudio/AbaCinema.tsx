@@ -30,7 +30,8 @@ const MAX_REF: Record<string, number> = { flux3: 10, qwen21: 8, klein: 4, kroma:
 const PROPORCOES_IMAGEM = ['16:9', '9:16', '1:1', '4:5', '3:2']
 
 type Grupo = 'camera' | 'luz' | 'filme' | 'genero' | 'grade'
-type Plano = { id: number; enquadramento: string; acao: string; movimento: string; tarefa?: string }
+// duracao: segundos so deste plano (modo Video); sem ela vale o Length do rodape.
+type Plano = { id: number; enquadramento: string; acao: string; movimento: string; duracao?: number; tarefa?: string }
 
 // Bump when the card pictures change: the browser keeps a 404 for a picture
 // asked for before it existed.
@@ -153,6 +154,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const refVideo = video && castOk.length > 0
   const local = video ? !gApi : !apiAtual
   const seed = local && ajustes.seed ? Number(ajustes.seed) : seedSorteada
+  const duracaoDe = (p: Plano) => Math.max(dMin, Math.min(dMax, p.duracao ?? duracao))
   const pedidoVideo = {
     modelo: 'video', modelo_video: motorVideo, modo_video: refVideo ? 'referencia' : 'texto', proporcao: '1:1',
     proporcao_video: escolherDe(proporcoesVideo, proporcao), resolucao_video: escolherDe(resolucoesVideo, resolucao),
@@ -192,7 +194,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
     const prompt = await promptDo(p)
     // With one image and no @ in the text, say who it is; with several, the scene names them (@image1, @image2…).
     const comCast = castOk.length === 1 && !cena.includes('@') ? `The same subject from @image1. ${prompt}` : prompt
-    const t = await api.gerar({ ...(video ? pedidoVideo : pedidoImagem), prompt: comCast } as Parameters<typeof api.gerar>[0])
+    const pedido = video ? { ...pedidoVideo, duracao_video: duracaoDe(p) } : pedidoImagem
+    const t = await api.gerar({ ...pedido, prompt: comCast } as Parameters<typeof api.gerar>[0])
     mudarPlano(p.id, { tarefa: t.id })
   }
 
@@ -223,21 +226,31 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
         <h1>Direct your scene, <em>shot by shot</em></h1>
       </div>
 
+      {/* Como usar, recolhido (mesmo estilo das dicas do 3D render -> Video). */}
+      <details className="hf-experimental hf-dicas hf-dicas-cinema">
+        <summary><b>How it works</b> · Tips for better shots</summary>
+        <ul>
+          <li><b>1. Write the scene</b>: who, where and what is happening, in a sentence or two. Any language works with Director mode on.</li>
+          <li><b>2. Add your cast</b> (optional): pictures of people, objects or places. Call them <b>@image1</b>, <b>@image2</b>… in the scene, so every shot keeps the same faces and things.</li>
+          <li><b>3. Set the look</b>: camera, light, film, look and grade. <b>Director mode</b> turns these choices into how the frame looks, without drawing any camera gear.</li>
+          <li><b>4. Plan the shots</b>: pick the framing of each shot (wide, medium, close-up…) and, if you want, what happens in it. Then <b>Shoot this one</b>, or <b>Shoot all</b> at the bottom.</li>
+          <li><b>Reshoot</b> any shot until it looks right; with <b>Takes per shot</b> above 1 you get several versions to pick from.</li>
+        </ul>
+        <b className="hf-dicas-sub">Image or Video</b>
+        <ul>
+          <li><b>Image</b> makes a still for each shot. <b>Video</b> makes a clip for each shot, from the text, with its own camera move and length.</li>
+          <li>In Video, the cast pictures are <b>references</b> (LTX 2.5 on your GPU takes up to 4): they are not animated as the first frame.</li>
+          <li><b>To animate a still you like</b>: shoot it in Image mode, then click <b>▶ Animate</b> on the result. It opens the Video tab in Image → Video with that picture.</li>
+          <li>The small picture in each shot is just an example of the framing; it is replaced by your result.</li>
+        </ul>
+      </details>
+
       <div className="hf-barra-prompt hf-cinema">
         <div className="hf-linha-controles hf-cinema-topo">
           <div className="hf-tipo" role="tablist">
             <button role="tab" data-ativo={!video} aria-selected={!video} onClick={() => setTipo('imagem')}>Image</button>
             <button role="tab" data-ativo={video} aria-selected={video} onClick={() => setTipo('video')}>Video</button>
           </div>
-          {video ? (
-            <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorVid} onChange={(e) => escolherVid(e.target.value)} aria-label="Video model">
-              <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' }]} api={geradores} />
-            </select></label>
-          ) : (
-            <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorImg} onChange={(e) => escolherImg(e.target.value)} aria-label="Image model">
-              <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
-            </select></label>
-          )}
           <label className="hf-chave-dir" title="A local language model rewrites the scene as one film frame, turning the gear into how the image looks">
             <input type="checkbox" checked={diretor} onChange={(e) => setDiretor(e.target.checked)} /> Director mode
           </label>
@@ -294,9 +307,23 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             </div>
           ))}
         </div>
+      </div>
 
+      {/* Segunda caixa: o modelo e a lista de planos, com o rodape de geracao (30/10/2026). */}
+      <div className="hf-barra-prompt hf-cinema hf-cinema-planos">
         <span className="hf-passo">Shot list</span>
         <p className="hf-dica">Every shot keeps the same cast, light and color.{video && ' Each shot is a clip with its own camera move.'}</p>
+        <div className="hf-cinema-modelo">
+            {video ? (
+              <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorVid} onChange={(e) => escolherVid(e.target.value)} aria-label="Video model">
+                <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' }]} api={geradores} />
+              </select></label>
+            ) : (
+              <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorImg} onChange={(e) => escolherImg(e.target.value)} aria-label="Image model">
+                <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
+              </select></label>
+            )}
+        </div>
         {planos.map((p, i) => {
           const t = tarefa(p.tarefa)
           return (
@@ -312,11 +339,6 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                     <img src={foto('enquadramento', p.enquadramento)} alt="" />
                     <span>{rot(ENQUADRAMENTOS, p.enquadramento)}</span><i>▾</i>
                   </button>
-                  {video && (
-                    <label className="hf-campo"><span>Camera move</span><select className="hf-select" value={p.movimento} onChange={(e) => mudarPlano(p.id, { movimento: e.target.value })} aria-label="Camera move">
-                      {MOVIMENTOS.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
-                    </select></label>
-                  )}
                   {planos.length > 1 && <button type="button" className="hf-botao-sec hf-x" aria-label={`Remove shot ${i + 1}`} title={`Remove shot ${i + 1}`}
                     onClick={() => setPlanos((a) => a.filter((x) => x.id !== p.id))}>×</button>}
                 </div>
@@ -326,12 +348,25 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                       aoEscolher={() => { mudarPlano(p.id, { enquadramento: o.id }); setEnqAberto(null) }} />)}
                   </div>
                 )}
-                <input className="hf-campo" value={p.acao} onChange={(e) => mudarPlano(p.id, { acao: e.target.value })}
-                  placeholder="What happens in this shot (optional): he lights a cigarette…" />
-                <div className="hf-linha-controles">
-                  <button type="button" className="hf-botao-sec" disabled={!cena.trim() || !!trabalhando || !!naoInstalado}
+                {video && (
+                  <div className="hf-plano-video">
+                    <label className="hf-campo-linha"><span>Camera move</span>
+                      <select className="hf-select" value={p.movimento} onChange={(e) => mudarPlano(p.id, { movimento: e.target.value })} aria-label={`Camera move, shot ${i + 1}`}>
+                        {MOVIMENTOS.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
+                      </select></label>
+                    <label className="hf-campo-linha"><span>Length</span>
+                      <select className="hf-select" value={duracaoDe(p)} onChange={(e) => mudarPlano(p.id, { duracao: Number(e.target.value) })} aria-label={`Length, shot ${i + 1}`}>
+                        {Array.from({ length: dMax - dMin + 1 }, (_, k) => dMin + k).map((n) => <option key={n} value={n}>{n} s</option>)}
+                      </select></label>
+                  </div>
+                )}
+                {/* A acao do plano e o botao na mesma linha: o botao fica a direita da caixa. */}
+                <div className="hf-plano-acao">
+                  <input className="hf-campo" value={p.acao} onChange={(e) => mudarPlano(p.id, { acao: e.target.value })}
+                    placeholder="What happens in this shot (optional): he lights a cigarette…" />
+                  <button type="button" className="hf-gerar hf-shoot-plano" disabled={!cena.trim() || !!trabalhando || !!naoInstalado}
                     onClick={async () => { setErro(null); try { await gerarPlano(p) } catch (e) { setErro(mensagem(e)) } }}>
-                    {t ? '↻ Reshoot' : 'Shoot this one'}
+                    {t ? '↻ Reshoot' : '✦ Shoot this one'}
                   </button>
                 </div>
               </div>

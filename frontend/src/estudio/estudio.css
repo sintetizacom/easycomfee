@@ -1129,3 +1129,27 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-heroi-compacto h1 em { font-style: normal; background: none; -webkit-background-clip: border-box; background-clip: border-box;
   color: var(--hf-neon); -webkit-text-fill-color: var(--hf-neon); text-shadow: 0 0 24px #F2FF3D40; }
 .hf-heroi-compacto .hf-dica { color: #B9B2C4; }
+/* Cinema Studio: "Shoot this one" a direita da caixa da acao de cada plano. */
+.hf-plano-acao { display: flex; align-items: center; gap: 10px; }
+.hf-cinema .hf-plano-campos .hf-plano-acao .hf-campo { flex: 1 1 auto; width: auto; min-width: 0; }
+.hf-plano-acao > button { flex: none; white-space: nowrap; }
+@media (max-width: 600px) { .hf-plano-acao { flex-wrap: wrap; } .hf-plano-acao > button { width: 100%; } }
+.hf-gerar.hf-shoot-plano { margin-left: 0; padding: 9px 18px; font-size: 13px; border-radius: 999px;
+  transition: filter .12s, box-shadow .12s; }
+.hf-gerar.hf-shoot-plano:not(:disabled):hover { filter: brightness(1.08); box-shadow: 0 0 16px #F2FF3D55; }
+/* Cinema Studio: segunda caixa (shot list) e o modelo alinhado a esquerda acima do Shot 1. */
+.hf-barra-prompt.hf-cinema.hf-cinema-planos { margin-top: 16px; }
+.hf-cinema-modelo { display: flex; justify-content: flex-start; }
+.hf-cinema-modelo .hf-campo { width: min(360px, 100%); }
+.hf-cinema-modelo .hf-select { width: 100%; }
+/* Cinema Studio: MODEL e o seletor na mesma linha. */
+.hf-cinema-modelo .hf-campo { display: flex; flex-direction: row; align-items: center; gap: 12px; width: min(440px, 100%);
+  border: 0; padding: 0; background: none; }
+.hf-cinema-modelo .hf-campo > span { flex: none; margin: 0; }
+.hf-cinema-modelo .hf-campo .hf-select { flex: 1 1 auto; min-width: 0; }
+/* Cinema Studio, modo Video: Camera move e Length de cada plano numa linha propria. */
+.hf-plano-video { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.hf-campo-linha { display: flex; align-items: center; gap: 8px; }
+.hf-campo-linha > span { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--hf-neon); }
+.hf-campo-linha .hf-select { width: auto; min-width: 0; padding-top: 6px; padding-bottom: 6px; }
+.hf-dicas-cinema { max-width: 920px; margin: 0 auto 16px; box-sizing: border-box; }

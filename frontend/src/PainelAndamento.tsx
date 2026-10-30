@@ -27,7 +27,12 @@ const ETAPAS: [RegExp, string][] = [
   [/^treinando \((\d+) de (\d+) épocas\)$/, 'Training ($1 of $2 epochs)'], [/^variação (\d+)$/, 'Variation $1'],
   [/^retomad/, 'Resumed after a restart'], [/refazendo$/, 'Retrying'],
 ]
-export const emIngles = (s: string) => { for (const [re, t] of ETAPAS) if (re.test(s)) return s.replace(re, t); return s }
+// So o trecho reconhecido, ja traduzido: com s.replace o resto da frase ficava em portugues
+// ("Reading the inputs o prompt…", 30/10/2026).
+export const emIngles = (s: string) => {
+  for (const [re, t] of ETAPAS) { const m = s.match(re); if (m) return m[0].replace(re, t) }
+  return s
+}
 
 const MODELOS: Record<string, string> = {
   ltx: 'LTX 2.5', fasth3: 'FastH3', minimax: 'MiniMax H3', planos: 'Multi-shot video',
