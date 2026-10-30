@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
 import { api, type GeradorVideo, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, quadroChave, passoChave, MAX_PROMPT } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, quadroChave, passoChave, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes } from './comum'
 
 // Video tab: LTX 2.5 or the open-weight MiniMax H3, plus the API generators.
 // "References" puts the people and objects of your images into the shot:
@@ -137,6 +137,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
     referencias: modoOk === 'texto' ? [] : ehRef ? (nomesRefs.length ? nomesRefs : ['a.png']) : [inicio?.nome ?? 'a.png', fim?.nome ?? 'b.png'],
   })
 
+  const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_VAZIOS)
   const gerar = async () => {
     setErro(null)
     try {
@@ -144,6 +145,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt, proporcao: '1:1',
         proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
         referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
+        ...(gApi ? {} : camposAjustes(ajustes, false)),
         ...(ehRef && motor === 'ltx' && fundo ? { fundo_referencia: fundo.nome } : {}),
         ...(ehChaves ? { quadros_referencias: chavesOk.map((c) => quadroChave(c.seg, duracaoOk) + 1), forca_chaves: forcaChaves } : {}),
       } as Parameters<typeof api.gerar>[0])
@@ -248,6 +250,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           <label className="hf-toggle" style={(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? { display: 'none' } : undefined}><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
           <BotaoGerar est={custo} desligado={naoInstalado || !prompt.trim() || faltaImagem || chavesRepetidas} aoClicar={gerar} />
         </div>
+        {!gApi && <Avancado valor={ajustes} aoMudar={setAjustes} comPassos={false} />}
         {avisoModo && <p className="hf-dica" role="note">{avisoModo}</p>}
         {chavesRepetidas && <p className="hf-erro">Two keyframes are at the same second: move one of them.</p>}
         {naoInstalado && <AvisoInstalar rotulo={rotuloMotor} />}

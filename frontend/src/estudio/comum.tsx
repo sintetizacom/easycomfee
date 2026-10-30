@@ -129,13 +129,18 @@ export function usarNaCaixa(e: Entrega): boolean {
 /** Soltar em qualquer ponto de uma caixa de prompt: vai para o primeiro slot vazio. */
 export function useSoltarNaCaixa() {
   useEffect(() => {
+    // Arquivo do computador solto fora de um espaco: o navegador abria o arquivo e a pessoa
+    // saia do app (30/10/2026). Agora ele so e ignorado; dentro da caixa vai para um espaco.
+    const comArquivo = (ev: DragEvent) => !!ev.dataTransfer?.types.includes('Files')
     const sobre = (ev: DragEvent) => {
-      if ((ev.target as HTMLElement)?.closest?.('.hf-barra-prompt') && ev.dataTransfer?.types.some((t) => t === TIPO_GALERIA || t === 'Files'))
+      if (comArquivo(ev) || ((ev.target as HTMLElement)?.closest?.('.hf-barra-prompt') && ev.dataTransfer?.types.includes(TIPO_GALERIA)))
         ev.preventDefault()
     }
     const soltar = (ev: DragEvent) => {
+      if (ev.defaultPrevented || !ev.dataTransfer) return
+      if (comArquivo(ev)) ev.preventDefault()
       const caixa = (ev.target as HTMLElement)?.closest?.('.hf-barra-prompt')
-      if (!caixa || ev.defaultPrevented || !ev.dataTransfer) return
+      if (!caixa) return
       const e = entregaDoArraste(ev.dataTransfer)
       if (!e) return
       ev.preventDefault()
@@ -558,4 +563,50 @@ export class ProtegeAba extends Component<{ children: ReactNode }, { erro: Error
         <button type="button" className="hf-link" onClick={() => this.setState({ erro: null })}>Try again</button></p></div>
     )
   }
+}
+
+/** Ajustes finos de uma geracao. Vazio = o padrao do modelo (seed sorteada). */
+export type Ajustes = { seed: string; steps: string; cfg: string }
+export const AJUSTES_VAZIOS: Ajustes = { seed: '', steps: '', cfg: '' }
+
+/** O que vai no pedido: so o que a pessoa preencheu. Passos e CFG so onde o modelo usa. */
+export function camposAjustes(a: Ajustes, comPassos: boolean): { seed?: number; steps?: number; cfg?: number } {
+  const n = (v: string) => (v.trim() === '' || !Number.isFinite(Number(v)) ? undefined : Number(v))
+  return {
+    ...(n(a.seed) !== undefined ? { seed: Math.floor(n(a.seed)!) } : {}),
+    ...(comPassos && n(a.steps) !== undefined ? { steps: Math.floor(n(a.steps)!) } : {}),
+    ...(comPassos && n(a.cfg) !== undefined ? { cfg: n(a.cfg) } : {}),
+  }
+}
+
+/** "Advanced": um link discreto que abre seed, passos e CFG. Fechado, nada muda. */
+export function Avancado({ valor, aoMudar, comPassos }: { valor: Ajustes; aoMudar: (a: Ajustes) => void; comPassos: boolean }) {
+  const [aberto, setAberto] = useState(false)
+  const ativo = !!(valor.seed || (comPassos && (valor.steps || valor.cfg)))
+  return (
+    <div className="hf-ajustes" data-aberto={aberto}>
+      <button type="button" className="hf-ajustes-botao" aria-expanded={aberto} onClick={() => setAberto(!aberto)}>
+        {aberto ? '▾' : '▸'} Advanced{ativo && !aberto ? ' ·' : ''}
+      </button>
+      {aberto && (
+        <div className="hf-ajustes-campos">
+          <label title="Same seed + same settings = the same result. Empty = a new random seed each time.">
+            Seed<input inputMode="numeric" placeholder="random" value={valor.seed}
+              onChange={(e) => aoMudar({ ...valor, seed: e.target.value.replace(/\D/g, '') })} />
+          </label>
+          {comPassos && <>
+            <label title="More steps: more detail and slower. Empty = the model's own default.">
+              Steps<input inputMode="numeric" placeholder="default" value={valor.steps}
+                onChange={(e) => aoMudar({ ...valor, steps: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
+            </label>
+            <label title="How strictly the prompt is followed. Empty = the model's own default.">
+              CFG<input inputMode="decimal" placeholder="default" value={valor.cfg}
+                onChange={(e) => aoMudar({ ...valor, cfg: e.target.value.replace(/[^\d.]/g, '').slice(0, 4) })} />
+            </label>
+          </>}
+          {ativo && <button type="button" className="hf-ajustes-limpar" onClick={() => aoMudar(AJUSTES_VAZIOS)}>Reset</button>}
+        </div>
+      )}
+    </div>
+  )
 }

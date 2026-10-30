@@ -833,3 +833,13 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-experimental > b { color: var(--hf-neon); }
 .hf-experimental ul { margin: 6px 0 0; padding-left: 18px; }
 .hf-experimental li { margin: 2px 0; }
+
+/* "Advanced" (comum.tsx Avancado): quase escondido, um link pequeno sob os controles. */
+.hf-ajustes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
+.hf-ajustes-botao, .hf-ajustes-limpar { background: none; border: 0; padding: 2px 0; color: var(--hf-apagado); font: inherit; cursor: pointer; }
+.hf-ajustes-botao:hover, .hf-ajustes-limpar:hover { color: var(--hf-texto); }
+.hf-ajustes-campos { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hf-ajustes-campos label { display: flex; align-items: center; gap: 6px; color: var(--hf-apagado); }
+.hf-ajustes-campos input { width: 92px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25); color: var(--hf-texto); font: inherit; }
+.hf-ajustes-campos label:not(:first-child) input { width: 64px; }

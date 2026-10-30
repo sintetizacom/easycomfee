@@ -4,7 +4,7 @@ import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Ref
 import LayoutIdeogram from './LayoutIdeogram'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio, useLembrado, MAX_PROMPT } from './comum'
+import { AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, parteDoHash, teclasRadio, useLembrado, MAX_PROMPT } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -88,6 +88,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const [proporcao, setProporcao] = useState('1:1')
   const [lote, setLote] = useState(1)
   const [refs, setRefs] = useState<Referencia[]>([])
+  const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_VAZIOS)
   // "Recreate" (galeria/visualizador): volta prompt, imagens, proporcao e modelo.
   // Com imagens o pedido foi no modo de referencia (flux3ref...): volta ao modelo do menu.
   // Trocar de modelo muda o endereco e remonta a aba: entao primeiro vai ao modelo
@@ -101,6 +102,8 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
     const nomes = ([q.referencias_usadas, q.referencias].find((x) => Array.isArray(x) && x.length) ?? []) as string[]
     setRefs(nomes.map((n) => ({ nome: n, url: urlEntrada(n) })))
     if (typeof q.proporcao === 'string') setProporcao(q.proporcao)
+    const txt = (v: unknown) => (typeof v === 'number' ? String(v) : '')
+    setAjustes({ seed: txt(q.seed), steps: txt(q.steps), cfg: txt(q.cfg) })
   }, [setPrompt]))
   // Ideogram 4: optional hand-drawn layout (boxes) sent as its caption.
   const [comLayout, setComLayout] = useState(false)
@@ -134,6 +137,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const pedido = {
     modelo: comRefs && usoRefs ? usoRefs.modo : modelo, prompt: prompt || 'x', proporcao,
     lote: comRefs && !apiAtual ? 1 : lote, referencias: refsOk.map((r) => r.nome),
+    ...(apiAtual ? {} : camposAjustes(ajustes, true)),
     ...(apiAtual ? { resolucao_nuvem: nivelOk } : {}),
     ...(usarLayout ? { caption: {
       aspect_ratio: proporcao,
@@ -247,6 +251,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           )}
           <BotaoGerar est={custo} desligado={desligado} aoClicar={gerar} />
         </div>
+        {!apiAtual && <Avancado valor={ajustes} aoMudar={setAjustes} comPassos />}
         {ehIdeogram && (
           <div className="hf-linha-controles">
             <Chips rotulo="Layout" opcoes={[{ id: 'auto', rotulo: 'Automatic' }, { id: 'caixas', rotulo: 'Draw boxes' }]}
