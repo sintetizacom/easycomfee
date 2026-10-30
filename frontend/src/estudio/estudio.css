@@ -843,3 +843,11 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-ajustes-campos input { width: 92px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,.14);
   background: rgba(0,0,0,.25); color: var(--hf-texto); font: inherit; }
 .hf-ajustes-campos label:not(:first-child) input { width: 64px; }
+
+/* Nome em cima de cada controle da caixa de prompt (Chips com rotulo e os menus de modelo). */
+.hf-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hf-campo > span { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--hf-neon); padding-left: 2px; }
+.hf-linha-controles { align-items: flex-end; }
+/* Dentro do rotulo o menu nao estica na altura (flex em coluna); quem estica e o rotulo. */
+.hf-campo > .hf-select { flex: none; max-width: none; width: 100%; }
+.hf-cinema-topo .hf-campo { flex: 1 1 220px; max-width: 320px; }

@@ -241,9 +241,9 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
             : lookAtual ? `What should it show? e.g. ${lookAtual.exemplo} (empty = this example)` : 'Describe the image you want…'}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !desligado) gerar() }} />
         <div className="hf-linha-controles">
-          <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
-          </select>
+          </select></label>
           <Chips rotulo="Aspect ratio" opcoes={PROPORCOES.map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           {!(comRefs && !apiAtual) && <Chips rotulo="Images" opcoes={[1, 2, 4].map((n) => ({ id: n, rotulo: `×${n}` }))} valor={lote} aoMudar={setLote} />}
           {apiAtual && niveis.length > 1 && (

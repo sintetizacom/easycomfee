@@ -169,10 +169,10 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
 
       <div className="hf-barra-prompt">
         <div className="hf-linha-controles">
-          <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' },
               ...Object.entries(LEVES).map(([id, l]) => ({ id, rotulo: l.rotulo, soLocal: !l.nuvem }))]} api={apiGeradores} />
-          </select>
+          </select></label>
           {motor === 'minimax' && (
             <Chips rotulo="Speed" opcoes={[{ id: 1, rotulo: 'Turbo · 8 steps' }, { id: 0, rotulo: 'Quality · 40 steps' }]}
               valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
@@ -243,11 +243,15 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         <div className="hf-linha-controles">
           <Chips rotulo="Aspect ratio" opcoes={proporcoes.map((p) => ({ id: p, rotulo: p }))} valor={proporcaoOk} aoMudar={setProporcao} />
           <Chips rotulo="Resolution" opcoes={resolucoes.map((r) => ({ id: r, rotulo: r }))} valor={resolucaoOk} aoMudar={setResolucao} />
-          <label className="hf-duracao">
-            {duracaoOk}s
-            <input type="range" min={dMin} max={dMax} value={duracaoOk} onChange={(e) => setDuracao(Number(e.target.value))} />
-          </label>
-          <label className="hf-toggle" style={(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? { display: 'none' } : undefined}><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
+          <div className="hf-campo"><span>Length</span>
+            <label className="hf-duracao">
+              {duracaoOk}s
+              <input type="range" min={dMin} max={dMax} value={duracaoOk} onChange={(e) => setDuracao(Number(e.target.value))} aria-label="Length" />
+            </label>
+          </div>
+          <div className="hf-campo" style={(gApi as { sem_audio?: boolean } | undefined)?.sem_audio ? { display: 'none' } : undefined}><span>Sound</span>
+            <label className="hf-toggle"><input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} /> Audio</label>
+          </div>
           <BotaoGerar est={custo} desligado={naoInstalado || !prompt.trim() || faltaImagem || chavesRepetidas} aoClicar={gerar} />
         </div>
         {!gApi && <Avancado valor={ajustes} aoMudar={setAjustes} comPassos={false} />}

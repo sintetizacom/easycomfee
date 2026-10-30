@@ -145,9 +145,9 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
         </div>
 
         <div className="hf-linha-controles">
-          <select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={ABERTOS.map((m) => ({ id: m.id, rotulo: m.rotulo }))} api={apiModelos} />
-          </select>
+          </select></label>
           <span className="hf-dica">{DESCRICOES[cfg.id]}</span>
           {ocupado && <span className="hf-dica">{ocupado}</span>}
           {longa && <span className="hf-erro">The voice is {fala!.segundos.toFixed(1)} s; the limit is {LIMITE} s.</span>}

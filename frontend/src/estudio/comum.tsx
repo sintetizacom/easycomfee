@@ -404,7 +404,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
 export function Chips<T extends string | number>({ opcoes, valor, aoMudar, rotulo }: {
   opcoes: { id: T; rotulo: string; desligado?: boolean; dica?: string }[]; valor: T; aoMudar: (v: T) => void; rotulo?: string
 }) {
-  return (
+  const chips = (
     <div className="hf-chips" role="group" aria-label={rotulo}>
       {opcoes.map((o) => (
         <button key={String(o.id)} type="button" data-ativo={o.id === valor} aria-pressed={o.id === valor} disabled={o.desligado}
@@ -412,6 +412,8 @@ export function Chips<T extends string | number>({ opcoes, valor, aoMudar, rotul
       ))}
     </div>
   )
+  // O nome do grupo aparece em cima (Aspect ratio, Images...): cada controle diz o que e.
+  return rotulo ? <div className="hf-campo"><span aria-hidden>{rotulo}</span>{chips}</div> : chips
 }
 
 /** Text with its URLs turned into links (the cloud top-up message carries one). */

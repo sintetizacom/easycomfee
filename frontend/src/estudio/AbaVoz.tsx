@@ -179,13 +179,13 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
         </div>
 
         <div className="hf-linha-controles">
-          <select className="hf-select" value={naNuvem ? 'nuvem:qwen3tts' : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          <label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? 'nuvem:qwen3tts' : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true, naoInstalado: !naNuvem && !!caps && !caps.disponivel, falta: 'nodes missing' },
               { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true }]} />
-          </select>
-          <select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
+          </select></label>
+          <label className="hf-campo"><span>Language</span><select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
             {IDIOMAS.map((i) => <option key={i}>{i}</option>)}
-          </select>
+          </select></label>
           <span className="hf-espaco" />
           <BotaoGerar est={custo} desligado={!pronto} aoClicar={gerar} />
         </div>

@@ -224,13 +224,13 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             <button role="tab" data-ativo={video} aria-selected={video} onClick={() => setTipo('video')}>Video</button>
           </div>
           {video ? (
-            <select className="hf-select" value={valorVid} onChange={(e) => escolherVid(e.target.value)} aria-label="Video model">
+            <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorVid} onChange={(e) => escolherVid(e.target.value)} aria-label="Video model">
               <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' }]} api={geradores} />
-            </select>
+            </select></label>
           ) : (
-            <select className="hf-select" value={valorImg} onChange={(e) => escolherImg(e.target.value)} aria-label="Image model">
+            <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorImg} onChange={(e) => escolherImg(e.target.value)} aria-label="Image model">
               <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
-            </select>
+            </select></label>
           )}
           <label className="hf-chave-dir" title="A local language model rewrites the scene as one film frame, turning the gear into how the image looks">
             <input type="checkbox" checked={diretor} onChange={(e) => setDiretor(e.target.checked)} /> Director mode
@@ -307,9 +307,9 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                     <span>{rot(ENQUADRAMENTOS, p.enquadramento)}</span><i>▾</i>
                   </button>
                   {video && (
-                    <select className="hf-select" value={p.movimento} onChange={(e) => mudarPlano(p.id, { movimento: e.target.value })} aria-label="Camera move">
+                    <label className="hf-campo"><span>Camera move</span><select className="hf-select" value={p.movimento} onChange={(e) => mudarPlano(p.id, { movimento: e.target.value })} aria-label="Camera move">
                       {MOVIMENTOS.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
-                    </select>
+                    </select></label>
                   )}
                   {planos.length > 1 && <button type="button" className="hf-botao-sec hf-x" aria-label={`Remove shot ${i + 1}`} title={`Remove shot ${i + 1}`}
                     onClick={() => setPlanos((a) => a.filter((x) => x.id !== p.id))}>×</button>}
