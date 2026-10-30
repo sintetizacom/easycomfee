@@ -39,7 +39,7 @@ Notes: still in development and tested only on NVIDIA (RTX 5070 Ti, 16 GB). It n
 |---|---|
 | ![LTX Studio tab](docs/galeria/tela-ltx-v2.png) | ![VFX Studio tab](docs/galeria/tela-apps-v2.png) |
 | **Cinema Studio** | **Music** |
-| ![Cinema Studio tab](docs/galeria/tela-cinema-v2.png) | ![Music tab](docs/galeria/tela-music-v2.png) |
+| ![Cinema Studio tab](docs/galeria/tela-cinema-v3.png) | ![Music tab](docs/galeria/tela-music-v2.png) |
 
 ### Runs on the GPU you have
 
