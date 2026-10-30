@@ -212,3 +212,33 @@ async def diretor(cena: str, enquadramento: str, visual: str, seed: int = 0) -> 
         workflows.escrever_texto(instrucao, 400, criativo=True, seed=seed))
     texto = (await comfy.texto_de(saidas)).strip().strip('"')
     return neutralizar(texto, cena) if texto else ""
+
+
+# 3D render -> Video, botao "Write it for me" (30/10/2026): o leigo digita poucas palavras
+# (ate em portugues) e o modelo de texto local escreve o NOME do elemento e a CENA no formato
+# que funcionou nos testes. O resto da instrucao do quadro o app monta (AbaApps.instrucaoMaquete).
+MAQUETE = {
+    "nome": (
+        "Write the name of ONE object or character for an image model, in English: a short noun phrase "
+        "of 3 to 12 words with its type, color, make or model if any, and its most distinctive details "
+        "(for example: green Lamborghini Huracan with black wheels). No verbs, no place, no light, no "
+        "camera words. If the idea is in Portuguese, write in English anyway. Output only the phrase."
+    ),
+    "cena": (
+        "Write ONE sentence of 15 to 40 words in English describing a film scene for an image model: what "
+        "the main object or character does, the place, the time of day and light, and the mood. Never "
+        "mention cameras, lenses, renders, 3D, blocks or how the shot is made. If the idea is in "
+        "Portuguese, write in English anyway. Output only the sentence."
+    ),
+}
+
+
+async def maquete(ideia: str, campo: str, objeto: str = "", seed: int = 0) -> str:
+    instrucao = MAQUETE[campo]
+    if campo == "cena" and objeto.strip():
+        instrucao += f"\n\nThe main object is: {objeto.strip()}"
+    instrucao += f"\n\nUser idea: {ideia}"
+    saidas = await comfy.executar(
+        workflows.escrever_texto(instrucao, 120, criativo=True, seed=seed))
+    texto = (await comfy.texto_de(saidas)).strip().strip('"').strip()
+    return texto.splitlines()[0].strip() if texto else ""

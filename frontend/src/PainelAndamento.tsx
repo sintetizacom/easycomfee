@@ -20,7 +20,7 @@ const ETAPAS: [RegExp, string][] = [
   [/^decodificando o vídeo$/, 'Decoding the video'], [/^decodificando o áudio$/, 'Decoding the audio'],
   [/^montando o vídeo$/, 'Building the video'], [/^refinando o vídeo$/, 'Refining the video'],
   [/^extraindo os quadros$/, 'Reading the frames'], [/^extraindo afinação e timbre$/, 'Reading pitch and timbre'],
-  [/^preparando o motor/, 'Starting the engine'], [/^preparando/, 'Preparing'],
+  [/^preparando o motor.*/, 'Starting the engine'], [/^preparando a geração.*/, 'Preparing the generation'], [/^preparando.*/, 'Preparing'],
   [/^(lendo|analisando)/, 'Reading the inputs'], [/^enriquecendo o prompt$/, 'Improving the prompt'],
   [/^escrevendo o layout$/, 'Writing the layout'], [/^aplicando o estilo$/, 'Applying the style'],
   [/^separando/, 'Separating the tracks'], [/^juntando/, 'Mixing'], [/^transcrevendo/, 'Transcribing'],

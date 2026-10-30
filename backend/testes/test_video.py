@@ -342,3 +342,29 @@ def teste_kling_omni_recebe_video_com_720_px(tmp_path):
     assert genjutsu.video_minimo(str(origem), 1280, 720) is None  # ja serve: nao mexe
     em_pe = miniaturas.dados_do_video(genjutsu.video_minimo(str(origem), 704, 1280))
     assert (em_pe["largura"], em_pe["altura"]) == (720, 1310)
+
+
+def teste_resolucao_da_maquete_segue_a_vram():
+    # Medido em 29-30/10/2026: 16 GB roda 720p, 1080 so com mais VRAM, abaixo de 16 nao roda.
+    import presets
+    assert presets.limite_maquete(8.0) is None
+    assert presets.limite_maquete(12.0) is None
+    assert presets.limite_maquete(15.9) == 720      # a 5070 Ti de 16 GB aparece assim
+    assert presets.limite_maquete(23.5) == 1088
+    assert presets.limite_maquete(None) == 576       # sem saber a placa, o tamanho testado
+    assert presets.tamanho_maquete(1920, 1080, 720) == (1280, 704)
+    assert presets.tamanho_maquete(1920, 1080, 1088) == (1920, 1088)
+
+
+def test_trecho_da_maquete_escolhido_no_render():
+    """Render de 22 s (528 quadros): a pessoa escolhe onde comeca e quanto dura; o trecho
+    tem 8k+1 quadros, nunca passa de 14,7 s nem do fim do render."""
+    assert A._trecho_maquete(528, 0, 353) == (0, 353)
+    assert A._trecho_maquete(528, 120, 353) == (120, 353)
+    assert A._trecho_maquete(528, 300, 353) == (300, 225)          # so cabem 228 depois do inicio
+    assert A._trecho_maquete(528, 0, 353, 240) == (0, 233)         # 10 s pedidos -> 8k+1
+    assert A._trecho_maquete(528, 9999, 353) == (519, 9)           # inicio no fim: o minimo
+    assert A._trecho_maquete(200, 0, 353, 0) == (0, 193)
+    # o grafo comeca o corte no inicio escolhido
+    g = W.maquete_ltx("r.mp4", "lora.safetensors", "t", 233, 1024, 576, "e.png", inicio=120)
+    assert g["corte"]["inputs"]["batch_index"] == 120 and g["corte"]["inputs"]["length"] == 233

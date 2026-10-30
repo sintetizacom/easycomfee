@@ -16,9 +16,9 @@ export default function AbaAssets() {
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi pequeno">
+      <div className="hf-heroi pequeno hf-heroi-compacto">
         <span className="hf-sobretitulo">ASSETS</span>
-        <h1>Everything you made</h1>
+        <h1>Everything <em>you made</em></h1>
         <div className="hf-chips">
           {(['tudo', 'imagem', 'video'] as const).map((f) => (
             <button key={f} data-ativo={filtro === f} aria-pressed={filtro === f} onClick={() => setFiltro(f)}>

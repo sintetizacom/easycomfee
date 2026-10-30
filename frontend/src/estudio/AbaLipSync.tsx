@@ -102,9 +102,9 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">LIP SYNC · {cfg.rotulo.toUpperCase()}</span>
-        <h1>Make any portrait talk</h1>
+        <h1>Make any portrait <em>talk</em></h1>
         <p className="hf-dica">A photo plus a voice track becomes a talking video, up to {LIMITE} seconds, on your GPU or on Comfy Cloud.</p>
       </div>
 

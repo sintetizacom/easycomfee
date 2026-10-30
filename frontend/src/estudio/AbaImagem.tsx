@@ -195,9 +195,9 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
-        <span className="hf-sobretitulo">IMAGE</span>
-        <h1>Turn a sentence into a picture</h1>
+      <div className="hf-heroi hf-heroi-compacto">
+        <span className="hf-sobretitulo">IMAGE · OPEN WEIGHTS AND API MODELS</span>
+        <h1>Turn a sentence into a <em>picture</em></h1>
       </div>
 
       <div className="hf-barra-prompt">

@@ -130,9 +130,9 @@ export default function AbaMusica() {
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">MUSIC · OPEN WEIGHTS</span>
-        <h1>Make a song</h1>
+        <h1>Make a <em>song</em></h1>
         <p className="hf-dica">Describe the style, write the lyrics, get a full track, on your GPU or on Comfy Cloud.</p>
       </div>
 

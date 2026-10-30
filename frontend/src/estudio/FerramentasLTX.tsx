@@ -91,9 +91,9 @@ function Keyframes() {
   return (
     <div className="hf-aba hf-ltx">
       <Voltar />
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">LTX 2.5 · KEYFRAMES</span>
-        <h1>Pin images to the timeline</h1>
+        <h1>Pin images to the <em>timeline</em></h1>
         <p className="hf-dica">Drop 2 to 8 images on the timeline, each at the second it should appear. Drag them to move. LTX animates the way between them.</p>
       </div>
 
@@ -199,9 +199,9 @@ function Ingredientes() {
   return (
     <div className="hf-aba hf-ltx">
       <Voltar />
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">LTX 2.5 · INGREDIENTS · LOCAL GPU</span>
-        <h1>One shot from several ingredients</h1>
+        <h1>One shot from <em>several ingredients</em></h1>
         <p className="hf-dica">1 to 4 images (a person, an object, a place…) become a reference sheet, and LTX builds one shot that combines them.</p>
       </div>
 
@@ -272,9 +272,9 @@ function Ampliar() {
   return (
     <div className="hf-aba hf-ltx">
       <Voltar />
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">LTX 2.5 · UPSCALE · LOCAL GPU</span>
-        <h1>Make any video sharper and bigger</h1>
+        <h1>Make any video <em>sharper and bigger</em></h1>
         <p className="hf-dica">Pick a video you made or upload one. Its sound is kept.</p>
       </div>
 

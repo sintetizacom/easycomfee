@@ -3123,7 +3123,7 @@ def montar_folha(imagens: list[bytes], largura: int, altura: int) -> bytes:
 
 
 def maquete_ltx(entrada, lora, texto, quadros, largura, altura, estilo, chaves=(),
-                seed=42, com_audio=True, prefixo="editor/video_maquete"):
+                seed=42, com_audio=True, prefixo="editor/video_maquete", inicio=0):
     """Layout-To-Render em DUAS etapas, como o fluxo oficial da Lightricks
     (LTX-2.5_ICLoRA_Layout_To_Render_Two_Stage_Distilled).
 
@@ -3145,7 +3145,8 @@ def maquete_ltx(entrada, lora, texto, quadros, largura, altura, estilo, chaves=(
         "ups": {"class_type": "LatentUpscaleModelLoader", "inputs": {"model_name": win(p["upsampler"])}},
         "carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
         "partes": {"class_type": "GetVideoComponents", "inputs": {"video": ["carga", 0]}},
-        "corte": {"class_type": "ImageFromBatch", "inputs": {"image": ["partes", 0], "batch_index": 0, "length": quadros}},
+        # inicio: o trecho de ate 14,7 s que a pessoa escolheu no render (quadro, contado de 0).
+        "corte": {"class_type": "ImageFromBatch", "inputs": {"image": ["partes", 0], "batch_index": inicio, "length": quadros}},
         "tam": {"class_type": "ResizeImageMaskNode", "inputs": {
             "input": ["corte", 0], "resize_type": "scale dimensions", "resize_type.width": largura,
             "resize_type.height": altura, "resize_type.crop": "center", "scale_method": "lanczos"}},
@@ -3161,9 +3162,13 @@ def maquete_ltx(entrada, lora, texto, quadros, largura, altura, estilo, chaves=(
     for i, (nome, _) in enumerate(chaves):
         g[f"chave{i}"] = {"class_type": "LoadImage", "inputs": {"image": nome}}
 
+    # Acima de ~1 MP (o teste de 1080p) os guias sao codificados em ladrilhos: a maquete
+    # inteira de uma vez nao caberia junto com o modelo na placa de 16 GB.
+    ladrilhos = largura * altura > 1024 * 576 * 2
+
     def guias(suf, pos, neg, latente):
         base = {"vae": ["vae_v", 0], "strength": 1.0, "latent_downscale_factor": ["lora", 1],
-                "use_tiled_encode": False, "tile_size": 256, "tile_overlap": 64,
+                "use_tiled_encode": ladrilhos, "tile_size": 256, "tile_overlap": 64,
                 "use_streaming": False, "tile_frames": 97}
         g[f"g_maq{suf}"] = {"class_type": "LTXAddVideoICLoRAGuide", "inputs": {**base,
             "positive": pos, "negative": neg, "latent": latente, "image": ["tam", 0],

@@ -107,9 +107,9 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">VOICE · {naNuvem ? 'QWEN3-TTS' : 'OMNIVOICE'} · OPEN WEIGHTS</span>
-        <h1>Give it a voice</h1>
+        <h1>Give it a <em>voice</em></h1>
         <p className="hf-dica">Narration, a voice made from a description, or a clone of a recording. Use it in Lip Sync next.</p>
       </div>
 

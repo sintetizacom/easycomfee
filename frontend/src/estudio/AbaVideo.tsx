@@ -162,9 +162,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
-        <span className="hf-sobretitulo">VIDEO · {gApi ? gApi.rotulo.replace(' (nuvem)', '').toUpperCase() + ' · API' : leve ? leve.rotulo.replace(/ \(.*\)$/, '').toUpperCase() : motor === 'ltx' ? 'LTX 2.5' : 'MINIMAX H3'}</span>
-        <h1>Video with sound, from a line or a frame</h1>
+      <div className="hf-heroi hf-heroi-compacto">
+        <span className="hf-sobretitulo">VIDEO · OPEN WEIGHTS AND API MODELS</span>
+        <h1>Video with sound, <em>from a line or a frame</em></h1>
       </div>
 
       <div className="hf-barra-prompt">

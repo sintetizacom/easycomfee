@@ -64,7 +64,7 @@ function Linha({ rotulo, valor, miniatura, aberto, aoAbrir }: {
 const escolherDe = (lista: string[] | undefined, quero: string) => (!lista?.length ? quero : lista.includes(quero) ? quero : lista[0])
 
 /** One setting of the footer: a small titled dropdown. */
-function Controle({ icone, rotulo, valor, opcoes, aoMudar }: {
+export function Controle({ icone, rotulo, valor, opcoes, aoMudar }: {
   icone: string; rotulo: string; valor: string; opcoes: { id: string; rotulo: string }[]; aoMudar: (v: string) => void
 }) {
   return (
@@ -218,9 +218,9 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">CINEMA STUDIO</span>
-        <h1>Direct the look. Shoot the list.</h1>
+        <h1>Direct your scene, <em>shot by shot</em></h1>
       </div>
 
       <div className="hf-barra-prompt hf-cinema">

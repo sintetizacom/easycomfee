@@ -828,12 +828,89 @@ html .mq-seletor[data-ligado='true'] .mq-seletor-texto { margin-left: 0; margin-
 html .mq-seletor:disabled { opacity: .5; cursor: not-allowed; }
 html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 3px; }
 
+/* 3D render -> Video: referencias (character sheets) para os quadros-chave. */
+.hf-refs-maquete { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--hf-borda, rgba(255,255,255,.08)); }
+.hf-versoes { display: flex; gap: 6px; align-items: center; }
+.hf-versao { padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; line-height: 0; }
+.hf-versao img { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; display: block; }
+.hf-versao[aria-pressed="true"] { border-color: var(--hf-neon); }
+.hf-versao:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }
+.hf-ref-maquete { display: flex; flex-direction: column; gap: 6px; max-width: 220px; }
+
 /* Aviso do 3D render -> Video (AbaApps): experimental, com as dicas que mais evitam erro. */
 .hf-experimental { flex-basis: 100%; margin: 4px 0 8px; padding: 10px 14px; border: 1px solid var(--hf-neon); border-radius: 10px;
   font-size: 13px; line-height: 1.5; color: var(--hf-texto); }
 .hf-experimental > b { color: var(--hf-neon); }
 .hf-experimental ul { margin: 6px 0 0; padding-left: 18px; }
 .hf-experimental li { margin: 2px 0; }
+/* Selo amarelo neon do card "3D render -> Video" (experimental), sobre o video de amostra. */
+.hf-app { position: relative; }
+.hf-selo-neon { position: absolute; top: 8px; left: 8px; padding: 1px 7px; border-radius: 999px;
+  background: var(--hf-neon); color: #191220; font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; box-shadow: 0 0 10px rgba(242, 255, 61, 0.6); pointer-events: none; }
+/* Aviso antes do 3D render -> Video. */
+.hf-aviso-fundo { position: fixed; inset: 0; background: #000a; z-index: 60; display: grid; place-items: center; padding: 16px; }
+.hf-aviso-janela { position: relative; background: var(--hf-cartao); border: 1px solid var(--hf-neon); border-radius: 16px;
+  width: min(640px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px 24px; color: var(--hf-texto);
+  box-shadow: 0 0 30px rgba(242, 255, 61, 0.18); }
+.hf-aviso-janela h2 { margin: 10px 0 8px; font-size: 20px; }
+.hf-aviso-janela h3 { margin: 14px 0 6px; font-size: 15px; color: var(--hf-neon); }
+.hf-aviso-janela ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.hf-aviso-janela li { margin: 4px 0; }
+.hf-aviso-janela .hf-linha-controles { margin-top: 16px; }
+.hf-selo-solto { position: static; display: inline-block; }
+.hf-aviso-janela .hf-toggle { white-space: nowrap; }
+/* Quadro de direcao (3D render -> Video, modo Advanced). */
+.hf-quadros-dir { display: grid; gap: 12px; }
+.hf-quadro-dir { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--hf-linha); border-radius: 12px; background: #ffffff05; }
+.hf-quadro-faixa { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; align-items: flex-start; }
+.hf-quadro-cinza { margin: 0; flex: none; display: grid; gap: 2px; }
+.hf-quadro-cinza img, .hf-quadro-cinza span { width: 192px; height: 108px; object-fit: cover; border-radius: 6px; display: grid;
+  place-items: center; font-size: 11px; color: var(--hf-apagado); background: #0004; }
+.hf-quadro-cinza figcaption { font-size: 11px; color: var(--hf-apagado); }
+.hf-versao-grande img { width: 192px; height: 108px; }
+.hf-versao-gerando { width: 192px; height: 108px; flex: none; border-radius: 6px; border: 1px dashed var(--hf-neon);
+  display: grid; place-items: center; font-size: 12px; color: var(--hf-neon); }
+.hf-campo-curto { width: 80px; }
+/* 3D render -> Video: aviso fora da caixa e chave Simple / Advanced no topo da caixa. */
+.hf-experimental-fora { margin-top: 20px; }
+.hf-cabeca-caixa { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex-basis: 100%; }
+.hf-chave-modo { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--hf-apagado); }
+.hf-chave-modo span[data-ativo='true'] { color: var(--hf-neon); }
+.hf-chave-trilho { position: relative; width: 46px; height: 24px; border-radius: 999px; border: 1px solid var(--hf-linha);
+  background: #ffffff14; cursor: pointer; padding: 0; }
+.hf-chave-bola { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #CFC7D8;
+  transition: transform .15s; }
+.hf-chave-trilho[data-ligado='true'] { background: var(--hf-neon); border-color: var(--hf-neon); }
+.hf-chave-trilho[data-ligado='true'] .hf-chave-bola { transform: translateX(22px); background: #191220; }
+.hf-chave-trilho:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }
+/* 3D render -> Video, Advanced em 3 passos. */
+.hf-passos-maquete { display: grid; gap: 12px; flex-basis: 100%; }
+.hf-passos-barra { display: flex; gap: 6px; flex-wrap: wrap; }
+.hf-passos-barra button { flex: 1; min-width: 150px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--hf-linha);
+  background: #ffffff08; color: var(--hf-apagado); cursor: pointer; text-align: left; font-size: 13px; }
+.hf-passos-barra button[data-ativo='true'] { border-color: var(--hf-neon); color: var(--hf-neon); background: var(--hf-neon-escuro); }
+.hf-prints { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.hf-print { margin: 0; flex: none; display: grid; gap: 4px; width: 224px; }
+.hf-print img, .hf-print > span { width: 224px; height: 126px; object-fit: cover; border-radius: 8px; display: grid; place-items: center;
+  font-size: 12px; color: var(--hf-apagado); background: #0004; }
+.hf-print figcaption { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--hf-apagado); }
+.hf-refs-linha { display: flex; gap: 20px; flex-wrap: wrap; }
+.hf-refs-grupo { display: grid; gap: 6px; align-content: start; }
+.hf-passo-nav { justify-content: flex-end; }
+/* 3D render -> Video: Write it for me e See the prompt. */
+.hf-escrever { justify-self: start; font-size: 12px; }
+.hf-ver-prompt { font-size: 12px; color: var(--hf-apagado); }
+.hf-ver-prompt summary { cursor: pointer; color: var(--hf-texto); }
+.hf-ver-prompt p { margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: #0004; font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px; line-height: 1.5; color: #D8D2DF; white-space: pre-wrap; }
+/* 3D render -> Video, passo 2 no layout do Cinema Studio. */
+.hf-cinema.hf-cinema-maquete { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: none; width: 100%; margin: 0; }
+.hf-cinema-maquete .hf-cinema-topo .hf-escrever { margin-left: auto; }
+.hf-cast-item { display: grid; gap: 4px; width: 120px; }
+.hf-cast-item .hf-slot { width: 120px; height: 80px; }
+.hf-cast-item .hf-campo { font-size: 12px; padding: 4px 6px; }
 
 /* "Advanced" (comum.tsx Avancado): quase escondido, um link pequeno sob os controles. */
 .hf-ajustes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
@@ -853,12 +930,202 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 .hf-campo > .hf-select { flex: none; max-width: none; width: 100%; }
 .hf-cinema-topo .hf-campo { flex: 1 1 220px; max-width: 320px; }
 .hf-ajustes-nota { color: var(--hf-apagado); }
-/* Selo amarelo neon do card "3D render -> Video" (experimental), sobre o video de amostra. */
-.hf-app { position: relative; }
-.hf-selo-neon { position: absolute; top: 8px; left: 8px; padding: 1px 7px; border-radius: 999px;
-  background: var(--hf-neon); color: #191220; font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em;
-  text-transform: uppercase; box-shadow: 0 0 10px rgba(242, 255, 61, 0.6); pointer-events: none; }
+/* 3D render -> Video, passo 1: cartoes dos momentos (legenda sobre a imagem, x para tirar). */
+.hf-momentos-acoes .hf-dica { margin: 0; }
+.hf-momento { position: relative; }
+.hf-momento-ver { position: relative; display: block; padding: 0; border: 1px solid var(--hf-linha); border-radius: 8px; overflow: hidden;
+  background: none; cursor: pointer; width: 224px; height: 126px; }
+.hf-momento-ver:hover { border-color: var(--hf-neon); }
+.hf-momento-ver img, .hf-momento-ver > span { border-radius: 0; }
+.hf-momento-ver figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 5px; text-align: left;
+  background: linear-gradient(transparent, #000c); color: #EEE; font-size: 12px; display: block; }
+.hf-momento-ver figcaption b { color: #fff; }
+.hf-momento-tirar { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; border: none;
+  background: #000a; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; padding: 0; }
+.hf-momento-tirar:hover { background: #E5484D; }
+/* 3D render -> Video, passo 1: titulo acima do player e botoes centralizados. */
+.hf-momentos-intro { text-align: center; margin: 6px 0 4px; }
+.hf-momentos-intro h3 { margin: 0 0 8px; font-size: 28px; line-height: 1.2; font-weight: 800; color: var(--hf-neon); }
+.hf-momentos-intro .hf-dica { margin: 0 auto; max-width: 640px; font-size: 14px; }
+.hf-momentos-acoes { justify-content: center; }
+.hf-momentos { justify-content: safe center; }
+/* 3D render -> Video: trecho do render que vira video (inicio e duracao). */
+.hf-trecho-janela { position: absolute; top: 0; bottom: 0; border-radius: 7px; background: #F2FF3D33;
+  outline: 1px solid var(--hf-neon); pointer-events: none; }
+.hf-trecho { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 18px; }
+.hf-trecho > .hf-dica { flex-basis: 100%; text-align: center; margin: 0; }
+.hf-trecho-ctrl { display: grid; gap: 2px; font-size: 13px; color: var(--hf-apagado); min-width: 220px; }
+.hf-trecho-ctrl b { color: var(--hf-texto); }
+.hf-trecho-ctrl input { accent-color: var(--hf-neon); width: 100%; }
+.hf-momento[data-fora='true'] { opacity: .35; }
+.hf-caixa-passos { margin-top: 16px; }
+/* 3D render -> Video, passo 2: rotulo da cena, Write with AI neon, grupos Cast e Scenery. */
+.hf-rotulo-cena { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: -6px; }
+.hf-rotulo-cena .hf-dica { margin: 0; }
+.hf-escrever-neon { margin-left: auto; border: none; border-radius: 999px; padding: 9px 18px; background: var(--hf-neon);
+  color: #191220; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.hf-escrever-neon:hover { filter: brightness(1.08); }
+.hf-escrever-neon:disabled { opacity: .5; cursor: default; }
+.hf-grupos-cast { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 10px; }
+@media (max-width: 760px) { .hf-grupos-cast { grid-template-columns: minmax(0, 1fr); } }
+.hf-grupo-cast { display: grid; gap: 6px; justify-items: center; align-content: start; text-align: center; padding: 14px 14px 16px;
+  border: 1px solid #ffffff12; border-radius: 12px; }
+.hf-grupo-cabeca { display: flex; align-items: baseline; gap: 6px; }
+.hf-grupo-cabeca .hf-passo { font-size: 13px; color: var(--hf-texto); letter-spacing: .14em; }
+.hf-grupo-cabeca small { font-size: 11px; color: var(--hf-apagado); }
+.hf-grupo-cast .hf-dica { margin: 0 0 6px; font-size: 13px; }
+.hf-grupo-cast .hf-cast { justify-content: center; align-items: flex-start; gap: 12px; }
+.hf-grupo-cast .hf-cast-item { width: 150px; }
+.hf-grupo-cast .hf-cast-item .hf-slot { width: 150px; height: 104px; border-radius: 12px; font-size: 13px; }
+/* Nome do Cast: rotulo neon, campo claro e borda neon tracejada enquanto vazio (o Shoot so libera com nome). */
+.hf-nome-cast { display: grid; gap: 3px; margin-top: 4px; text-align: left; }
+.hf-nome-cast small { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--hf-neon); padding-left: 10px; }
+.hf-grupo-cast .hf-cast-item .hf-nome-cast .hf-campo { width: 100%; box-sizing: border-box; text-align: center; border-radius: 10px;
+  padding: 8px 10px; font-size: 14px; font-weight: 600; color: #fff; background: #ffffff14; border: 1px solid #ffffff40; }
+.hf-grupo-cast .hf-nome-cast .hf-campo::placeholder { color: #ffffff70; font-weight: 400; }
+.hf-grupo-cast .hf-nome-cast[data-vazio='true'] .hf-campo { border: 1px dashed var(--hf-neon); background: #F2FF3D12; }
+.hf-grupo-cast .hf-nome-cast .hf-campo:focus { outline: none; border: 1px solid var(--hf-neon); box-shadow: 0 0 0 3px #F2FF3D33; }
+/* 3D render -> Video, passo 2: lado do objeto em botoes e Shoot neon embaixo do prompt. */
+.hf-lado-objeto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.hf-segmentos { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; border: 1px solid var(--hf-linha); background: #0003; }
+.hf-segmentos button { border: none; background: none; color: var(--hf-apagado); font-size: 14px; font-weight: 600;
+  padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; }
+.hf-segmentos button:hover { color: var(--hf-texto); }
+.hf-segmentos button[data-ativo='true'] { background: var(--hf-neon); color: #191220; }
+.hf-shoot-linha { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.hf-shoot-linha .hf-erro, .hf-shoot-linha .hf-dica { margin: 0; }
+.hf-gerar.hf-shoot { width: 100%; padding: 16px 22px; font-size: 16px; transition: transform .12s, filter .12s, box-shadow .12s; }
+.hf-gerar.hf-shoot:not(:disabled):hover { filter: brightness(1.08); box-shadow: 0 0 18px #F2FF3D55; }
+.hf-gerar.hf-shoot:not(:disabled):active { transform: scale(.97); }
+/* 3D render -> Video, passo 2: comparacao render x take com cortina, takes em miniatura, substituir. */
+.hf-quadro-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.hf-quadro-topo .hf-dica { margin: 0 auto 0 0; }
+.hf-baixar { font-size: 12px; padding: 5px 12px; text-decoration: none; position: relative; cursor: pointer; }
+.hf-comparar { position: relative; width: 100%; justify-self: stretch; border-radius: 12px; overflow: hidden;
+  background: #0006; border: 1px solid var(--hf-linha); user-select: none; touch-action: none; }
+.hf-comparar[role='slider'] { cursor: ew-resize; }
+.hf-comparar:focus-visible { outline: 2px solid var(--hf-neon); outline-offset: 2px; }
+.hf-comparar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hf-comparar-antes { position: absolute; inset: 0; }
+.hf-comparar-linha { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--hf-neon);
+  box-shadow: 0 0 10px #F2FF3D88; pointer-events: none; }
+.hf-comparar-linha i { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px;
+  border-radius: 50%; background: var(--hf-neon); color: #191220; font-style: normal; font-weight: 800; display: grid; place-items: center; }
+.hf-comparar-rotulo { position: absolute; top: 10px; padding: 3px 10px; border-radius: 999px; background: #000a; color: #fff;
+  font-size: 11px; font-weight: 600; pointer-events: none; }
+.hf-comparar-rotulo[data-lado='esq'] { left: 10px; }
+.hf-comparar-rotulo[data-lado='dir'] { right: 10px; }
+.hf-comparar-vazio { position: absolute; inset: 0; display: grid; place-items: center; color: var(--hf-apagado); font-size: 13px; }
+.hf-comparar-gerando { position: absolute; inset: 0; display: grid; place-items: center; background: #0008; color: var(--hf-neon);
+  font-weight: 700; letter-spacing: .04em; }
+.hf-versao-mini { position: relative; padding: 0; border-radius: 8px; overflow: hidden; flex: none; }
+.hf-versao-mini img { width: 120px; height: 68px; object-fit: cover; display: block; }
+.hf-versao-mini small { position: absolute; left: 4px; bottom: 3px; font-size: 10px; color: #fff; text-shadow: 0 1px 2px #000; }
+.hf-copiar { font-size: 12px; padding: 3px 12px; margin-left: 10px; vertical-align: middle; }
+.hf-cinema-maquete .hf-cinema-texto { font-size: 16px; min-height: 110px; }
+.hf-cinema-maquete .hf-quadro-topo b { font-size: 17px; }
+.hf-cinema-maquete .hf-quadro-dir { padding: 16px; gap: 12px; }
+.hf-cinema-maquete .hf-rotulo-cena .hf-passo { font-size: 13px; }
+.hf-cinema-maquete .hf-rotulo-cena .hf-dica { font-size: 14px; }
+.hf-barra-prompt .hf-prompt-quadro, .hf-prompt-quadro { width: 100%; box-sizing: border-box; margin: 8px 0 6px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--hf-linha); background: #0004; color: #D8D2DF; font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px; line-height: 1.5; resize: vertical; }
+.hf-barra-prompt .hf-prompt-quadro:focus { outline: none; border-color: var(--hf-neon); }
+/* 3D render -> Video: navegacao entre os passos em destaque; Shoot all acima dos quadros. */
+.hf-nav-passos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding-top: 16px; border-top: 1px solid var(--hf-linha); }
+.hf-nav-passos .hf-dica { margin: 0 0 0 auto; }
+.hf-nav-voltar { border: 1px solid var(--hf-linha); background: #ffffff0a; color: var(--hf-texto); border-radius: 999px;
+  padding: 13px 22px; font-size: 15px; font-weight: 700; cursor: pointer; transition: border-color .15s, background .15s; }
+.hf-nav-voltar:hover { border-color: var(--hf-neon); background: #ffffff14; }
+.hf-gerar.hf-nav-seguir { margin-left: auto; padding: 14px 28px; font-size: 16px; }
+.hf-nav-passos .hf-dica + .hf-nav-seguir { margin-left: 0; }
+@media (max-width: 600px) { .hf-nav-voltar, .hf-gerar.hf-nav-seguir { width: 100%; margin-left: 0; } }
+.hf-shoot-todos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; }
+.hf-shoot-todos .hf-dica { margin: 0; }
+.hf-gerar-grupo { margin-left: auto; display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.hf-gerar-grupo .hf-nav-voltar { white-space: nowrap; }
+@media (max-width: 600px) { .hf-gerar-grupo { width: 100%; flex-wrap: wrap; } .hf-gerar-grupo > * { flex: 1 1 100%; } }
 /* Menu "..." do cartao: o cartao corta o que passa da borda (overflow hidden, para os cantos
    redondos), e num cartao baixo so apareciam as 4 primeiras opcoes. Com o menu aberto o cartao
    deixa o menu sair e fica por cima dos vizinhos. */
 .hf-tarefa:has(.hf-menu-midia) { overflow: visible; position: relative; z-index: 30; }
+/* 3D render -> Video no celular: a lista de screenshots (cartoes de 224 px) esticava a caixa
+   dos passos ate 961 px e a pagina rolava para o lado. A coluna nao passa da caixa; a lista rola. */
+.hf-passos-maquete { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.hf-passos-maquete > *, .hf-caixa-passos > * { min-width: 0; }
+.hf-passos-barra { min-width: 0; }
+.hf-passos-barra button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Melhorias de layout (30/10/2026): cabecalho compacto no VFX e no Cinema, destaque do card
+   3D render, barra dos passos numerada e dicas do Experimental recolhidas. */
+.hf-heroi.hf-heroi-compacto { padding: 32px 0 18px; }
+.hf-heroi.hf-heroi-compacto h1 { font-size: clamp(28px, 4vw, 42px); margin-top: 8px; }
+.hf-heroi.hf-heroi-compacto .hf-dica { margin-top: 8px; }
+.hf-app[data-destaque='true'] { border-color: var(--hf-neon); box-shadow: 0 0 0 1px #F2FF3D55, 0 0 18px #F2FF3D22; }
+.hf-passos-barra button { display: flex; align-items: center; gap: 10px; transition: opacity .15s, border-color .15s; }
+.hf-passo-num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal;
+  font-size: 12px; font-weight: 800; border: 1px solid var(--hf-linha); color: var(--hf-apagado); }
+.hf-passos-barra button[data-ativo='true'] { box-shadow: 0 0 14px #F2FF3D33; }
+.hf-passos-barra button[data-ativo='true'] .hf-passo-num { background: var(--hf-neon); border-color: var(--hf-neon); color: #191220; }
+.hf-passos-barra button[data-feito='true'] .hf-passo-num { background: #3DDC8422; border-color: #3DDC84; color: #3DDC84; }
+.hf-passos-barra button[data-futuro='true'] { opacity: .55; }
+.hf-passos-barra button[data-futuro='true']:hover { opacity: .85; }
+.hf-dicas { cursor: default; }
+.hf-dicas summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.hf-dicas summary::-webkit-details-marker { display: none; }
+.hf-dicas summary::after { content: '▸'; margin-left: auto; color: var(--hf-neon); transition: transform .15s; }
+.hf-dicas[open] summary::after { transform: rotate(90deg); }
+.hf-dicas summary b { color: var(--hf-neon); }
+.hf-dicas summary { font-size: 16px; padding: 4px 0; }
+.hf-dicas summary b { font-size: 17px; }
+.hf-dicas[open] summary { margin-bottom: 6px; }
+.hf-dicas ul { font-size: 14px; line-height: 1.5; }
+.hf-dicas-sub { display: block; margin-top: 12px; color: var(--hf-neon); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+/* 3D render -> Video: os ate 4 screenshots dividem a largura no computador; no celular a lista rola. */
+@media (min-width: 700px) {
+  .hf-prints.hf-prints-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; justify-content: stretch; }
+  .hf-prints-4 .hf-print, .hf-prints-4 .hf-momento-ver { width: 100%; }
+  .hf-prints-4 .hf-print img, .hf-prints-4 .hf-print > span { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .hf-prints-4 .hf-momento-ver { height: auto; aspect-ratio: 16 / 9; }
+}
+.hf-aviso-lado { flex-basis: 100%; margin: 0; font-size: 13px; }
+/* 3D render -> Video, passo 2: em tela larga os quadros ficam em 2 colunas (cada um ocupava a tela inteira). */
+@media (min-width: 900px) {
+  .hf-cinema-maquete .hf-quadros-dir { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .hf-cinema-maquete .hf-quadro-dir .hf-segmentos button { padding: 7px 12px; font-size: 13px; }
+  .hf-cinema-maquete .hf-quadro-dir .hf-gerar.hf-shoot { padding: 13px 18px; font-size: 15px; }
+}
+/* 3D render -> Video, passo 2: MODEL logo acima dos quadros; Write with AI na linha da SCENE. */
+.hf-modelo-quadros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-top: 14px; border-top: 1px solid var(--hf-linha); }
+.hf-modelo-quadros .hf-passo { font-size: 13px; }
+.hf-modelo-quadros .hf-select { flex: 0 1 340px; min-width: 0; }
+.hf-modelo-quadros .hf-dica { margin: 0; flex: 1 1 260px; }
+.hf-rotulo-cena .hf-escrever-neon { margin-left: auto; }
+.hf-modelo-quadros .hf-gerar.hf-shoot-todos { margin-left: auto; padding: 11px 22px; font-size: 14px; white-space: nowrap;
+  transition: filter .12s, box-shadow .12s; }
+.hf-modelo-quadros .hf-gerar.hf-shoot-todos:not(:disabled):hover { filter: brightness(1.08); box-shadow: 0 0 18px #F2FF3D55; }
+@media (max-width: 600px) { .hf-modelo-quadros .hf-gerar.hf-shoot-todos { width: 100%; margin-left: 0; } }
+/* 3D render -> Video, passo 2: Scene + Cast/Scenery numa caixa, Model + quadros em outra. */
+.hf-painel-passo { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--hf-linha); border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff08, #ffffff02); min-width: 0; }
+.hf-painel-passo .hf-modelo-quadros { border-top: 0; padding-top: 0; }
+@media (max-width: 600px) { .hf-painel-passo { padding: 12px; } }
+/* Botao redondo ? com o texto num balao ao passar o mouse (ou com o foco do teclado). */
+.hf-ajuda { position: relative; display: inline-flex; }
+.hf-ajuda > button { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 1px solid var(--hf-linha);
+  background: #ffffff10; color: var(--hf-texto); font-size: 13px; font-weight: 800; cursor: help; display: grid; place-items: center; }
+.hf-ajuda > button:hover, .hf-ajuda > button:focus-visible { border-color: var(--hf-neon); color: var(--hf-neon); outline: none; }
+.hf-ajuda > [role='tooltip'] { position: absolute; z-index: 40; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%);
+  width: max-content; max-width: 280px; padding: 10px 12px; border-radius: 10px; background: #120D17; border: 1px solid var(--hf-neon);
+  color: var(--hf-texto); font-size: 13px; line-height: 1.45; box-shadow: 0 8px 24px #0009;
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s; }
+.hf-ajuda:hover > [role='tooltip'], .hf-ajuda:focus-within > [role='tooltip'] { opacity: 1; visibility: visible; }
+/* Miniaturas dos takes no passo 2: menores (a comparacao grande ja mostra o take escolhido). */
+.hf-versao-mini img { width: 84px; height: 48px; }
+.hf-versao-mini small { font-size: 9px; left: 3px; bottom: 2px; }
+.hf-quadro-dir .hf-quadro-faixa { gap: 6px; }
+/* Hierarquia do cabecalho do VFX Studio e do Cinema: sobretitulo neon, titulo claro com o destaque
+   em neon, descricao em cinza claro. */
+.hf-heroi-compacto .hf-sobretitulo { color: var(--hf-neon); font-weight: 700; }
+.hf-heroi-compacto h1 em { font-style: normal; background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  color: var(--hf-neon); -webkit-text-fill-color: var(--hf-neon); text-shadow: 0 0 24px #F2FF3D40; }
+.hf-heroi-compacto .hf-dica { color: #B9B2C4; }

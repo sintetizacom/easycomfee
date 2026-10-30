@@ -326,6 +326,14 @@ class PedidoGeracao(Pedido):
     # Maquete: quadros-chave em qualquer quantidade, cada um com o NUMERO DO
     # QUADRO (contado de 1, a 24 fps, como no Blender).
     chaves_video: list[dict] = Field(default_factory=list)
+    # Lado menor da saida do 3D render -> Video (576, 720 ou 1088). 0 = o maximo que a
+    # placa aguenta (presets.limite_maquete); o servidor nunca passa desse teto.
+    lado_maquete: int = Field(0, ge=0, le=1088)
+    # 3D render -> Video: onde comeca o trecho usado do render (quadro, contado de 0).
+    # Renders mais longos que o teto (14,7 s) usam so esse trecho.
+    inicio_maquete: int = Field(0, ge=0, le=100000)
+    # Duracao escolhida do trecho, em quadros (0 = o maximo que cabe).
+    quadros_maquete: int = Field(0, ge=0, le=100000)
     # Extracao de quadros da maquete: numeros de quadro; vazio = inicio, meio e fim.
     quadros_extrair: list[int] = Field(default_factory=list)
     # So o LTX 2.5, modos texto e imagem: < 1 liga o LoRA de camera lenta.
@@ -1176,19 +1184,29 @@ async def montar(tarefa: Tarefa):
             raise ValueError("não consegui medir o vídeo")
         total = int(round((d["duracao"] or 0) * (d["fps"] or 24)))
         quadros, meio, fim = _quadros_e_posicoes(d, efeito.get("max_quadros"))
+        inicio = 0
         if efeito.get("quadros_chave"):
-            # Cada quadro-chave no seu momento, levado a posicao aceita pelo
-            # modelo (multiplo de 8 quadros); dois no mesmo lugar, fica o ultimo.
+            inicio, quadros = _trecho_maquete(total, p.inicio_maquete, efeito["max_quadros"], p.quadros_maquete)
+            # Cada quadro-chave no seu momento (numero no render inteiro, contado de 1),
+            # levado a posicao aceita pelo modelo dentro do trecho (multiplo de 8
+            # quadros); dois no mesmo lugar, fica o ultimo.
             posicoes = {}
             for c in p.chaves_video:
                 if c.get("imagem"):
-                    posicoes[_posicao_do_quadro(int(c.get("quadro", 1)), quadros)] = c["imagem"]
+                    posicoes[_posicao_do_quadro(int(c.get("quadro", 1)) - inicio, quadros)] = c["imagem"]
             chaves = [(nome, q) for q, nome in sorted(posicoes.items())]
+        lado = 576
+        if efeito.get("quadros_chave"):
+            import maquina
+            teto = presets.limite_maquete((await maquina.detectar()).get("vram_gb"))
+            if teto is None:
+                raise ValueError("3D render → Video needs a graphics card with at least 16 GB of VRAM.")
+            lado = max(576, min(p.lado_maquete or teto, teto))
         if efeito.get("formatos"):
             larg, alt = efeito["formatos"][p.formato_saida]
         else:
             larg, alt = (presets.tamanho_troca if efeito.get("controles")
-                         else presets.tamanho_maquete if efeito.get("quadros_chave")
+                         else (lambda l, a: presets.tamanho_maquete(l, a, lado)) if efeito.get("quadros_chave")
                          else presets.tamanho_transformar)(d["largura"], d["altura"])
         com_audio = bool(await asyncio.to_thread(miniaturas.tem_audio, caminho))
         # O LoadVideo do v0.41 so le da pasta de entrada.
@@ -1197,9 +1215,12 @@ async def montar(tarefa: Tarefa):
         texto = " ".join(t for t in (p.prompt.strip(), efeito["texto"]) if t)
         tarefa.prompt_final = texto
         tarefa.largura, tarefa.altura = larg, alt
-        if quadros < total:
-            tarefa.aviso = (f"O vídeo tem {total / 24:.1f} s; foram usados os "
-                            f"primeiros {quadros / 24:.1f} s.")
+        if inicio or p.quadros_maquete:
+            tarefa.aviso = (f"The render is {total / 24:.1f} s; used {quadros / 24:.1f} s "
+                            f"from {inicio / 24:.1f} s.")
+        elif quadros < total:
+            tarefa.aviso = (f"The video is {total / 24:.1f} s; the first "
+                            f"{quadros / 24:.1f} s were used.")
         if efeito.get("formatos"):
             return workflows.expandir_enquadramento(
                 entrada, efeito["lora_completo"], texto, quadros,
@@ -1217,7 +1238,7 @@ async def montar(tarefa: Tarefa):
             return workflows.maquete_ltx(
                 entrada, cfg["lora_pasta"] + efeito["lora"], texto, quadros, larg, alt,
                 estilo, chaves, seed=seed, com_audio=com_audio,
-                prefixo=f"editor/video_{p.efeito_video}")
+                prefixo=f"editor/video_{p.efeito_video}", inicio=inicio)
         g = workflows.transformar_video(
             entrada, cfg["lora_pasta"] + efeito["lora"], texto, quadros, larg, alt,
             seed=seed, com_audio=com_audio, prefixo=f"editor/video_{p.efeito_video}")
@@ -1656,6 +1677,15 @@ def _posicao_do_quadro(numero: int, quadros: int) -> int:
     return quadros - 1 if q >= quadros - 1 else q
 
 
+def _trecho_maquete(total: int, inicio: int, teto: int, duracao: int = 0) -> tuple[int, int]:
+    """(inicio, quadros) do trecho usado de um render com `total` quadros: o inicio
+    nunca deixa menos de 9 quadros e o trecho tem 8k+1 quadros, no maximo o teto
+    e a duracao pedida (0 = o maximo)."""
+    inicio = max(0, min(inicio, total - 9))
+    limite = min(teto, duracao) if duracao else teto
+    return inicio, min(((max(limite, 9) - 1) // 8) * 8 + 1, ((max(total - inicio, 9) - 1) // 8) * 8 + 1)
+
+
 def _quadros_e_posicoes(d: dict, teto: int | None = None) -> tuple[int, int, int]:
     """Quadros usados (8k+1, no maximo o teto) e as posicoes do meio e do fim."""
     total = int(round((d["duracao"] or 0) * (d["fps"] or 24)))
@@ -1678,6 +1708,10 @@ async def extrair_quadros_maquete(tarefa: Tarefa):
     d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
     quadros, meio, fim = _quadros_e_posicoes(
         d, presets.VIDEO_TRANSFORMAR["efeitos"]["maquete"]["max_quadros"])
+    total = int(round((d["duracao"] or 0) * (d["fps"] or 24)))
+    inicio, quadros = _trecho_maquete(total, p.inicio_maquete,
+                                      presets.VIDEO_TRANSFORMAR["efeitos"]["maquete"]["max_quadros"],
+                                      p.quadros_maquete)
     larg, alt = presets.tamanho_maquete(d["largura"], d["altura"])
     import tempfile
     base = f"maquete_{uuid.uuid4().hex[:8]}"
@@ -1685,7 +1719,9 @@ async def extrair_quadros_maquete(tarefa: Tarefa):
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
         f.write(dados)
     try:
-        momentos = ([(f"quadro{_posicao_do_quadro(n, quadros) + 1}", _posicao_do_quadro(n, quadros))
+        # Numeros do render inteiro; a posicao cai no trecho usado (multiplo de 8 a partir do inicio).
+        momentos = ([(f"quadro{inicio + _posicao_do_quadro(n - inicio, quadros) + 1}",
+                      inicio + _posicao_do_quadro(n - inicio, quadros))
                      for n in p.quadros_extrair] if p.quadros_extrair
                     else [("inicio", 0), ("meio", meio), ("fim", fim)])
         for rotulo, q in momentos:
@@ -3794,6 +3830,25 @@ async def cinema_diretor(pedido: PedidoDiretor):
     if not texto:
         raise HTTPException(502, "o modelo de texto voltou vazio")
     return {"prompt": texto}
+
+
+class PedidoEscreverMaquete(Pedido):
+    ideia: str = Field(..., min_length=1, max_length=500)
+    campo: str = Field(..., pattern="^(nome|cena)$")
+    objeto: str = Field("", max_length=200)
+    seed: int = 0
+
+
+@app.post("/api/maquete/escrever")
+async def maquete_escrever(pedido: PedidoEscreverMaquete):
+    """3D render -> Video, "Write it for me": o nome do elemento ou a cena, pelo modelo de texto local."""
+    try:
+        texto = await prompting.maquete(pedido.ideia, pedido.campo, pedido.objeto, pedido.seed)
+    except Exception as e:
+        raise HTTPException(502, f"The text model did not answer: {e}")
+    if not texto:
+        raise HTTPException(502, "The text model returned nothing. Try again.")
+    return {"texto": texto}
 
 
 @app.post("/api/ideogram/caption")

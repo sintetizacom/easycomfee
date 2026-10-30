@@ -155,9 +155,9 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
 
   return (
     <div className="hf-aba">
-      <div className="hf-heroi">
+      <div className="hf-heroi hf-heroi-compacto">
         <span className="hf-sobretitulo">GENJUTSU · {cfg.rotulo.toUpperCase()}</span>
-        <h1>Recast any video</h1>
+        <h1>Recast <em>any video</em></h1>
         <p className="hf-dica">Same motion, camera and timing. New cast, place or style.</p>
       </div>
 

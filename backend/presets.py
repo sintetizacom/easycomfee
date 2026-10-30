@@ -2909,10 +2909,27 @@ def tamanho_chaves(largura: int, altura: int) -> tuple[int, int]:
     return tuple(max(64, round(v * f / 2) * 2) for v in (largura, altura))
 
 
-def tamanho_maquete(largura: int, altura: int) -> tuple[int, int]:
-    """Saida da maquete (duas etapas): lado menor 576, multiplos de 64, para a
-    etapa 1 (metade) ainda cair em multiplos de 32."""
-    f = 576 / min(largura, altura)
+# 3D render -> Video: o lado menor maximo pela VRAM da placa. MEDIDO em 29-30/10/2026
+# numa RTX 5070 Ti (16 GB, o ComfyUI ve 15,9): 1080 nao cabe (a etapa 2 trava com a placa
+# cheia), 720p roda 14,7 s em 7 min 38 s. Abaixo de 16 GB nao roda. Folga nos cortes: as
+# placas de 16 GB aparecem com 15,9 e as de 20/24 GB um pouco abaixo disso.
+MAQUETE_MIN_VRAM = 15
+
+
+def limite_maquete(vram_gb: float | None) -> int | None:
+    """Lado menor maximo (720 ou 1088) para esta placa; None se ela nao aguenta.
+    Sem saber a VRAM (deteccao falhou), fica no 576 testado."""
+    if vram_gb is None:
+        return 576
+    if vram_gb < MAQUETE_MIN_VRAM:
+        return None
+    return 720 if vram_gb < 18 else 1088
+
+
+def tamanho_maquete(largura: int, altura: int, lado: int = 576) -> tuple[int, int]:
+    """Saida da maquete (duas etapas): lado menor 576 (ou `lado`, em teste ate 1088),
+    multiplos de 64, para a etapa 1 (metade) ainda cair em multiplos de 32."""
+    f = lado / min(largura, altura)
     r = lambda v: max(64, round(v * f / 64) * 64)
     return r(largura), r(altura)
 
