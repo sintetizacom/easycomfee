@@ -1241,3 +1241,9 @@ html .mq-seletor:focus-visible { outline: 2px solid var(--hf-neon); outline-offs
 /* Edit an area: campo de texto do que recortar. */
 .hf-campo-largo { flex: 1 1 260px; }
 .hf-campo .hf-entrada { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--hf-linha); background: rgba(0,0,0,.25); color: var(--hf-texto); font: inherit; }
+/* Edit: imagem vinda da galeria esperando a ferramenta. */
+.hf-editar-esperando { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--hf-neon);
+  border-radius: 12px; font-size: 13px; }
+.hf-editar-esperando img { width: 64px; height: 48px; object-fit: cover; border-radius: 8px; }
+.hf-editar-esperando b { color: var(--hf-neon); }
+.hf-editar-esperando button { margin-left: auto; }

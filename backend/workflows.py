@@ -4,7 +4,7 @@ Cada funcao devolve um dicionario {id_do_no: {class_type, inputs}} pronto para
 POST em /prompt. A fiacao reproduz os templates oficiais do ComfyUI.
 """
 
-from presets import (AMPLIAR, ANGULO, CONTROLE, EDICAO, IDEOGRAM, LLM, MASCARA,
+from presets import (AMPLIAR, ANGULO, CONTROLE, EDICAO, IDEOGRAM, LLM, MASCARA, TRELLIS,
                      NUVEM, PERSONAGEM, RELUZ, ROSTO, SIMPLE,
                      VIDEO_AMPLIAR_LTX, VIDEO_LIMPAR, VIDEO_LTX,
                      VIDEO_FASTH3, VIDEO_MINIMAX_NUVEM,
@@ -510,6 +510,115 @@ def editar_mage(instrucao, referencias, seed, megapixels=1.0, steps=30, cfg=5.0,
                   "inputs": {"images": ["decodifica", 0], "filename_prefix": prefixo}}
     if mascara and mascara.get("alvo"):
         _aplicar_mascara(g, "esc0", "decodifica", mascara, prefixo)
+    return g
+
+
+def _trellis_render(g, foto, giro, altura_cam, largura, altura):
+    """Acrescenta ao grafo a malha 3D da foto (TRELLIS 2) girada e renderizada.
+
+    Os nos da malha nao dependem do angulo: entre uma previa e outra o ComfyUI
+    reaproveita do cache e so o giro e o render rodam de novo (segundos).
+    O giro e o da camera em volta da pessoa: positivo = camera para a direita,
+    entao a malha gira para o outro lado (angle_y = -giro). Devolve a chave do render.
+    """
+    p = TRELLIS
+    g |= {
+        "t_img": {"class_type": "LoadImage", "inputs": {"image": foto}},
+        "t_bgm": {"class_type": "LoadBackgroundRemovalModel", "inputs": {"bg_removal_name": p["recorte"]}},
+        "t_mask": {"class_type": "RemoveBackground", "inputs": {"bg_removal_model": ["t_bgm", 0], "image": ["t_img", 0]}},
+        "t_crop": {"class_type": "ImageCropToMask", "inputs": {"images": ["t_img", 0], "masks": ["t_mask", 0],
+                   "width": 1024, "height": 1024, "pad_factor": 1.1, "grow_mask": 0, "background": "#000000"}},
+        "t_dino": {"class_type": "CLIPVisionLoader", "inputs": {"clip_name": p["dino"]}},
+        "t_cond": {"class_type": "Trellis2Conditioning", "inputs": {"clip_vision_model": ["t_dino", 0], "image": ["t_crop", 0]}},
+        "t_unet": {"class_type": "UNETLoader", "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
+        "t_ms": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["t_unet", 0], "shift": 5.0}},
+        "t_vaes": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_forma"])}},
+        "t_vaet": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_textura"])}},
+        "t_lat": {"class_type": "EmptyTrellis2LatentStructure", "inputs": {"batch_size": 1}},
+        "t_ks1": {"class_type": "KSampler", "inputs": {"model": ["t_ms", 0], "positive": ["t_cond", 0], "negative": ["t_cond", 1],
+                  "latent_image": ["t_lat", 0], "seed": 42, "steps": 12, "cfg": 7.5, "sampler_name": "euler",
+                  "scheduler": "simple", "denoise": 1.0}},
+        "t_vox": {"class_type": "VaeDecodeStructureTrellis2", "inputs": {"samples": ["t_ks1", 0], "vae": ["t_vaes", 0], "resolution": "32"}},
+        "t_shp": {"class_type": "Trellis2ShapeStage", "inputs": {"positive": ["t_cond", 0], "negative": ["t_cond", 1], "voxel": ["t_vox", 0]}},
+        "t_rs2": {"class_type": "RescaleCFG", "inputs": {"model": ["t_ms", 0], "multiplier": 0.7}},
+        "t_ks2": {"class_type": "KSampler", "inputs": {"model": ["t_rs2", 0], "positive": ["t_shp", 0], "negative": ["t_shp", 1],
+                  "latent_image": ["t_shp", 2], "seed": 56, "steps": 12, "cfg": 7.5, "sampler_name": "euler",
+                  "scheduler": "normal", "denoise": 1.0}},
+        "t_dec": {"class_type": "VaeDecodeShapeTrellis", "inputs": {"samples": ["t_ks2", 0], "vae": ["t_vaes", 0]}},
+        "t_tex": {"class_type": "Trellis2TextureStage", "inputs": {"positive": ["t_cond", 0], "negative": ["t_cond", 1], "shape_latent": ["t_ks2", 0]}},
+        "t_rs3": {"class_type": "RescaleCFG", "inputs": {"model": ["t_ms", 0], "multiplier": 0.5}},
+        "t_ks3": {"class_type": "KSampler", "inputs": {"model": ["t_rs3", 0], "positive": ["t_tex", 0], "negative": ["t_tex", 1],
+                  "latent_image": ["t_tex", 2], "seed": 42, "steps": 20, "cfg": 7.5, "sampler_name": "euler",
+                  "scheduler": "normal", "denoise": 1.0}},
+        "t_vt": {"class_type": "VaeDecodeTextureTrellis", "inputs": {"samples": ["t_ks3", 0], "vae": ["t_vaet", 0], "shape_subdivides": ["t_dec", 1]}},
+        "t_paint": {"class_type": "PaintMesh", "inputs": {"mesh": ["t_dec", 0], "voxel_colors": ["t_vt", 0]}},
+        # Primeiro o giro (em torno do eixo vertical), depois a altura da camera em
+        # torno do eixo horizontal da TELA: num no so (euler x,y,z) a inclinacao vinha
+        # antes do giro e o corpo "deitava" de lado em vez de ser visto de cima.
+        "t_giro": {"class_type": "RotateMesh", "inputs": {"mesh": ["t_paint", 0], "mode": "euler_xyz",
+                   "mode.angle_x": 0.0, "mode.angle_y": float(-giro), "mode.angle_z": 0.0}},
+        "t_rot": {"class_type": "RotateMesh", "inputs": {"mesh": ["t_giro", 0], "mode": "euler_xyz",
+                  "mode.angle_x": float(altura_cam), "mode.angle_y": 0.0, "mode.angle_z": 0.0}},
+        "t_ren": {"class_type": "RenderMesh", "inputs": {"mesh": ["t_rot", 0], "mode": "auto", "width": largura,
+                  "height": altura, "background": "#000000"}},
+    }
+    return "t_ren"
+
+
+def frase_direcao_3d(giro, altura_cam=0.0):
+    """A pose do render em palavras. Giro positivo = camera a direita = pessoa
+    olhando para a esquerda da imagem (conferido no render do TRELLIS)."""
+    g = abs(giro)
+    lado = "left" if giro > 0 else "right"
+    if g < 10:
+        pose = "The person faces the camera as in @image2."
+    elif g < 35:
+        pose = f"The person is turned slightly, facing a little toward the {lado} side of the picture, exactly like the 3D figure in @image1."
+    elif g < 70:
+        pose = f"The person is turned three-quarters, facing toward the {lado} side of the picture, exactly like the 3D figure in @image1."
+    elif g < 115:
+        pose = f"The person is seen from the side, in profile, facing toward the {lado} side of the picture, exactly like the 3D figure in @image1. Do not turn them toward the camera."
+    elif g < 160:
+        pose = f"The person is seen from behind and to the side, mostly their back, facing away toward the {lado} side of the picture, exactly like the 3D figure in @image1."
+    else:
+        pose = "The person is seen from behind: we see their back, not their face, exactly like the 3D figure in @image1."
+    if altura_cam >= 20:
+        pose += " The camera is high, looking down at them."
+    elif altura_cam <= -20:
+        pose += " The camera is low, looking up at them."
+    return pose
+
+
+def orbita_3d(foto, giro, altura_cam, largura, altura, seed, previa=False, extra="", prefixo="editor/orbita3d"):
+    """Orbit 3D. previa: so o render da malha no angulo (o que a tela mostra).
+    Final: o Qwen Image Edit refaz o render (@image1) como foto, com a original
+    (@image2) dando rosto, roupa, lugar e luz."""
+    if previa:
+        g = {}
+        chave = _trellis_render(g, foto, giro, altura_cam, largura, altura)
+        g["salva"] = {"class_type": "SaveImage", "inputs": {"images": [chave, 0], "filename_prefix": prefixo + "_previa"}}
+        return g
+    # A direcao do corpo vai escrita tambem: so com a imagem, num quadro largo o
+    # Qwen tendia a virar a pessoa de volta para a camera (teste de 31/10/2026).
+    # Giro negativo: o Qwen tende a virar a pessoa para DENTRO do quadro e ignorava
+    # "facing right" com ela na borda direita (teste de 31/10/2026). Faz-se no espelho
+    # (foto espelhada, giro positivo) e o resultado volta espelhado: mesmo cenario.
+    espelho = giro < 0
+    giro_ef = abs(giro) if espelho else giro
+    instrucao = " ".join(x for x in (TRELLIS["instrucao"], frase_direcao_3d(giro_ef, altura_cam), extra.strip()) if x)
+    g = editar_qwen(instrucao, ["__render__", foto], seed, prefixo=prefixo)
+    chave = _trellis_render(g, foto, giro_ef, altura_cam, largura, altura)
+    del g["img0"]
+    g["esc0"]["inputs"]["image"] = [chave, 0]
+    if espelho:
+        g["t_esp"] = {"class_type": "ImageFlip", "inputs": {"image": ["t_img", 0], "flip_method": "y-axis: horizontally"}}
+        for no in ("t_mask", "t_crop"):  # a malha sai da foto espelhada
+            for k, v in g[no]["inputs"].items():
+                if v == ["t_img", 0]:
+                    g[no]["inputs"][k] = ["t_esp", 0]
+        g["esc1"]["inputs"]["image"] = ["t_esp", 0]   # a referencia de rosto e lugar tambem
+        g["volta"] = {"class_type": "ImageFlip", "inputs": {"image": ["decodifica", 0], "flip_method": "y-axis: horizontally"}}
+        g["salva"]["inputs"]["images"] = ["volta", 0]
     return g
 
 

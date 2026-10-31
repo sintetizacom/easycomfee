@@ -1033,6 +1033,89 @@
    ]
   },
   {
+   "id": "trellis",
+   "nome": "TRELLIS 2 (3D)",
+   "tipo": "imagem",
+   "descricao": "Turns a photo into a textured 3D model for the 3D Orbit in Edit (the photo pass uses Qwen Image Edit 2511).",
+   "vram_min_gb": 12,
+   "modos": [
+    "3D orbit"
+   ],
+   "nos_extras": [],
+   "requisitos": {
+    "vram_min": 12,
+    "vram_rec": 16,
+    "ram_min": 32,
+    "medido": "Measured on a 16 GB card. The 3D model takes about 40 s."
+   },
+   "licenca": {
+    "nome": "mit",
+    "url": "https://huggingface.co/Comfy-Org/TRELLIS.2"
+   },
+   "arquivos": [
+    {
+     "arquivo": "trellis_2_int8_convrot.safetensors",
+     "pasta": "diffusion_models",
+     "subpasta": "Trellis",
+     "repo": "Comfy-Org/TRELLIS.2",
+     "caminho": "diffusion_models/trellis_2_int8_convrot.safetensors",
+     "opcional": false,
+     "rotulo": "TRELLIS 2 (int8)",
+     "tamanho": 5253048192,
+     "licenca": "mit",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "trellis_2_shape_vae_bf16.safetensors",
+     "pasta": "vae",
+     "subpasta": "Trellis",
+     "repo": "Comfy-Org/Pixal3D",
+     "caminho": "vae/trellis_2_shape_vae_bf16.safetensors",
+     "opcional": false,
+     "rotulo": "Shape VAE",
+     "tamanho": 1095844024,
+     "licenca": "mit",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "trellis_2_texture_vae_bf16.safetensors",
+     "pasta": "vae",
+     "subpasta": "Trellis",
+     "repo": "Comfy-Org/Pixal3D",
+     "caminho": "vae/trellis_2_texture_vae_bf16.safetensors",
+     "opcional": false,
+     "rotulo": "Texture VAE",
+     "tamanho": 948461364,
+     "licenca": "mit",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "dino_v3_L_naf_fp32.safetensors",
+     "pasta": "clip_vision",
+     "subpasta": "",
+     "repo": "Comfy-Org/Pixal3D",
+     "caminho": "clip_vision/dino_v3_L_naf_fp32.safetensors",
+     "opcional": false,
+     "rotulo": "DINOv3 L",
+     "tamanho": 1215214176,
+     "licenca": "mit",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "birefnet.safetensors",
+     "pasta": "background_removal",
+     "subpasta": "",
+     "repo": "Comfy-Org/BiRefNet",
+     "caminho": "background_removal/birefnet.safetensors",
+     "opcional": false,
+     "rotulo": "BiRefNet (cut-out)",
+     "tamanho": 444473596,
+     "licenca": "mit",
+     "requer_aceite": false
+    }
+   ]
+  },
+  {
    "id": "upscale",
    "nome": "Upscalers",
    "tipo": "imagem",

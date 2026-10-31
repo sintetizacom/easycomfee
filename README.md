@@ -41,6 +41,22 @@ Notes: still in development and tested only on NVIDIA (RTX 5070 Ti, 16 GB). It n
 | **Cinema Studio** | **Music** |
 | ![Cinema Studio tab](docs/galeria/tela-cinema-v3.png) | ![Music tab](docs/galeria/tela-music-v2.png) |
 
+### Edit your photos
+
+The **Edit** tab brings 12 photo tools, each one a single click away. Every example below was made with the app, on a 16 GB GPU.
+
+| **Orbit**: the photo becomes a 3D model (TRELLIS 2), you turn it to the exact angle, and it comes back as a photo (original, 3D preview, side view, back view) | **Edit an area**: type *the jacket* and what it becomes; nothing else changes |
+|---|---|
+| ![The original photo, the 3D body at the new angle, and the man seen from the side in the same place](docs/galeria/edit-orbit.jpg) | ![A brown jacket becomes red leather; the face and the street stay identical](docs/galeria/edit-area.jpg) |
+| **Character sheet**: one photo becomes four views | **Adjust the face**: gaze, smile and head tilt, in 6 seconds |
+| ![One photo turned into a face close-up and front, side and back views](docs/galeria/edit-folha.jpg) | ![The same portrait now smiling and looking aside](docs/galeria/edit-rosto.jpg) |
+
+- **Light**: Relight (direction, height and color, with a live light-sphere preview, or Magnific on Comfy Cloud) and Copy the light of another photo.
+- **Angle**: Change the angle (8 views: move the camera or turn the character) and **Orbit**. The Orbit turns the photo into a textured 3D model with **TRELLIS 2** (about 40 s), shows that model at the exact angle you pick, and **Qwen Image Edit** turns the view back into a photo with the same face, clothes and place, all free on your GPU. It can also turn the person by words with **FLUX 3** (free) or Nano Banana 2, Seedream 5 Pro and GPT Image 2.5 Sunburst, at 1K, 2K or 4K.
+- **People**: Head swap, Character swap (3 images), Character sheet, Adjust the face.
+- **Tools**: **Edit an area** (SAM 3 finds the part by its name), **Upscale** (SeedVR2, Creative or Classic on your GPU, up to 4×; Magnific up to 16× and Topaz on Comfy Cloud), Follow the structure (edges, depth, pose or lines), Remove background.
+- From any gallery, **Edit this image** sends a picture straight to the Edit tab.
+
 ### Runs on the GPU you have
 
 EasyComfee was installed and tested on three ordinary PCs, including two 8 GB cards:
@@ -66,6 +82,7 @@ On smaller cards, **Config Models** shows which packages run well on that GPU an
 | Tab | What you get | Models |
 |---|---|---|
 | **Image** | Text to image, with up to 3 reference images (@image1…) | Krea 2, Kroma, Qwen Image 2.1, Flux 2 Klein, FLUX 3 Klein, Z-Image, Mage, Ideogram 4 · light: FLUX.1 schnell, SD 3.5 Medium, SDXL, SD 1.5 |
+| **Edit** | 12 photo tools: Relight, Copy the light, Change the angle, Orbit (3D body preview), Head swap, Character swap, Character sheet, Adjust the face, Edit an area, Upscale, Follow the structure, Remove background | TRELLIS 2 · Qwen Image Edit 2511 · Qwen Image 2.1 + SAM 3 · FLUX 3 Klein · Flux 2 Klein · Krea 2 Anygles · SeedVR2 · Z-Image · LivePortrait · optional: Nano Banana 2, Seedream 5 Pro, GPT Image 2.5, Magnific, Topaz, Recraft |
 | **Video** | Text → video, image → video, first & last frame, references (up to 4 people/objects), keyframes, with sound | LTX 2.5 · LTX 2.3 · MiniMax H3 · FastH3 · light: LTX-Video 2B, Wan 2.2 5B, Wan 2.1 1.3B |
 | **LTX Studio** | Every LTX workflow in one place, with its own screens: **Keyframes** on a timeline (drag images to the second they should appear), **Ingredients** (a shot built from several images), **Latent upscale** | LTX 2.5 / 2.3 |
 | **Lip Sync** | A portrait and a voice track become a talking video, up to 30 s | LTX 2.3 |

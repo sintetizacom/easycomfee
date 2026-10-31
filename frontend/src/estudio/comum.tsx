@@ -175,6 +175,16 @@ const Icone = ({ d }: { d: string }) => (
   </svg>
 )
 
+// "Edit this image": leva a imagem para a aba Edit, que a coloca na primeira caixa da
+// ferramenta que a pessoa abrir (la ainda nao ha caixa antes de escolher a ferramenta).
+let paraEditar: { nome: string; subpasta: string } | null = null
+export function pegarParaEditar() { const e = paraEditar; paraEditar = null; return e }
+function editarImagem(e: { nome: string; subpasta: string }) {
+  paraEditar = e
+  location.hash = '#edit'
+  window.dispatchEvent(new Event('easycomfee:editar'))
+}
+
 /** Leva para outra aba e entrega o arquivo ao primeiro slot de imagem dela. */
 function irComImagem(hash: string, e: { nome: string; subpasta: string }) {
   // Ja na aba com um modelo no endereco (#image/qwen21): ficar nele, e nao voltar a
@@ -264,6 +274,7 @@ export function Midia({ nome, subpasta }: { nome: string; subpasta: string }) {
       { rotulo: 'Use as reference here', acao: usar },
       { rotulo: 'Animate (Image → Video)', acao: () => irComImagem('#video/imagem', arq) },
       { rotulo: 'Use in the Image tab', acao: () => irComImagem('#image', arq) },
+      { rotulo: 'Edit this image (Edit tab)', acao: () => editarImagem(arq) },
       { rotulo: 'Send to Lip Sync (as the face)', acao: () => irComImagem('#lipsync', arq) },
     ] : []),
     ...(eAudio(nome) ? [

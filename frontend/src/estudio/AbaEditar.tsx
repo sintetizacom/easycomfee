@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { MotorCtx, AvisoInstalar, useFaltaInstalar } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
-import { arquivos, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, MAX_PROMPT } from './comum'
+import { pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, MAX_PROMPT } from './comum'
 
 // Edit Studio: as ferramentas de edicao herdadas do Editor de Imagens. Cada cartao e
 // um modo que o backend ja monta (app.py montar(): reluz, luzref, angulo, anygles,
@@ -16,7 +16,7 @@ type Ferramenta = {
 
 const FERRAMENTAS: Ferramenta[] = [
   { id: 'reluz', grupo: 'Light', nome: 'Relight', frase: 'Move the light in your photo: direction, height and color.',
-    imagens: [{ rotulo: 'Photo' }], texto: 'opcional', pacote: 'Qwen Image Edit 2511',
+    imagens: [{ rotulo: 'Photo' }, { rotulo: 'Light from', opcional: true }], texto: 'opcional', pacote: 'Qwen Image Edit 2511',
     dica: 'Pick where the light comes from. The people and things in the photo stay the same.' },
   { id: 'luzref', grupo: 'Light', nome: 'Copy the light', frase: 'Take the light and mood of one photo and put it on another.',
     imagens: [{ rotulo: 'Photo to change' }, { rotulo: 'Light from' }], texto: 'opcional', pacote: 'Qwen Image Edit 2511',
@@ -55,7 +55,7 @@ const FERRAMENTAS: Ferramenta[] = [
 
 // Id do pacote no Config Models (motor.tsx PACOTE usa o id do menu: estes sao os modelos).
 const MODELO_DO_PACOTE: Record<string, string> = {
-  'Qwen Image 2.1': 'qwen21', 'Upscalers': 'upscale', 'Z-Image Turbo (creative upscale)': 'zimage',
+  'Qwen Image 2.1': 'qwen21', 'TRELLIS 2 (3D)': 'trellis', 'Upscalers': 'upscale', 'Z-Image Turbo (creative upscale)': 'zimage',
   'Qwen Image Edit 2511': 'qwen_edit', 'Krea 2': 'krea', 'FLUX 3 Image Klein': 'flux3', 'FLUX 2 Klein 9B': 'klein', 'Z-Image Turbo': 'zimage',
 }
 
@@ -66,6 +66,11 @@ const LADOS = [
 const ALTURAS = [{ id: 0, rotulo: 'Low' }, { id: 25, rotulo: 'Eye level' }, { id: 60, rotulo: 'High' }]
 const CORES = [{ id: 'quente', rotulo: 'Warm' }, { id: 'neutra', rotulo: 'Neutral' }, { id: 'fria', rotulo: 'Cool' }]
 const FORCAS = [{ id: 0.6, rotulo: 'Soft' }, { id: 1.0, rotulo: 'Normal' }, { id: 1.4, rotulo: 'Strong' }]
+// Relight pelo Magnific (presets.RELUZ metodos.nuvem): descreve a luz OU copia de uma foto.
+const ESTILOS_LUZ = [
+  { id: 'standard', rotulo: 'Standard' }, { id: 'darker_but_realistic', rotulo: 'Darker' }, { id: 'clean', rotulo: 'Clean' },
+  { id: 'smooth', rotulo: 'Smooth' }, { id: 'brighter', rotulo: 'Brighter' }, { id: 'contrasted_n_hdr', rotulo: 'HDR' },
+]
 const VISTAS = [
   { id: 'tres_quartos_esq', rotulo: '¾ from the left' }, { id: 'tres_quartos_dir', rotulo: '¾ from the right' },
   { id: 'perfil', rotulo: 'Profile' }, { id: 'de_tras', rotulo: 'From behind' }, { id: 'contra_plongee', rotulo: 'From below' },
@@ -81,13 +86,13 @@ const ROSTO = [
 
 // Orbit: motores que giram por frase (o Flux 3 local e os de API), mais o Krea com o boneco 3D.
 const MOTORES_ORBITA = [
-  { id: 'flux3ref', rotulo: 'Flux 3 · local, free' }, { id: 'nano-2', rotulo: 'Nano Banana 2 · API' },
+  { id: 'orbita3d', rotulo: '3D model · exact angle, local' }, { id: 'flux3ref', rotulo: 'Flux 3 · local, free' }, { id: 'nano-2', rotulo: 'Nano Banana 2 · API' },
   { id: 'seedream5', rotulo: 'Seedream 5 Pro · API' }, { id: 'sunburst', rotulo: 'GPT Image 2.5 Sunburst · API' },
   { id: 'krea', rotulo: 'Krea Anygles · 3D body' },
 ]
 
 const RESOLUCOES_ORBITA: Record<string, string[]> = {
-  'flux3ref': ['1K', '2K'], 'nano-2': ['1K', '2K', '4K'], 'seedream5': ['1K', '2K'], 'sunburst': ['1K', '2K', '4K'],
+  'orbita3d': ['1K'], 'flux3ref': ['1K', '2K'], 'nano-2': ['1K', '2K', '4K'], 'seedream5': ['1K', '2K'], 'sunburst': ['1K', '2K', '4K'],
 }
 
 /** A frase do giro, pronta para a etapa final (o usuario nao digita nada). Os modelos de
@@ -138,6 +143,11 @@ export default function AbaEditar() {
   const [elevacao, setElevacao] = useState(25)
   const [temperatura, setTemperatura] = useState('neutra')
   const [intensidade, setIntensidade] = useState(1.0)
+  const [metodoLuz, setMetodoLuz] = useState('direcional')   // direcional (Qwen, local) ou nuvem (Magnific)
+  const [estiloLuz, setEstiloLuz] = useState('standard')
+  const [mudarFundo, setMudarFundo] = useState(false)
+  // Change the angle: mover a camera (Qwen) ou girar o personagem (Klein, mantem o enquadramento)
+  const [metodoAngulo, setMetodoAngulo] = useState('camera')
   // Angulo / orbita
   const [vista, setVista] = useState('tres_quartos_esq')
   const [yaw, setYaw] = useState(45)
@@ -152,7 +162,7 @@ export default function AbaEditar() {
   const [base, setBase] = useState(0)
   // Motor do Orbit: um modelo de edicao que gira por FRASE (Flux 3 local ou API), montada
   // sozinha a partir do giro; ou o Krea Anygles, que segue o boneco 3D.
-  const [motorOrbita, setMotorOrbita] = useState('flux3ref')
+  const [motorOrbita, setMotorOrbita] = useState('orbita3d')
   const [giro, setGiro] = useState(45)            // graus a partir da pose da foto
   const [alturaFrase, setAlturaFrase] = useState('olho')
   const [formato, setFormato] = useState('16:9')  // proporcao da foto, para a imagem nova sair igual
@@ -171,38 +181,59 @@ export default function AbaEditar() {
   const [alvoArea, setAlvoArea] = useState('')
   const [bordaArea, setBordaArea] = useState(12)
 
-  const abrir = (f: Ferramenta) => { setFerramenta(f); setImgs([]); setErro(null); setPrevia(null) }
+  // Imagem mandada da galeria ("Edit this image"): fica esperando a ferramenta ser escolhida.
+  const [esperando, setEsperando] = useState<Referencia | null>(null)
+  useEffect(() => {
+    const pegar = () => { const e = pegarParaEditar(); if (e) referenciaDe(e).then(setEsperando).catch(() => {}) }
+    pegar()
+    window.addEventListener('easycomfee:editar', pegar)
+    return () => window.removeEventListener('easycomfee:editar', pegar)
+  }, [])
+  const abrir = (f: Ferramenta) => {
+    setFerramenta(f); setErro(null); setPrevia(null)
+    setImgs(esperando && f.imagens.length ? [esperando] : [])
+  }
   const f = ferramenta
-  const comFrase = f?.id === 'anygles' && motorOrbita !== 'krea'
+  const com3d = f?.id === 'anygles' && motorOrbita === 'orbita3d'
+  const comFrase = f?.id === 'anygles' && motorOrbita !== 'krea' && !com3d
+  const luzApi = f?.id === 'reluz' && metodoLuz === 'nuvem'
   const ampliarApi = f?.id === 'ampliar' && (metodoAmpliar === 'magnific' || metodoAmpliar === 'topaz')
   const escalasOk = ESCALAS_AMPLIAR[metodoAmpliar] ?? [2]
   const escalaOk = escalasOk.includes(escalaAmpliar) ? escalaAmpliar : escalasOk[0]
   const motorApi = comFrase && motorOrbita !== 'flux3ref'
-  const pacoteAtual = comFrase ? (motorApi ? undefined : 'FLUX 3 Image Klein')
+  const pacoteAtual = com3d ? (faltaInstalar('trellis') ? 'TRELLIS 2 (3D)' : 'Qwen Image Edit 2511')
+    : comFrase ? (motorApi ? undefined : 'FLUX 3 Image Klein')
+    : luzApi ? undefined
+    : f?.id === 'angulo' && metodoAngulo === 'personagem' ? 'FLUX 2 Klein 9B'
     : f?.id === 'ampliar' ? (ampliarApi ? undefined : metodoAmpliar === 'criativo' ? 'Z-Image Turbo (creative upscale)' : 'Upscalers')
     : f?.pacote
   const modeloPacote = pacoteAtual ? MODELO_DO_PACOTE[pacoteAtual] : undefined
   const naoInstalado = !!f && !f.api && !!modeloPacote && faltaInstalar(modeloPacote)
-  const soLocal = !!f && !f.api && !motorApi && !ampliarApi && naNuvem
+  const soLocal = !!f && !f.api && !motorApi && !ampliarApi && !luzApi && naNuvem
   const nomes = imgs.filter((r): r is Referencia => !!r).map((r) => r.nome)
   const faltaImagem = !!f && f.imagens.some((s, i) => !s.opcional && !imgs[i])
   const faltaTexto = (f?.texto === 'obrigatorio' && !texto.trim()) || (f?.id === 'area' && !alvoArea.trim())
+    // Magnific: precisa descrever a luz OU mandar a foto de onde copiar
+    || (f?.id === 'reluz' && metodoLuz === 'nuvem' && !texto.trim() && !imgs[1])
 
   // 1K/2K/4K por motor: cada API tem as suas (presets.NUVEM resolucoes); o Flux local vai
   // ate 2K (escala 1,5: ~2,3 MP), porque 4K nao cabe numa placa de 16 GB.
   const resDoMotor = RESOLUCOES_ORBITA[motorOrbita] ?? ['1K']
   const resOk = resDoMotor.includes(resolucao) ? resolucao : resDoMotor[resDoMotor.length - 1]
+  const ALT_GRAUS: Record<string, number> = { baixo: -30, olho: 0, alto: 35 }
   const pedido = f ? {
-    modelo: comFrase ? motorOrbita : f.id === 'area' ? 'qwen21edit' : f.id,
+    modelo: com3d ? 'orbita3d' : comFrase ? motorOrbita : f.id === 'area' ? 'qwen21edit' : f.id,
     // Edit an area: a instrucao sai pronta ("Change the jacket into a red leather jacket"); o usuario so diz o que e o que vira.
     prompt: comFrase ? fraseOrbita(giro, alturaFrase, texto)
       : f.id === 'area' ? `Change ${alvoArea.trim()} in @image1 into ${texto.trim()}. Keep everything else exactly the same.` : texto,
-    proporcao: comFrase ? formato : '1:1', lote: 1, referencias: nomes,
+    proporcao: comFrase || com3d ? formato : '1:1', lote: 1, referencias: f.id === 'reluz' && !luzApi ? nomes.slice(0, 1) : nomes,
     ...(motorApi ? { resolucao_nuvem: resOk } : {}),
     ...(comFrase && !motorApi ? { escala: resOk === '2K' ? 1.5 : 1.0 } : {}),
-    ...(f.id === 'reluz' ? { metodo_luz: 'direcional', azimute, elevacao, temperatura, intensidade } : {}),
-    ...(f.id === 'angulo' ? { metodo_angulo: 'camera', vista } : {}),
-    ...(f.id === 'anygles' && !comFrase ? { yaw, elevation: altura, distance: distancia } : {}),
+    ...(f.id === 'reluz' ? (luzApi ? { metodo_luz: 'nuvem', estilo_luz: estiloLuz, mudar_fundo_luz: mudarFundo }
+      : { metodo_luz: 'direcional', azimute, elevacao, temperatura, intensidade }) : {}),
+    ...(f.id === 'angulo' ? { metodo_angulo: metodoAngulo, vista } : {}),
+    ...(f.id === 'anygles' && !comFrase && !com3d ? { yaw, elevation: altura, distance: distancia } : {}),
+    ...(com3d ? { giro_3d: giro, altura_3d: ALT_GRAUS[alturaFrase] } : {}),
     ...(f.id === 'personagem' ? { prioridade } : {}),
     ...(f.id === 'controle' ? { tipo_controle: tipoControle } : {}),
     ...(f.id === 'rosto' ? { rosto } : {}),
@@ -219,12 +250,13 @@ export default function AbaEditar() {
   }
 
   // A previa e sempre o boneco 3D do Krea: na pose da foto (rotacao medida) mais o giro.
-  const ALT_GRAUS: Record<string, number> = { baixo: -30, olho: 0, alto: 35 }
   const giroBoneco = ((((rotacao ?? 0) + giro) + 540) % 360) - 180
   const prev = comFrase ? { yaw: Math.round(giroBoneco * 10) / 10, elevation: ALT_GRAUS[alturaFrase], distance: 1.0 }
     : { yaw, elevation: altura, distance: distancia }
-  const pedidoPrevia = f?.id === 'anygles' ? { modelo: 'anygles', prompt: '', proporcao: '1:1', lote: 1, referencias: nomes, ...prev } : null
-  const chaveAngulo = `${nomes[0]}|${prev.yaw}|${prev.elevation}|${prev.distance}`
+  const pedidoPrevia = f?.id !== 'anygles' ? null
+    : com3d ? { modelo: 'orbita3d', prompt: '', proporcao: formato, lote: 1, referencias: nomes, giro_3d: giro, altura_3d: ALT_GRAUS[alturaFrase] }
+    : { modelo: 'anygles', prompt: '', proporcao: '1:1', lote: 1, referencias: nomes, ...prev }
+  const chaveAngulo = com3d ? `3d|${nomes[0]}|${giro}|${alturaFrase}|${formato}` : `${nomes[0]}|${prev.yaw}|${prev.elevation}|${prev.distance}`
   // Previa automatica: ~1 s depois do ultimo ajuste. Uma por vez na placa; se o ajuste
   // mudou enquanto uma rodava, a seguinte sai com os valores novos.
   const ultimo = useRef({ chave: '', pedido: null as typeof pedidoPrevia })
@@ -237,7 +269,7 @@ export default function AbaEditar() {
       for (;;) {
         const { chave, pedido: ped } = ultimo.current
         if (!ped) break
-        const { id } = await api.gerar({ ...ped, previa_angulo: true, teste: true, rotulo_teste: 'Orbit preview' } as Parameters<typeof api.gerar>[0])
+        const { id } = await api.gerar({ ...ped, previa_angulo: true, teste: true, rotulo_teste: 'Orbit preview' } as unknown as Parameters<typeof api.gerar>[0])
         for (;;) {
           await new Promise((r) => setTimeout(r, 1000))
           const t = (await api.tarefas()).find((x) => x.id === id)
@@ -285,6 +317,13 @@ export default function AbaEditar() {
         <p className="hf-dica">Relight, change the angle, swap a head or a character, make a character sheet. Pick a tool and drop a photo.</p>
       </div>
 
+      {esperando && !f && (
+        <div className="hf-editar-esperando">
+          <img src={esperando.url} alt="" />
+          <span>Image ready. <b>Pick a tool below</b> and it goes in.</span>
+          <button type="button" className="hf-ajustes-limpar" onClick={() => setEsperando(null)}>Clear</button>
+        </div>
+      )}
       {grupos.map((g) => (
         <section key={g} className="hf-editar-grupo">
           <span className="hf-editar-grupo-nome">{g}</span>
@@ -313,38 +352,59 @@ export default function AbaEditar() {
                 <SlotImagem rotulo="Full-body photo" valor={imgs[0] ?? null} aoMudar={(r) => setImgs([r])} />
               </div>
               <div className="hf-orbita-caixa" data-velha={!!previa && previa.chave !== chaveAngulo}>
-                <span className="hf-orbita-caixa-nome">New angle · body preview</span>
+                <span className="hf-orbita-caixa-nome">{com3d ? 'New angle · 3D model' : 'New angle · body preview'}</span>
                 {previa ? <img src={previa.url} alt="The body seen from the new camera" />
-                  : <span className="hf-orbita-vazio">{nomes[0] ? 'Preparing the preview…' : 'Add a photo to see the new angle here'}</span>}
+                  : <span className="hf-orbita-vazio">{nomes[0] ? (com3d ? 'Building the 3D model… (about 40 s the first time)' : 'Preparing the preview…') : 'Add a photo to see the new angle here'}</span>}
                 {previando && <span className="hf-orbita-selo">Updating…</span>}
               </div>
             </div>
           ) : <div className="hf-slots">
-            {f.imagens.map((s, i) => (
+            {f.imagens.map((s, i) => f.id === 'reluz' && i === 1 && !luzApi ? null : (
               <SlotImagem key={`${f.id}-${i}`} rotulo={s.rotulo + (s.opcional ? ' (optional)' : '')} valor={imgs[i] ?? null}
                 aoMudar={(r) => setImgs((a) => { const n = [...a]; n[i] = r; return n })} />
             ))}
           </div>}
-          <p className="hf-dica">{comFrase ? 'Any framing works. The prompt is written for you from the Turn and Height you pick.' : f.dica}</p>
+          <p className="hf-dica">{com3d ? 'Works best with the whole person in the photo, clearly separated from the background.'
+            : comFrase ? 'Any framing works. The prompt is written for you from the Turn and Height you pick.'
+            : luzApi ? 'Describe the light below, or drop a photo in "Light from" to copy its light. US$ 0.11, runs on Comfy credits.'
+            : f.id === 'angulo' && metodoAngulo === 'personagem' ? 'The body turns and the framing stays. Faster, and better for the view from above.'
+            : f.dica}</p>
 
-          {f.id === 'reluz' && (
+          {f.id === 'reluz' && (<>
             <div className="hf-linha-controles">
-              <img className="hf-esfera-luz" alt="Light preview" title="This lit sphere is what the model gets as the light guide"
-                src={`/api/luz/mapa?azimute=${azimute}&elevacao=${elevacao}&intensidade=${intensidade}&temperatura=${temperatura}`} />
-              <Chips rotulo="Light from" opcoes={LADOS} valor={azimute} aoMudar={setAzimute} />
-              <Chips rotulo="Height" opcoes={ALTURAS} valor={elevacao} aoMudar={setElevacao} />
-              <Chips rotulo="Color" opcoes={CORES} valor={temperatura} aoMudar={setTemperatura} />
-              <Chips rotulo="Strength" opcoes={FORCAS} valor={intensidade} aoMudar={setIntensidade} />
+              <Chips rotulo="Method" opcoes={[{ id: 'direcional', rotulo: 'Directional · local' }, { id: 'nuvem', rotulo: 'Magnific · API' }]}
+                valor={metodoLuz} aoMudar={setMetodoLuz} />
             </div>
-          )}
+            {metodoLuz === 'nuvem' ? (
+              <div className="hf-linha-controles">
+                <Chips rotulo="Style" opcoes={ESTILOS_LUZ} valor={estiloLuz} aoMudar={setEstiloLuz} />
+                <div className="hf-campo"><span>Background</span>
+                  <label className="hf-toggle"><input type="checkbox" checked={mudarFundo} onChange={(e) => setMudarFundo(e.target.checked)} /> Relight the background too</label>
+                </div>
+              </div>
+            ) : (
+              <div className="hf-linha-controles">
+                <img className="hf-esfera-luz" alt="Light preview" title="This lit sphere is what the model gets as the light guide"
+                  src={`/api/luz/mapa?azimute=${azimute}&elevacao=${elevacao}&intensidade=${intensidade}&temperatura=${temperatura}`} />
+                <Chips rotulo="Light from" opcoes={LADOS} valor={azimute} aoMudar={setAzimute} />
+                <Chips rotulo="Height" opcoes={ALTURAS} valor={elevacao} aoMudar={setElevacao} />
+                <Chips rotulo="Color" opcoes={CORES} valor={temperatura} aoMudar={setTemperatura} />
+                <Chips rotulo="Strength" opcoes={FORCAS} valor={intensidade} aoMudar={setIntensidade} />
+              </div>
+            )}
+          </>)}
           {f.id === 'angulo' && (
-            <div className="hf-linha-controles"><Chips rotulo="New view" opcoes={VISTAS} valor={vista} aoMudar={setVista} /></div>
+            <div className="hf-linha-controles">
+              <Chips rotulo="Method" opcoes={[{ id: 'camera', rotulo: 'Move the camera · Qwen' }, { id: 'personagem', rotulo: 'Turn the character · Klein' }]}
+                valor={metodoAngulo} aoMudar={setMetodoAngulo} />
+              <Chips rotulo="New view" opcoes={VISTAS} valor={vista} aoMudar={setVista} />
+            </div>
           )}
           {f.id === 'anygles' && (<>
             <div className="hf-linha-controles">
               <Chips rotulo="Engine" opcoes={MOTORES_ORBITA} valor={motorOrbita} aoMudar={(v) => { setMotorOrbita(v); setPrevia(null) }} />
             </div>
-            {comFrase ? (
+            {comFrase || com3d ? (
               <div className="hf-orbita">
                 <svg className="hf-orbita-mapa" viewBox="-60 -60 120 120" role="img" aria-label={`Camera ${Math.abs(giro)} degrees ${giro >= 0 ? 'right' : 'left'}`}>
                   {/* Visto de cima: a pessoa no centro; o ponto cinza e a camera da foto, o amarelo a nova. */}
@@ -478,9 +538,10 @@ export default function AbaEditar() {
             <div className="hf-linha-controles"><Chips rotulo="Follow" opcoes={CONTROLES} valor={tipoControle} aoMudar={setTipoControle} /></div>
           )}
 
+          {com3d && <p className="hf-orbita-frase"><b>How it works:</b> the photo becomes a 3D model (about 40 s the first time), the preview shows it at the exact angle, and Apply turns that view into a photo with Qwen Image Edit, using your photo for the face, clothes and place. About 3 minutes.</p>}
           {comFrase && <p className="hf-orbita-frase"><b>Prompt (written for you):</b> {fraseOrbita(giro, alturaFrase, texto)}</p>}
           {f.texto && (f.id !== 'ampliar' || metodoAmpliar === 'magnific') && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
-            placeholder={f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'Optional: an extra touch, e.g. "keep the background dark"'} />}
+            placeholder={luzApi ? 'Describe the light, e.g. "warm sunset light from the left, soft shadows"' : f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'Optional: an extra touch, e.g. "keep the background dark"'} />}
           <div className="hf-linha-controles">
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
             {soLocal && <span className="hf-dica">This tool runs on your GPU. Switch to Local to use it.</span>}

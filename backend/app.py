@@ -463,6 +463,9 @@ class PedidoGeracao(Pedido):
     yaw: float = Field(50.0, ge=-180.0, le=180.0)
     # Orbit: so a previa do angulo (malha do corpo vista da camera nova), sem gerar.
     previa_angulo: bool = False
+    # Orbit 3D (modelo "orbita3d"): giro da camera e altura em graus.
+    giro_3d: float = Field(0.0, ge=-180.0, le=180.0)
+    altura_3d: float = Field(0.0, ge=-60.0, le=60.0)
     # Estreitadas junto com o preset, e pela mesma medicao: -60 perde a leitura
     # de "em pe" e 0,6 corta a cabeca. Duplicar a faixa em dois lugares diverge
     # — ja aconteceu aqui com o alinhamento do LTX —, entao se uma mudar, a
@@ -1353,6 +1356,13 @@ async def montar(tarefa: Tarefa):
             raise ValueError("envie uma imagem")
         tarefa.prompt_final = ""
         return workflows.recortar_fundo(p.referencias[0], prefixo=prefixo)
+
+    if p.modelo == "orbita3d":
+        if not p.referencias:
+            raise ValueError("envie uma imagem")
+        tarefa.prompt_final = "" if p.previa_angulo else presets.TRELLIS["instrucao"]
+        return workflows.orbita_3d(p.referencias[0], p.giro_3d, p.altura_3d, largura, altura, seed,
+                                   previa=p.previa_angulo, extra=p.prompt, prefixo=prefixo)
 
     if p.modelo == "ampliar":
         if not p.referencias:
@@ -2488,7 +2498,8 @@ class PedidoMotor(Pedido):
 
 
 def _eh_api(p: PedidoGeracao) -> bool:
-    return p.modelo in presets.NUVEM or p.modelo == "recorte" or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
+    return p.modelo in presets.NUVEM or p.modelo == "recorte" or (
+        p.modelo == "reluz" and p.metodo_luz == "nuvem") or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
@@ -2499,7 +2510,7 @@ def _modelos_conhecidos() -> set[str]:
     (antes um modelo inventado dava 200 "gratis" no preco e 400 so ao gerar)."""
     return (set(presets.SIMPLE) | set(presets.EDICAO) | set(presets.NUVEM)
             | {"ideogram", "controle", "ampliar", "angulo", "reluz",
-               "personagem", "rosto", "recorte", "video",
+               "personagem", "rosto", "recorte", "orbita3d", "video",
                "limpar_video", "transformar_video", "quadros_maquete", "voz",
                "profundidade_video",
                "transcricao_voz", "musica", "genjutsu",
@@ -3423,7 +3434,7 @@ async def gerar(pedido: PedidoGeracao):
     # "prompt vazio", que nao diz nada a quem so mexeu nos deslizantes.
     sem_prompt = ("ampliar", "angulo", "reluz", "personagem", "rosto", "luzref",
                   "recorte", "limpar_video", "transformar_video", "quadros_maquete",
-                  "profundidade_video", "anygles", "cabeca", "folha", "avatar",
+                  "profundidade_video", "anygles", "cabeca", "folha", "orbita3d", "avatar",
                   "separar", "trocar_voz", "treinar_voz")
     # O video de TEXTO exige prompt. Os outros dois aceitam so as imagens,
     # porque o gerador automatico escreve a descricao a partir delas.

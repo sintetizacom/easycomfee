@@ -49,6 +49,7 @@ REQ = {
     "qwen21": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "qwen_edit": {"vram_min": 16, "vram_rec": 24, "ram_min": 48, "medido": M16 + " The 20.5 GB model spills into system RAM.",
                   "nota_limitado": "Runs, but part of the model sits in RAM: slower."},
+    "trellis": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16 + " The 3D model takes about 40 s."},
     "zimage": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     # Modelos leves para placas pequenas. Estimados pelos arquivos e pelo que os
     # autores indicam; o "medido" diz o que rodou nesta placa de 16 GB.
@@ -227,6 +228,17 @@ pacote("ideogram4", "Ideogram 4 (open weights)", "imagem", "Ideogram 4 local: st
     ("diffusion_models", "Ideogram4/ideogram4_unconditional_int8_convrot.safetensors", IG, "diffusion_models/ideogram4_unconditional_int8_convrot.safetensors", False, "Ideogram 4 unconditional (int8)"),
     ("text_encoders", "Qwen/qwen3vl_8b_fp8_scaled.safetensors", IG, "text_encoders/qwen3vl_8b_fp8_scaled.safetensors", False, "Qwen3-VL 8B (fp8)"),
     ("vae", "Flux2/flux2-vae.safetensors", IG, "vae/flux2-vae.safetensors", False, "FLUX 2 VAE"),
+])
+
+PX = "Comfy-Org/Pixal3D"
+# Orbit 3D (Edit): foto -> malha 3D com textura, girada no angulo exato; o Qwen Image Edit 2511 refaz como foto.
+pacote("trellis", "TRELLIS 2 (3D)", "imagem", "Turns a photo into a textured 3D model for the 3D Orbit in Edit (the photo pass uses Qwen Image Edit 2511).",
+       12, ["3D orbit"], [
+    ("diffusion_models", "Trellis/trellis_2_int8_convrot.safetensors", "Comfy-Org/TRELLIS.2", "diffusion_models/trellis_2_int8_convrot.safetensors", False, "TRELLIS 2 (int8)"),
+    ("vae", "Trellis/trellis_2_shape_vae_bf16.safetensors", PX, "vae/trellis_2_shape_vae_bf16.safetensors", False, "Shape VAE"),
+    ("vae", "Trellis/trellis_2_texture_vae_bf16.safetensors", PX, "vae/trellis_2_texture_vae_bf16.safetensors", False, "Texture VAE"),
+    ("clip_vision", "dino_v3_L_naf_fp32.safetensors", PX, "clip_vision/dino_v3_L_naf_fp32.safetensors", False, "DINOv3 L"),
+    ("background_removal", "birefnet.safetensors", "Comfy-Org/BiRefNet", "background_removal/birefnet.safetensors", False, "BiRefNet (cut-out)"),
 ])
 
 SV = "Comfy-Org/SeedVR2"

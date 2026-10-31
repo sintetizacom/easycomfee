@@ -1430,6 +1430,23 @@ def negativo_do_tipo(tipo: str, nivel: str, manual: str = "") -> str:
 # Mascara por segmentacao. Nao e um modo: e um complemento dos modos de edicao.
 # O SAM 3 acha a regiao a partir de um texto e so ela recebe o resultado do
 # modelo — o resto da imagem e copiado do original, sem passar pela difusao.
+# Orbit 3D (31/10/2026): TRELLIS 2 nativo do ComfyUI faz a malha com textura da foto
+# (37 s numa placa de 16 GB) e a renderiza no angulo pedido; o Qwen Image Edit 2511
+# refaz o render como foto, com a original como referencia de rosto e lugar.
+# Ajustes do template oficial 3d_pixal3d_trellis2_image_to_model.
+TRELLIS = {
+    "unet": "Trellis/trellis_2_int8_convrot.safetensors",
+    "vae_forma": "Trellis/trellis_2_shape_vae_bf16.safetensors",
+    "vae_textura": "Trellis/trellis_2_texture_vae_bf16.safetensors",
+    "dino": "dino_v3_L_naf_fp32.safetensors",
+    "recorte": "birefnet.safetensors",
+    "instrucao": ("Turn @image1 into a real photograph of the person from @image2, in exactly the same pose, body angle "
+                  "and camera angle as @image1. The person has the face, hair and clothes of @image2. Place them in the "
+                  "same location as @image2, with the same light, seen from this new angle. Photorealistic, natural "
+                  "skin, not a 3D render."),
+}
+
+
 MASCARA = {
     "checkpoint": "SAM3/sam3.1_multiplex_fp16.safetensors",
     "limiar": 0.5,
