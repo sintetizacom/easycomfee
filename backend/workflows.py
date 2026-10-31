@@ -865,6 +865,17 @@ def trocar_personagem(instrucao, referencias, seed, unet, steps, cfg,
     return g
 
 
+def instrucao_de_camera96(direcao, altura, distancia, extra=""):
+    """Frase da LoRA de 96 poses do Qwen Image Edit 2511, exatamente no formato do
+    treino: "<sks> front-right quarter view eye-level shot medium shot". O texto do
+    usuario entra depois, como complemento (igual ao "camera")."""
+    a = ANGULO
+    if direcao not in a["direcoes_96"] or altura not in a["alturas_96"] or distancia not in a["distancias_96"]:
+        raise ValueError("posicao de camera desconhecida")
+    frase = f"<sks> {direcao} {altura} {distancia}"
+    return f"{frase} {extra.strip()}" if extra.strip() else frase
+
+
 def instrucao_de_angulo(vista, extra="", metodo="personagem"):
     """Monta a instrucao de mudanca de ponto de vista.
 
@@ -2687,7 +2698,7 @@ def gerar_video_wan3(prompt, seed, modo="imagem", variante="wan3.0-video",
 
 
 def girar_camera(referencia, yaw, elevation, distance, extra="", seed=0,
-                 prefixo="edicao"):
+                 prefixo="edicao", previa=False):
     """Mostra a mesma pessoa de outro angulo (Krea 2 Anygles).
 
     TRES COISAS QUE NAO SAO OBVIAS NESTE GRAFO:
@@ -2708,6 +2719,10 @@ def girar_camera(referencia, yaw, elevation, distance, extra="", seed=0,
     3. A largura e a altura saem do PROPRIO no de camera, nao do pedido. Ele
        reenquadra para o corpo inteiro (`_base_fit`), entao um plano medio
        volta como plano aberto — comportamento do modelo, nao defeito.
+
+    previa=True: so a malha do corpo vista da camera nova (`target_normal`, o
+    mesmo guia que o modelo recebe), sem carregar o Krea nem amostrar. Segundos,
+    e mostra o angulo exato antes de gerar.
     """
     p = EDICAO["anygles"]
     g = {
@@ -2725,6 +2740,12 @@ def girar_camera(referencia, yaw, elevation, distance, extra="", seed=0,
                            "distance": float(distance),
                            "extra_prompt": extra or ""}},
 
+    }
+    if previa:
+        g["salva"] = {"class_type": "SaveImage",
+                      "inputs": {"images": ["cam", 1], "filename_prefix": prefixo + "_previa"}}
+        return g
+    g |= {
         "unet": {"class_type": "UNETLoader",
                  "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
         # O LoRA NAO entra por um LoraLoader comum: ele carrega projecoes
@@ -2764,6 +2785,15 @@ def girar_camera(referencia, yaw, elevation, distance, extra="", seed=0,
         "salva": {"class_type": "SaveImage",
                   "inputs": {"images": ["dec", 0], "filename_prefix": prefixo}},
     }
+    return g
+
+
+def medir_rotacao_corpo(referencia):
+    """Grafo que so mede quantos graus o corpo ja esta virado na foto (saida
+    `body_yaw` do no de camera, num PreviewAny). O valor e o giro que poe a
+    pessoa de frente para a camera."""
+    g = girar_camera(referencia, 0.0, 0.0, 1.0, previa=True)
+    g["salva"] = {"class_type": "PreviewAny", "inputs": {"source": ["cam", 5]}}
     return g
 
 

@@ -1207,6 +1207,10 @@ ANGULO = {
     # move a CAMERA. Na cena do cafe, sentado a mesa, o Klein quase nao mudou
     # nada (14,3 de diferenca contra 55,0 da LoRA), porque nao havia espaco
     # para girar o corpo. Ja na vista de cima o Klein foi melhor.
+    "direcoes_96": ["front view", "front-right quarter view", "right side view", "back-right quarter view",
+                    "back view", "back-left quarter view", "left side view", "front-left quarter view"],
+    "alturas_96": ["low-angle shot", "eye-level shot", "elevated shot", "high-angle shot"],
+    "distancias_96": ["close-up", "medium shot", "wide shot"],
     "metodos": {
         "camera": {
             "rotulo": "Mover a câmera",
@@ -1214,6 +1218,17 @@ ANGULO = {
             "motor": "qwen",
             "lora": "Qwen/Qwen-Edit-2509-Multiple-angles.safetensors",
             "segundos": 108,
+        },
+        # Orbit com o Qwen (31/10/2026): LoRA da fal para o Qwen Image Edit 2511,
+        # 96 poses (8 direcoes x 4 alturas x 3 distancias) treinadas com renders de
+        # Gaussian Splatting. A frase e a do treino: "<sks> direcao altura distancia".
+        "camera96": {
+            "rotulo": "Câmera em 96 posições",
+            "nota": "Direcao de 45 em 45 graus, 4 alturas e 3 distancias; preserva a pessoa.",
+            "motor": "qwen",
+            "lora": "Qwen/Qwen-Image-Edit-2511-Multiple-Angles.safetensors",
+            "forca": 0.9,
+            "segundos": 120,
         },
         "personagem": {
             "rotulo": "Girar o personagem",

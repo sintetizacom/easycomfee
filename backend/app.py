@@ -461,6 +461,8 @@ class PedidoGeracao(Pedido):
     # descuido: aqui elas RECUSAM o pedido com mensagem clara, antes de
     # carregar 13 GB de modelo para falhar la dentro.
     yaw: float = Field(50.0, ge=-180.0, le=180.0)
+    # Orbit: so a previa do angulo (malha do corpo vista da camera nova), sem gerar.
+    previa_angulo: bool = False
     # Estreitadas junto com o preset, e pela mesma medicao: -60 perde a leitura
     # de "em pe" e 0,6 corta a cabeca. Duplicar a faixa em dois lugares diverge
     # — ja aconteceu aqui com o alinhamento do LTX —, entao se uma mudar, a
@@ -475,6 +477,10 @@ class PedidoGeracao(Pedido):
     rosto: dict[str, float] = Field(default_factory=dict)
     # Ângulo e reiluminação.
     vista: str = "tres_quartos_esq"
+    # Orbit com o Qwen (metodo_angulo "camera96"): uma das 96 poses da LoRA.
+    camera_direcao: str = "front-right quarter view"
+    camera_altura: str = "eye-level shot"
+    camera_distancia: str = "medium shot"
     azimute: float = Field(-45.0, ge=-180.0, le=180.0)
     elevacao: float = Field(25.0, ge=-90.0, le=90.0)
     intensidade: float = Field(1.0, ge=0.1, le=1.5)
@@ -855,9 +861,11 @@ async def montar(tarefa: Tarefa):
         if p.modelo == "angulo":
             if p.vista not in presets.ANGULO["vistas"]:
                 raise ValueError(f"vista desconhecida: {p.vista}")
-            instrucao = workflows.instrucao_de_angulo(
+            instrucao = (workflows.instrucao_de_camera96(
+                p.camera_direcao, p.camera_altura, p.camera_distancia, p.prompt)
+                if escolhido == "camera96" else workflows.instrucao_de_angulo(
                 p.vista, p.prompt, metodo=escolhido if metodo["motor"] == "qwen"
-                else "personagem")
+                else "personagem"))
         elif escolhido == "nuvem":
             # O Magnific nao usa a esfera nem a frase construida: ou recebe
             # uma referencia de luz, ou a descricao escrita pelo usuario. A
@@ -896,7 +904,8 @@ async def montar(tarefa: Tarefa):
         tarefa.prompt_final = instrucao
         if metodo["motor"] == "qwen":
             return workflows.editar_qwen(instrucao, refs, seed, megapixels=1.5,
-                                         prefixo=prefixo, lora=metodo["lora"])
+                                         prefixo=prefixo, lora=metodo["lora"],
+                                         forca_lora=metodo.get("forca", 1.0))
         e = presets.EDICAO["trocar"]
         return workflows.editar_klein(instrucao, refs, seed,
                                       steps=p.steps or e["steps"],
@@ -1416,7 +1425,8 @@ async def montar(tarefa: Tarefa):
                 p.yaw, p.elevation, p.distance)
             return workflows.girar_camera(
                 refs[0], p.yaw, p.elevation, p.distance,
-                extra=p.prompt.strip(), seed=seed, prefixo=prefixo)
+                extra=p.prompt.strip(), seed=seed, prefixo=prefixo,
+                previa=p.previa_angulo)
 
         if p.modelo == "flux3ref":
             return workflows.editar_flux3(p.prompt, refs, seed,
@@ -2478,7 +2488,7 @@ class PedidoMotor(Pedido):
 
 
 def _eh_api(p: PedidoGeracao) -> bool:
-    return p.modelo in presets.NUVEM or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
+    return p.modelo in presets.NUVEM or p.modelo == "recorte" or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
@@ -3413,7 +3423,7 @@ async def gerar(pedido: PedidoGeracao):
     # "prompt vazio", que nao diz nada a quem so mexeu nos deslizantes.
     sem_prompt = ("ampliar", "angulo", "reluz", "personagem", "rosto", "luzref",
                   "recorte", "limpar_video", "transformar_video", "quadros_maquete",
-                  "profundidade_video", "anygles", "cabeca", "avatar",
+                  "profundidade_video", "anygles", "cabeca", "folha", "avatar",
                   "separar", "trocar_voz", "treinar_voz")
     # O video de TEXTO exige prompt. Os outros dois aceitam so as imagens,
     # porque o gerador automatico escreve a descricao a partir delas.
@@ -3870,6 +3880,28 @@ async def caption(pedido: PedidoTexto):
         except Exception as e:
             print(f"sugestao sem a foto: {e!r}", flush=True)
     return {"caption": cap, "zonas": zonas}
+
+
+class PedidoRotacao(BaseModel):
+    referencia: str
+
+
+@app.post("/api/orbita/rotacao")
+async def rotacao_do_corpo(pedido: PedidoRotacao):
+    """Orbit: quantos graus a pessoa ja esta virada na foto (0 = de frente).
+    Roda so a deteccao do corpo (segundos), sem gerar imagem."""
+    if comfy.na_nuvem():
+        raise HTTPException(400, "so no motor local")
+    try:
+        nome = _referencia_segura(pedido.referencia)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    saidas = await comfy.executar(workflows.medir_rotacao_corpo(nome), timeout=300)
+    texto = await comfy.texto_de(saidas)
+    try:
+        return {"graus": round(float(texto), 1)}
+    except ValueError:
+        raise HTTPException(500, "nao consegui medir o corpo nesta foto")
 
 
 @app.post("/api/rosto/previa")

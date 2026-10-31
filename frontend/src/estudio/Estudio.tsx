@@ -13,6 +13,7 @@ import MenuEstudios, { ESTUDIOS } from './MenuEstudios'
 import AbaCinema from './AbaCinema'
 import AbaGenjutsu from './AbaGenjutsu'
 import AbaImagem from './AbaImagem'
+import AbaEditar from './AbaEditar'
 import AbaLipSync, { type ModeloLipSync } from './AbaLipSync'
 import AbaLTX from './AbaLTX'
 import { AbaFlux3, AbaH3, AbaWan } from './EstudiosModelo'
@@ -29,10 +30,11 @@ import './estudio.css'
 // balance and Models. Where each generation runs is picked in the model menus. "Advanced" is ComfyUI itself,
 // with its node editor.
 
-type Aba = 'image' | 'video' | 'ltx' | 'h3' | 'wan' | 'flux3' | 'lipsync' | 'music' | 'voice' | 'cinema' | 'genjutsu' | 'apps' | 'assets' | 'advanced'
+type Aba = 'image' | 'video' | 'ltx' | 'h3' | 'wan' | 'flux3' | 'lipsync' | 'music' | 'voice' | 'cinema' | 'genjutsu' | 'apps' | 'edit' | 'assets' | 'advanced'
 
 const ABAS: { id: Aba; rotulo: string; breve?: boolean }[] = [
   { id: 'image', rotulo: 'Image' },
+  { id: 'edit', rotulo: 'Edit' },
   { id: 'video', rotulo: 'Video' },
   { id: 'ltx', rotulo: 'LTX Studio' },
   { id: 'h3', rotulo: 'MiniMax H3 Studio' },
@@ -266,6 +268,7 @@ export default function Estudio() {
           apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} naNuvem={naNuvem} />}
         {aba === 'genjutsu' && <AbaGenjutsu key={chave} apiLiberado={!soAbertos} />}
         {aba === 'apps' && <AbaApps key={chave} naNuvem={naNuvem} />}
+        {aba === 'edit' && <AbaEditar key={chave} />}
         {aba === 'lipsync' && <AbaLipSync key={chave} apiModelos={soAbertos ? [] : lipsyncApi} />}
         {aba === 'music' && <AbaMusica key={chave} />}
         {aba === 'voice' && <AbaVoz key={chave} naNuvem={naNuvem} />}

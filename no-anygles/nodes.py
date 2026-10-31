@@ -143,8 +143,8 @@ class Krea2AnyglesCameraNativo:
 
     # MESMO contrato do no publicado, na mesma ordem: assim ele entra no lugar
     # dele no grafo sem mexer em mais nada.
-    RETURN_TYPES = ("IMAGE", "IMAGE", "STRING", "INT", "INT")
-    RETURN_NAMES = ("source", "target_normal", "prompt", "width", "height")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "STRING", "INT", "INT", "FLOAT")
+    RETURN_NAMES = ("source", "target_normal", "prompt", "width", "height", "body_yaw")
     FUNCTION = "preparar"
     CATEGORY = "Krea2/Anygles"
     DESCRIPTION = ("Gira a camera em torno da malha vinda do SAM 3D Body "
@@ -170,6 +170,7 @@ class Krea2AnyglesCameraNativo:
         # de um eixo que a guinada ja mexeu.
         vt = _normal._rotate_yaw(vertices, keypoints, yaw)
         vt = _normal._rotate_elevation(vt, keypoints, elevation)
+        rosto_corpo = self._guinada_do_corpo(keypoints, camera_base)
 
         base = _normal._project(vt, camera_base, focal, largura, altura)
         escala = _normal._base_fit(base, largura, altura)
@@ -184,7 +185,27 @@ class Krea2AnyglesCameraNativo:
         return (_para_tensor(origem), _para_tensor(normal),
                 _anygles.camera_prompt(float(yaw), float(elevation),
                                        float(distance), extra_prompt),
-                largura, altura)
+                largura, altura, rosto_corpo)
+
+    @staticmethod
+    def _guinada_do_corpo(keypoints, camera_base):
+        """Quantos graus o corpo ja esta virado na foto (0 = de frente).
+
+        A linha quadril esquerdo -> direito (keypoints 9 e 10, os mesmos da
+        pelve) e a dos ombros (5 e 6), no plano do chao (x, z). De frente, ela
+        fica paralela a x. O valor e o `yaw` que, passado a este no, deixa o
+        corpo de frente para a camera (o giro usa a mesma convencao).
+        """
+        linhas = [keypoints[9] - keypoints[10], keypoints[5] - keypoints[6]]
+        x = float(sum(l[0] for l in linhas))
+        z = float(sum(l[2] for l in linhas))
+        corpo = float(np.degrees(np.arctan2(z, x)))
+        # Perspectiva: fora do centro do quadro a camera ve a pessoa de vies.
+        # "De frente" e de frente para a LINHA DE VISADA ate a pelve, nao para o
+        # eixo da camera (homem no lado direito da foto: ~7 graus de diferenca).
+        pelve = (keypoints[9] + keypoints[10]) * 0.5 + camera_base
+        visada = float(np.degrees(np.arctan2(pelve[0], pelve[2])))
+        return corpo + visada
 
     @staticmethod
     def _uma_pessoa(dados):

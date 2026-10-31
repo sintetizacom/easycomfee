@@ -787,6 +787,18 @@
      "tamanho": 236117032,
      "licenca": "apache-2.0",
      "requer_aceite": false
+    },
+    {
+     "arquivo": "Qwen-Image-Edit-2511-Multiple-Angles.safetensors",
+     "pasta": "loras",
+     "subpasta": "Qwen",
+     "repo": "fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA",
+     "caminho": "qwen-image-edit-2511-multiple-angles-lora.safetensors",
+     "opcional": false,
+     "rotulo": "Multiple angles 2511 (96 camera poses)",
+     "tamanho": 295140688,
+     "licenca": "apache-2.0",
+     "requer_aceite": false
     }
    ]
   },

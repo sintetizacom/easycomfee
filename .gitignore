@@ -53,3 +53,8 @@ dados/grafos/
 
 # ComfyUI portatil que o install.bat baixa (instalar_comfy.py)
 /ComfyUI/
+
+# Video de lancamento (projeto Remotion, gravacoes e renders)
+video-lancamento/node_modules/
+video-lancamento/public/
+video-lancamento/saida/

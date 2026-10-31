@@ -195,6 +195,8 @@ pacote("qwen_edit", "Qwen Image Edit 2511", "imagem", "Instruction editing, reli
     ("loras", "Qwen/Qwen-Image-Edit-2509-Light-Migration.safetensors", QE, "split_files/loras/Qwen-Image-Edit-2509-Light-Migration.safetensors", True, "Light migration"),
     ("loras", "Qwen/Qwen-Image-Edit-2509-Relight.safetensors", "Comfy-Org/Qwen-Image-Edit_ComfyUI", "split_files/loras/Qwen-Image-Edit-2509-Relight.safetensors", True, "Relight"),
     ("loras", "Qwen/Qwen-Edit-2509-Multiple-angles.safetensors", QE, "split_files/loras/Qwen-Edit-2509-Multiple-angles.safetensors", True, "Multiple angles"),
+    # Orbit (Edit): 96 poses de camera, preserva a pessoa. Obrigatoria: e o motor padrao do Orbit.
+    ("loras", "Qwen/Qwen-Image-Edit-2511-Multiple-Angles.safetensors", "fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA", "qwen-image-edit-2511-multiple-angles-lora.safetensors", False, "Multiple angles 2511 (96 camera poses)"),
 ])
 
 ZI = "Comfy-Org/z_image_turbo"
