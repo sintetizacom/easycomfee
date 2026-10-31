@@ -688,6 +688,18 @@
      "tamanho": 675509688,
      "licenca": "other",
      "requer_aceite": false
+    },
+    {
+     "arquivo": "sam3.1_multiplex_fp16.safetensors",
+     "pasta": "checkpoints",
+     "subpasta": "SAM3",
+     "repo": "Comfy-Org/sam3.1",
+     "caminho": "checkpoints/sam3.1_multiplex_fp16.safetensors",
+     "opcional": false,
+     "rotulo": "SAM 3.1 (edit an area)",
+     "tamanho": 1745546848,
+     "licenca": "other",
+     "requer_aceite": false
     }
    ]
   },

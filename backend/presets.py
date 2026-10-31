@@ -997,7 +997,7 @@ AMPLIAR = {
             "cfg": 1.0,
             "ladrilho": 512,
             "sobreposicao": 128,
-            "correcao_cor": "lab",
+            "correcao_cor": "wavelet",  # cor do original por regiao; o "lab" deixava os olhos verde-agua (teste de 31/10/2026)
         },
         "criativo": {
             "rotulo": "Criativo (inventa detalhe)",
@@ -1431,7 +1431,7 @@ def negativo_do_tipo(tipo: str, nivel: str, manual: str = "") -> str:
 # O SAM 3 acha a regiao a partir de um texto e so ela recebe o resultado do
 # modelo — o resto da imagem e copiado do original, sem passar pela difusao.
 MASCARA = {
-    "checkpoint": "SAM 3/sam3.1_multiplex_fp16.safetensors",
+    "checkpoint": "SAM3/sam3.1_multiplex_fp16.safetensors",
     "limiar": 0.5,
     "expandir": 12,
     "suavizar": 12,

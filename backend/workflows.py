@@ -2856,11 +2856,12 @@ def editar_qwen21(instrucao, referencias, seed, steps=None, cfg=None,
                                "scheduler": p["scheduler"], "denoise": 1.0}}
     g["decodifica"] = {"class_type": "VAEDecode",
                        "inputs": {"samples": ["amostra", 0], "vae": ["vae", 0]}}
-    chave = "decodifica"
     if mascara:
-        chave = _aplicar_mascara(g, "img1", "decodifica", mascara, prefixo)
+        # O _aplicar_mascara ja grava o "salva" (o composto); devolver o grafo dele.
+        # Antes o retorno virava "o no a salvar" e o ComfyUI acusava referencia circular.
+        return _aplicar_mascara(g, "img1", "decodifica", mascara, prefixo)
     g["salva"] = {"class_type": "SaveImage",
-                  "inputs": {"images": [chave, 0], "filename_prefix": prefixo}}
+                  "inputs": {"images": ["decodifica", 0], "filename_prefix": prefixo}}
     return g
 
 

@@ -30,7 +30,7 @@ type Item = { id: string; rotulo: string; nuvem?: boolean; soLocal?: boolean; so
 // Which install package (Config Models > Local models) each menu id needs.
 // A model whose package is not installed does not show under "Local".
 const PACOTE: Record<string, string | string[]> = {
-  krea: 'krea2', kroma: 'kroma', flux3: 'flux3', klein: 'flux2_klein', qwen21: 'qwen21', zimage: 'zimage',
+  krea: 'krea2', kroma: 'kroma', flux3: 'flux3', klein: 'flux2_klein', qwen21: 'qwen21', zimage: 'zimage', upscale: 'upscale', qwen_edit: 'qwen_edit',
   mage: 'mage', ideogram: 'ideogram4', ltx: 'ltx25', minimax: 'minimax_h3', ltx23: 'avatar_ltx', h3_swap: 'h3_swap', wan22_replace: 'wan22_animate',
   // Recast: Qwen edits the first frame, then LTX 2.5 with the LTX 2.3 Union Control moves it.
   recast: ['ltx25', 'ltx23', 'qwen_edit'],

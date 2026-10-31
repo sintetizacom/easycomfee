@@ -184,6 +184,8 @@ pacote("qwen21", "Qwen Image 2.1", "imagem", "Qwen Image 2.1: generation and ins
     ("diffusion_models", "Qwen/qwen_image_2.1_int8_convrot.safetensors", Q21, "diffusion_models/qwen_image_2.1_int8_convrot.safetensors", False, "Qwen Image 2.1 (int8)"),
     ("text_encoders", "Qwen/qwen3vl_8b_int8_convrot.safetensors", Q21, "text_encoders/qwen3vl_8b_int8_convrot.safetensors", False, "Qwen3-VL 8B (int8)"),
     ("vae", "Qwen/qwen_image_2.1_vae_bf16.safetensors", Q21, "vae/qwen_image_2.1_vae_bf16.safetensors", False, "VAE"),
+    # Edit an area (Edit): recorta pelo nome ("the jacket") e so ali o Qwen 2.1 edita.
+    ("checkpoints", "SAM3/sam3.1_multiplex_fp16.safetensors", "Comfy-Org/sam3.1", "checkpoints/sam3.1_multiplex_fp16.safetensors", False, "SAM 3.1 (edit an area)"),
 ])
 
 QE = "Comfy-Org/Qwen-Image-Edit_ComfyUI"

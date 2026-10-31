@@ -39,9 +39,15 @@ const FERRAMENTAS: Ferramenta[] = [
   { id: 'folha', grupo: 'People', nome: 'Character sheet', frase: 'One photo becomes four views: face, front, side and back.',
     imagens: [{ rotulo: 'Full-body photo' }], texto: 'opcional', pacote: 'Krea 2',
     dica: 'A clear full-body photo from the front. Whatever is hidden in it, the model invents in the other views.' },
+  { id: 'area', grupo: 'Tools', nome: 'Edit an area', frase: 'Name a part of the photo and change only that part.',
+    imagens: [{ rotulo: 'Photo' }], texto: 'obrigatorio', pacote: 'Qwen Image 2.1',
+    dica: 'Write what to change ("the jacket", "the sky") and what it should become. Everything outside that area stays pixel for pixel.' },
   { id: 'controle', grupo: 'Tools', nome: 'Follow the structure', frase: 'A new picture that follows the edges, depth or pose of yours.',
     imagens: [{ rotulo: 'Structure from' }], texto: 'obrigatorio', pacote: 'Z-Image Turbo',
     dica: 'The image gives only the structure; the prompt says what to draw on it.' },
+  { id: 'ampliar', grupo: 'Tools', nome: 'Upscale', frase: 'Bigger and sharper: 1.5x to 4x on your GPU, up to 16x with Magnific.',
+    imagens: [{ rotulo: 'Photo' }], texto: 'opcional', pacote: 'Upscalers',
+    dica: 'SeedVR2 has the best texture and is the fastest. Creative invents new detail. Classic only enlarges what is there.' },
   { id: 'recorte', grupo: 'Tools', nome: 'Remove background', frase: 'Keep only the subject, on a transparent background.',
     imagens: [{ rotulo: 'Photo' }], api: true,
     dica: 'Runs on the Recraft API with your Comfy credits. Saves a PNG with transparency.' },
@@ -49,6 +55,7 @@ const FERRAMENTAS: Ferramenta[] = [
 
 // Id do pacote no Config Models (motor.tsx PACOTE usa o id do menu: estes sao os modelos).
 const MODELO_DO_PACOTE: Record<string, string> = {
+  'Qwen Image 2.1': 'qwen21', 'Upscalers': 'upscale', 'Z-Image Turbo (creative upscale)': 'zimage',
   'Qwen Image Edit 2511': 'qwen_edit', 'Krea 2': 'krea', 'FLUX 3 Image Klein': 'flux3', 'FLUX 2 Klein 9B': 'klein', 'Z-Image Turbo': 'zimage',
 }
 
@@ -102,6 +109,20 @@ function fraseOrbita(giro: number, altura: string, extra = '') {
   return extra.trim() ? `${frase} ${extra.trim()}` : frase
 }
 
+// Upscale (presets.AMPLIAR): metodos, escalas de cada um e os ajustes prontos do Criativo.
+const METODOS_AMPLIAR = [
+  { id: 'seedvr', rotulo: 'SeedVR2 · best texture' }, { id: 'criativo', rotulo: 'Creative · invents detail' },
+  { id: 'classico', rotulo: 'Classic · no new detail' }, { id: 'magnific', rotulo: 'Magnific · API' }, { id: 'topaz', rotulo: 'Topaz · API' },
+]
+const ESCALAS_AMPLIAR: Record<string, number[]> = {
+  seedvr: [1.5, 2, 3, 4], criativo: [1.5, 2, 3, 4], classico: [1.5, 2, 3, 4], magnific: [2, 4, 8, 16], topaz: [2, 3, 4],
+}
+const OTIMIZACOES = [
+  { id: 'geral', rotulo: 'General' }, { id: 'retrato_suave', rotulo: 'Soft portrait' }, { id: 'pele_detalhe', rotulo: 'Skin detail' },
+  { id: 'paisagem', rotulo: 'Landscape' }, { id: 'produto', rotulo: 'Product' }, { id: 'ilustracao', rotulo: 'Illustration' },
+  { id: 'tipografia', rotulo: 'Lettering' },
+]
+
 const CONTROLES = [{ id: 'contorno', rotulo: 'Edges' }, { id: 'profundidade', rotulo: 'Depth' }, { id: 'pose', rotulo: 'Pose' }, { id: 'linhas', rotulo: 'Lines' }]
 
 export default function AbaEditar() {
@@ -140,25 +161,42 @@ export default function AbaEditar() {
   const [prioridade, setPrioridade] = useState('rapido')
   const [tipoControle, setTipoControle] = useState('contorno')
   const [rosto, setRosto] = useState<Record<string, number>>({})
+  // Upscale
+  const [metodoAmpliar, setMetodoAmpliar] = useState('seedvr')
+  const [escalaAmpliar, setEscalaAmpliar] = useState(2)
+  const [otimizacao, setOtimizacao] = useState('geral')
+  const [acabamento, setAcabamento] = useState({ detalhe: 0, microcontraste: 0, granulacao: 0 })
+  const [criatividadeMag, setCriatividadeMag] = useState(0)
+  // Edit an area: o que recortar (SAM 3 acha pelo nome) e quanto a borda abre
+  const [alvoArea, setAlvoArea] = useState('')
+  const [bordaArea, setBordaArea] = useState(12)
 
   const abrir = (f: Ferramenta) => { setFerramenta(f); setImgs([]); setErro(null); setPrevia(null) }
   const f = ferramenta
   const comFrase = f?.id === 'anygles' && motorOrbita !== 'krea'
+  const ampliarApi = f?.id === 'ampliar' && (metodoAmpliar === 'magnific' || metodoAmpliar === 'topaz')
+  const escalasOk = ESCALAS_AMPLIAR[metodoAmpliar] ?? [2]
+  const escalaOk = escalasOk.includes(escalaAmpliar) ? escalaAmpliar : escalasOk[0]
   const motorApi = comFrase && motorOrbita !== 'flux3ref'
-  const pacoteAtual = comFrase ? (motorApi ? undefined : 'FLUX 3 Image Klein') : f?.pacote
+  const pacoteAtual = comFrase ? (motorApi ? undefined : 'FLUX 3 Image Klein')
+    : f?.id === 'ampliar' ? (ampliarApi ? undefined : metodoAmpliar === 'criativo' ? 'Z-Image Turbo (creative upscale)' : 'Upscalers')
+    : f?.pacote
   const modeloPacote = pacoteAtual ? MODELO_DO_PACOTE[pacoteAtual] : undefined
   const naoInstalado = !!f && !f.api && !!modeloPacote && faltaInstalar(modeloPacote)
-  const soLocal = !!f && !f.api && !motorApi && naNuvem
+  const soLocal = !!f && !f.api && !motorApi && !ampliarApi && naNuvem
   const nomes = imgs.filter((r): r is Referencia => !!r).map((r) => r.nome)
   const faltaImagem = !!f && f.imagens.some((s, i) => !s.opcional && !imgs[i])
-  const faltaTexto = f?.texto === 'obrigatorio' && !texto.trim()
+  const faltaTexto = (f?.texto === 'obrigatorio' && !texto.trim()) || (f?.id === 'area' && !alvoArea.trim())
 
   // 1K/2K/4K por motor: cada API tem as suas (presets.NUVEM resolucoes); o Flux local vai
   // ate 2K (escala 1,5: ~2,3 MP), porque 4K nao cabe numa placa de 16 GB.
   const resDoMotor = RESOLUCOES_ORBITA[motorOrbita] ?? ['1K']
   const resOk = resDoMotor.includes(resolucao) ? resolucao : resDoMotor[resDoMotor.length - 1]
   const pedido = f ? {
-    modelo: comFrase ? motorOrbita : f.id, prompt: comFrase ? fraseOrbita(giro, alturaFrase, texto) : texto,
+    modelo: comFrase ? motorOrbita : f.id === 'area' ? 'qwen21edit' : f.id,
+    // Edit an area: a instrucao sai pronta ("Change the jacket into a red leather jacket"); o usuario so diz o que e o que vira.
+    prompt: comFrase ? fraseOrbita(giro, alturaFrase, texto)
+      : f.id === 'area' ? `Change ${alvoArea.trim()} in @image1 into ${texto.trim()}. Keep everything else exactly the same.` : texto,
     proporcao: comFrase ? formato : '1:1', lote: 1, referencias: nomes,
     ...(motorApi ? { resolucao_nuvem: resOk } : {}),
     ...(comFrase && !motorApi ? { escala: resOk === '2K' ? 1.5 : 1.0 } : {}),
@@ -168,6 +206,9 @@ export default function AbaEditar() {
     ...(f.id === 'personagem' ? { prioridade } : {}),
     ...(f.id === 'controle' ? { tipo_controle: tipoControle } : {}),
     ...(f.id === 'rosto' ? { rosto } : {}),
+    ...(f.id === 'area' ? { mascara_alvo: alvoArea, mascara_expandir: bordaArea, mascara_suavizar: Math.max(6, bordaArea) } : {}),
+    ...(f.id === 'ampliar' ? { metodo_ampliar: metodoAmpliar, escala_ampliar: escalaOk, otimizacao, ...acabamento,
+      magnific_criatividade: criatividadeMag } : {}),
   } : null
   const custo = useCusto(pedido && !faltaImagem ? pedido : null)
 
@@ -233,7 +274,7 @@ export default function AbaEditar() {
   const ids = new Set(FERRAMENTAS.map((x) => x.id))
   // O Orbit tambem gera por Flux 3 e por APIs (outro "modelo" na tarefa): reconhece pela frase dele.
   const doOrbit = (p: string) => p.startsWith('Show the same person from')
-  const minhas = tarefas.filter((t) => (ids.has(t.modelo) || doOrbit(t.prompt)) && !t.teste)
+  const minhas = tarefas.filter((t) => (ids.has(t.modelo) || t.modelo === 'qwen21edit' || doOrbit(t.prompt)) && !t.teste)
   const grupos = [...new Set(FERRAMENTAS.map((x) => x.grupo))]
 
   return (
@@ -394,13 +435,52 @@ export default function AbaEditar() {
               {Object.values(rosto).some(Boolean) && <button type="button" className="hf-ajustes-limpar" onClick={() => setRosto({})}>Reset all</button>}
             </div>
           )}
+          {f.id === 'ampliar' && (<>
+            <div className="hf-linha-controles">
+              <Chips rotulo="Method" opcoes={METODOS_AMPLIAR} valor={metodoAmpliar} aoMudar={setMetodoAmpliar} />
+              <Chips rotulo="Scale" opcoes={escalasOk.map((e) => ({ id: e, rotulo: `${e}×` }))} valor={escalaOk} aoMudar={setEscalaAmpliar} />
+            </div>
+            {metodoAmpliar === 'criativo' && (
+              <div className="hf-linha-controles"><Chips rotulo="Made for" opcoes={OTIMIZACOES} valor={otimizacao} aoMudar={setOtimizacao} /></div>
+            )}
+            {!ampliarApi && (
+              <div className="hf-linha-controles">
+                {([['detalhe', 'Restore detail'], ['microcontraste', 'Micro-contrast'], ['granulacao', 'Film grain']] as const).map(([id, nome]) => (
+                  <div key={id} className="hf-campo"><span>{nome}</span>
+                    <label className="hf-duracao"><span className="hf-valor">{Math.round(acabamento[id] * 100)}%</span>
+                      <input type="range" min={0} max={1} step={0.05} value={acabamento[id]} aria-label={nome}
+                        onChange={(e) => setAcabamento((a) => ({ ...a, [id]: Number(e.target.value) }))} /></label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {metodoAmpliar === 'magnific' && (
+              <div className="hf-linha-controles">
+                <div className="hf-campo"><span>Creativity</span>
+                  <label className="hf-duracao"><span className="hf-valor">{criatividadeMag > 0 ? `+${criatividadeMag}` : criatividadeMag}</span>
+                    <input type="range" min={-10} max={10} step={1} value={criatividadeMag} aria-label="Creativity"
+                      onChange={(e) => setCriatividadeMag(Number(e.target.value))} /></label>
+                </div>
+              </div>
+            )}
+          </>)}
+          {f.id === 'area' && (
+            <div className="hf-linha-controles">
+              <div className="hf-campo hf-campo-largo"><span>What to change</span>
+                <input className="hf-entrada" value={alvoArea} maxLength={80} onChange={(e) => setAlvoArea(e.target.value)}
+                  placeholder='e.g. "the jacket", "the sky", "the car"' aria-label="What to change" />
+              </div>
+              <Chips rotulo="Edge" opcoes={[{ id: 4, rotulo: 'Tight' }, { id: 12, rotulo: 'Normal' }, { id: 32, rotulo: 'Loose' }]}
+                valor={bordaArea} aoMudar={setBordaArea} />
+            </div>
+          )}
           {f.id === 'controle' && (
             <div className="hf-linha-controles"><Chips rotulo="Follow" opcoes={CONTROLES} valor={tipoControle} aoMudar={setTipoControle} /></div>
           )}
 
           {comFrase && <p className="hf-orbita-frase"><b>Prompt (written for you):</b> {fraseOrbita(giro, alturaFrase, texto)}</p>}
-          {f.texto && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
-            placeholder={f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'Optional: an extra touch, e.g. "keep the background dark"'} />}
+          {f.texto && (f.id !== 'ampliar' || metodoAmpliar === 'magnific') && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
+            placeholder={f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'Optional: an extra touch, e.g. "keep the background dark"'} />}
           <div className="hf-linha-controles">
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
             {soLocal && <span className="hf-dica">This tool runs on your GPU. Switch to Local to use it.</span>}
