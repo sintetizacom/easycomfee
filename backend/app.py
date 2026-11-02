@@ -2212,6 +2212,12 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
             if tarefa.pedido.modelo == "voz":
                 voz.conferir_resultado(h["outputs"])
             saidas = comfy.imagens_salvas(h["outputs"])
+            capa = None
+            if tarefa.pedido.modelo == "musica":
+                # A capa (Plenio + Z-Image) nao e um resultado: vai junto da musica.
+                capa = next(({"nome": s["nome"], "subpasta": s["subpasta"]} for s in saidas
+                             if s.get("subpasta") == "capas"), None)
+                saidas = [s for s in saidas if s.get("subpasta") != "capas"]
             if tarefa.pedido.modelo == "musica" and saidas:
                 # YuE2: o Plenio tambem exporta em output/plenio; a galeria
                 # fica com a copia do SaveAudio (editor/), como no modo direto.
@@ -2224,6 +2230,9 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
                 except Exception as e:
                     # Um erro de pós-processamento não invalida a geração original.
                     tarefa.aviso = f"Original preservado: não foi possível finalizar o áudio ({type(e).__name__})."
+                if capa:
+                    for s_ in saidas:
+                        s_["musica"] = dict(s_.get("musica") or {}, capa=capa)
             nomes = [json.dumps(im, ensure_ascii=False) for im in saidas]
             try:
                 grafos.salvar(getattr(tarefa, "_grafo", None), saidas)

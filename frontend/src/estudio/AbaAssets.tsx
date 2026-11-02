@@ -74,7 +74,8 @@ export default function AbaAssets() {
                 <button key={i.id} type="button" className="hf-ast-item" style={proporcao(i)} data-ativo={atual?.id === i.id} data-midia
                   data-nome={i.arquivo} data-subpasta={i.subpasta}
                   onClick={() => setSel(i)} onDoubleClick={() => abrirVisualizador({ nome: i.arquivo, subpasta: i.subpasta })}>
-                  {eAudio(i.arquivo) ? <span className="hf-ast-audio">♪<small>{i.prompt.slice(0, 60)}</small></span>
+                  {capaDe(i) ? <span className="hf-ast-capa"><img src={urlImagem(capaDe(i)!)} alt="" loading="lazy" /><i aria-hidden>♪</i></span>
+                    : eAudio(i.arquivo) ? <span className="hf-ast-audio">♪<small>{i.prompt.slice(0, 60)}</small></span>
                     : eVideo(i.arquivo) ? <video src={url + '#t=0.5'} muted preload="metadata" playsInline />
                     : <img src={urlMiniatura({ nome: i.arquivo, subpasta: i.subpasta })} alt="" loading="lazy" />}
                   <span className="hf-ast-rodape">
@@ -97,13 +98,17 @@ export default function AbaAssets() {
   )
 }
 
+// Capa da musica (YuE2 pelo Plenio), guardada com o resultado.
+const capaDe = (i: ItemGaleria) => (i.parametros as { finalizacao_musica?: { capa?: { nome: string; subpasta: string } } } | undefined)
+  ?.finalizacao_musica?.capa
+
 function Detalhes({ i }: { i: ItemGaleria }) {
   const arq = { nome: i.arquivo, subpasta: i.subpasta }
   const url = urlImagem(arq), t = tipoDe(i)
   const [copiado, setCopiado] = useState(false)
   return (<>
     <div className="hf-ast-previa" onClick={() => !eAudio(i.arquivo) && abrirVisualizador(arq)}>
-      {eAudio(i.arquivo) ? <audio src={url} controls /> : eVideo(i.arquivo) ? <video key={url} src={url} controls playsInline /> : <img src={url} alt="" />}
+      {eAudio(i.arquivo) ? <>{capaDe(i) && <img src={urlImagem(capaDe(i)!)} alt="Cover art" className="hf-ast-previa-capa" />}<audio src={url} controls /></> : eVideo(i.arquivo) ? <video key={url} src={url} controls playsInline /> : <img src={url} alt="" />}
     </div>
     <b className="hf-ast-nome" title={i.arquivo}>{i.arquivo}</b>
     <div className="hf-ast-chips">

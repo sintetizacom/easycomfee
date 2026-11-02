@@ -98,7 +98,7 @@ export function useTarefas(comTestes = false) {
   return comTestes ? tarefas : tarefas.filter((t) => !t.teste)
 }
 
-export function arquivos(t: Tarefa): { nome: string; subpasta: string }[] {
+export function arquivos(t: Tarefa): { nome: string; subpasta: string; musica?: { capa?: { nome: string; subpasta: string } } }[] {
   return t.imagens.map((s) => JSON.parse(s))
 }
 
@@ -395,6 +395,15 @@ export function CartaoTarefa({ t }: { t: Tarefa }) {
       {t.estado === 'pronto' && prontos.length > 0
         ? prontos.map((a) => {
           const faixa = rotuloFaixa(a)
+          const capa = a.musica?.capa
+          if (capa) return (
+            // Capa da musica (Plenio + Z-Image): clique abre a imagem no visualizador.
+            <div key={a.subpasta + a.nome} className="hf-com-capa">
+              <img src={urlImagem(capa)} alt="Cover art" className="hf-capa-musica" loading="lazy"
+                onClick={() => abrirVisualizador(capa)} title="Cover art · click to open" />
+              <Midia nome={a.nome} subpasta={a.subpasta} />
+            </div>
+          )
           return faixa
             ? <div key={a.subpasta + a.nome} className="hf-faixa"><span className="hf-faixa-rotulo">{faixa}</span><Midia {...a} /></div>
             : <Midia key={a.subpasta + a.nome} {...a} />

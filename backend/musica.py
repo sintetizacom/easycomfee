@@ -215,11 +215,47 @@ def grafo_yue2(p, seed, estilo="none", etapa="direto", docs=None):
     for no in g.values():
         if no["class_type"] == "PlenioSeed":
             no["inputs"].update(seed=seed, keep_seed=True)
+    if etapa in ("direto", "gerar"):
+        _capa(g, cfg, seed)
     # A previa vira o arquivo que o app registra na galeria (ja masterizado).
     no, origem = cfg["saida"]
     g[no] = {"class_type": "SaveAudio", "inputs": {"audio": origem,
              "filename_prefix": f"editor/{nome_musica(p)}"}}
     return g
+
+
+# Capa: o Plenio escreve o pedido da capa (artwork_prompt, junto com titulo e letra);
+# o Z-Image Turbo desenha e a imagem vai para o Export Release, que a grava dentro do
+# FLAC e como .jpg ao lado. Uma copia fica em output/capas para o cartao da musica.
+# Sem o Z-Image instalado, a musica sai sem capa.
+CAPA_MODELO = "zimage"
+CAPA_LADO = 768
+
+
+def capa_disponivel() -> bool:
+    from presets import SIMPLE
+    ficha = SIMPLE[CAPA_MODELO]
+    pastas = {"unet": "diffusion_models", "clip": "text_encoders", "vae": "vae"}
+    return all((config.MODELOS_DIR / pasta / ficha[chave]).exists() for chave, pasta in pastas.items())
+
+
+def _capa(g, cfg, seed):
+    if not capa_disponivel():
+        return
+    import workflows
+    folha = cfg["folhas"]["letra"]
+    exportar = next((k for k, v in g.items() if v["class_type"] == "PlenioExportRelease"), None)
+    if exportar is None or "artwork_prompt" not in g[folha]["inputs"]:
+        return
+    imagem = workflows.gerar_simples(CAPA_MODELO, "x", "", seed % (2**32), CAPA_LADO, CAPA_LADO, prefixo="capas/capa")
+    for k, no in imagem.items():
+        for nome, valor in no["inputs"].items():
+            if isinstance(valor, list) and len(valor) == 2 and valor[0] in imagem:
+                no["inputs"][nome] = ["capa_" + valor[0], valor[1]]
+        g["capa_" + k] = no
+    # O texto final da folha (4 = artwork_prompt): a capa segue a revisao, se houve.
+    g["capa_pos"]["inputs"]["text"] = [folha, 4]
+    g[exportar]["inputs"]["cover"] = ["capa_decodifica", 0]
 
 
 def _pedido_musica(g, p, estilo):
