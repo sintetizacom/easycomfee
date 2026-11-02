@@ -918,11 +918,14 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
   .hf-linha-dir b { white-space: normal; overflow: visible; }
 }
 /* Faixa "ComfyUI isn't running" (AvisoComfy.tsx), logo abaixo da barra de cima. */
-/* Faixa fina presa ao topo, da barra lateral ate a borda direita; nao empurra nada. */
-.hf-aviso-comfy { position: fixed; top: 0; left: var(--hf-lateral-larg, 72px); right: 0; z-index: 40; height: 24px; margin: 0; padding: 0 16px;
+/* Faixa fina no topo da coluna principal (comeca onde a barra lateral termina, qualquer
+   que seja a largura dela); fica no fluxo e empurra a pagina, sem cobrir nada. */
+.hf-aviso-comfy { position: sticky; top: 0; z-index: 40; height: 24px; margin: 0; padding: 0 16px; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center; gap: 6px; background: #3A2A12; color: #F4F0E8;
   border-bottom: 1px solid #6B4A1C; font-size: 12px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hf-aviso-comfy b { flex: none; }
+/* O topo (saldo, Config Models) e absoluto: desce junto com a faixa. */
+.hf-principal:has(> .hf-aviso-comfy) > .hf-topo.hf-topo-direita { top: 24px; }
 .hf-aviso-comfy b { color: #F5A33C; }
 .hf-aviso-comfy code { background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 .hf-looks-dica { color: var(--hf-apagado); font-size: 11.5px; }
@@ -2806,4 +2809,7 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-ast-capa i { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
   font-style: normal; font-size: 13px; color: var(--hf-neon); background: rgba(14, 14, 18, .75); }
 .hf-ast-previa-capa { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; margin-bottom: 10px; display: block; }
-@media (max-width: 700px) { .hf-aviso-comfy { left: 0; } }
+.hf-alpha-cartao { width: 100%; display: block; border-radius: 14px; border: 1px solid rgba(244, 240, 232, .08);
+  background: repeating-conic-gradient(#3a3a44 0 25%, #24242c 0 50%) 0 0 / 20px 20px; }
+/* Videos com o cartao padrao (Midia): o video volta a receber o mouse (tocar ao passar, clique duplo abre). */
+.hf-vid-item .hf-midia-caixa video { pointer-events: auto; }

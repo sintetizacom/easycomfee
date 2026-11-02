@@ -244,6 +244,7 @@ export default function Estudio() {
         <MedidorRecursos />
       </aside>
       <div className="hf-principal">
+      <AvisoComfy subindo={motorSubindo} />
       <header className="hf-topo hf-topo-direita">
         <div className="hf-direita">
           {ativa && <PainelAndamento key={ativa.id} tarefa={ativa}
@@ -255,7 +256,6 @@ export default function Estudio() {
         </div>
       </header>
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
-        <AvisoComfy subindo={motorSubindo} />
         <ProtegeAba key={aba}>
         {aba === 'image' && <AbaImagem key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} apiOcultos={soAbertos ? apiImagem : []} naNuvem={naNuvem} />}
         {aba === 'video' && <AbaVideo key={chave} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} apiOcultos={soAbertos ? geradores.filter((g) => g.nuvem) : []} naNuvem={naNuvem} pronto={modelos.length > 0} />}

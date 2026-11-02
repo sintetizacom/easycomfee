@@ -1189,7 +1189,8 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
       <Galeria tipo="video">
         {minhas.map((t) => t.alpha && t.estado === 'pronto' ? (
           <div key={t.id} className="hf-com-exr">
-            <CartaoTarefa t={t} />
+            {/* O recorte (video transparente) sobre um xadrez, e nao a mascara preta e branca. */}
+            <video className="hf-alpha-cartao" src={`/api/alpha/${t.id}?formato=webm`} controls loop muted playsInline preload="metadata" />
             <a className="hf-botao-sec" href={`/api/alpha/${t.id}?formato=webm`} download>Transparent video (.webm)</a>
             <a className="hf-botao-sec" href={`/api/alpha/${t.id}?formato=mov`} download>ProRes 4444 with alpha (.mov)</a>
           </div>
