@@ -398,6 +398,9 @@ export function erroCurto(erro: string): string {
   const e = erro.toLowerCase()
   if (e.includes('out of memory') || e.includes('allocation on device') || e.includes('outofmemory'))
     return 'This generation stopped: the GPU ran out of memory. Try a shorter clip or a lower resolution.'
+  // Falha do lado da Comfy Cloud (o servidor deles reiniciou): nao foi o app nem outra geracao.
+  if (e.includes('process restart'))
+    return 'Comfy Cloud restarted its server during this generation. Please try again.'
   if (e.includes('interrompida') || e.includes('cancelada') || e.includes('interrupted'))
     return 'This generation was stopped before it finished.'
   if (e.includes('all connection attempts failed') || e.includes('connection refused'))
