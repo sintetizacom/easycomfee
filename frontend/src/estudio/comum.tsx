@@ -365,6 +365,15 @@ export function erroCurto(erro: string): string {
   return erro
 }
 
+// Faixas do Split into stems: o nome sai do arquivo ("Musica - Voz_003.flac").
+const FAIXAS: Record<string, string> = { Voz: 'Vocals', Bateria: 'Drums', Baixo: 'Bass', Outros: 'Other',
+  Guitarra: 'Guitar', Piano: 'Piano', Instrumental: 'Instrumental' }
+function rotuloFaixa(a: { nome: string; subpasta: string }): string | null {
+  if (a.subpasta !== 'faixas') return null
+  const m = a.nome.match(/ - ([^ _]+)_\d+\.\w+$/)
+  return m ? FAIXAS[m[1]] ?? m[1] : null
+}
+
 /** One job: progress while it runs, the result when done. */
 export function CartaoTarefa({ t }: { t: Tarefa }) {
   const prontos = arquivos(t)
@@ -374,7 +383,12 @@ export function CartaoTarefa({ t }: { t: Tarefa }) {
   return (
     <div className="hf-tarefa" data-estado={t.estado}>
       {t.estado === 'pronto' && prontos.length > 0
-        ? prontos.map((a) => <Midia key={a.subpasta + a.nome} {...a} />)
+        ? prontos.map((a) => {
+          const faixa = rotuloFaixa(a)
+          return faixa
+            ? <div key={a.subpasta + a.nome} className="hf-faixa"><span className="hf-faixa-rotulo">{faixa}</span><Midia {...a} /></div>
+            : <Midia key={a.subpasta + a.nome} {...a} />
+        })
         : (
           <div className="hf-espera">
             <span className="hf-estado">{ESTADOS[t.estado] ?? t.estado}{t.detalhe && emIngles(t.detalhe) !== ESTADOS[t.estado] ? ` · ${emIngles(t.detalhe)}` : ''}</span>

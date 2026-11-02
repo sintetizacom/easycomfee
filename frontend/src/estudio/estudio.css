@@ -2749,3 +2749,6 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-funcao-menu button[data-ativo="true"] b { color: var(--hf-neon); }
 .hf-funcao-menu small { opacity: .7; }
 .hf-separar { max-width: 900px; }
+.hf-faixa { position: relative; }
+.hf-faixa-rotulo { position: absolute; top: 6px; left: 10px; z-index: 2; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--hf-neon); background: rgba(212, 230, 74, .1); }
