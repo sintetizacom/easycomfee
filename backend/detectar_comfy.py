@@ -24,6 +24,9 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = RAIZ / "config.json"
 EXEMPLO = RAIZ / "config.example.json"
 DOWNLOAD = "https://www.comfy.org/download"
+# Quem ja tinha ComfyUI abre o proprio: o atalho do EasyComfee nao o liga.
+AVISO_DA_PESSOA = ("\nImportant: EasyComfee uses this ComfyUI but does not start it.\n"
+                   "Every time: open your ComfyUI first, wait until it is ready, then open EasyComfee.")
 
 
 def _e_comfy(p: pathlib.Path) -> bool:
@@ -145,6 +148,8 @@ def main() -> int:
     atual = pathlib.Path(dados.get("comfy_dir") or "")
     if CONFIG.exists() and dados.get("comfy_dir") and (_e_comfy(atual) or (atual / "models").is_dir()):
         print(f"Using the ComfyUI already set in config.json: {atual}")
+        if dados.get("comfy_iniciar") is False:
+            print(AVISO_DA_PESSOA)
         return 0
     dados["comfy_dir"] = a["pasta"].as_posix()
     dados["comfy_url"] = a["url"]
@@ -152,6 +157,8 @@ def main() -> int:
     dados["comfy_iniciar"] = bool(a.get("proprio"))
     CONFIG.write_text(json.dumps(dados, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Found {a['tipo']} at {a['pasta']}  (saved in config.json)")
+    if not a.get("proprio"):
+        print(AVISO_DA_PESSOA)
     return 0
 
 

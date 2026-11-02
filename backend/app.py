@@ -2820,7 +2820,7 @@ async def aplicar_atualizacao():
 async def motor_atual():
     return {"modo": comfy.MODO["motor"], "chave_nuvem": chaves.chave() is not None,
             "link_recarga": config.LINK_RECARGA, "so_abertos": comfy.so_abertos(),
-            "modo_seguro": comfy.modo_seguro()}
+            "modo_seguro": comfy.modo_seguro(), "comfy_da_pessoa": config.COMFY_DA_PESSOA}
 
 
 @app.get("/api/profundidade/exr/{tarefa_id}")

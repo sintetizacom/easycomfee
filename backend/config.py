@@ -27,6 +27,11 @@ def _valor(chave: str, padrao: str = "") -> str:
     return os.environ.get(chave.upper()) or _ARQ.get(chave) or padrao
 
 
+# O instalador grava "comfy_iniciar": false quando achou um ComfyUI da pessoa: o atalho
+# nao o liga, e a pagina avisa para abri-lo. Sem a chave (instalacao de desenvolvimento),
+# nada muda.
+COMFY_DA_PESSOA = _ARQ.get("comfy_iniciar") is False
+
 # Endereco do ComfyUI. Local por padrao.
 COMFY_URL = _valor("comfy_url", "http://127.0.0.1:8188").rstrip("/")
 # Segundo motor (Flux 3). Sem configuracao, e o mesmo motor.
