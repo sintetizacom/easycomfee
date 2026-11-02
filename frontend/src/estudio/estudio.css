@@ -2820,3 +2820,9 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-gj-aprovar b { display: block; margin-bottom: 6px; }
 .hf-gj-aprovar-botoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 @media (max-width: 760px) { .hf-gj-aprovar { grid-template-columns: 1fr; } }
+/* Genjutsu: "quem trocar" com titulo visivel e o campo na largura toda. */
+.hf-gj .hf-ls-cena .hf-gj-alvo { display: grid; gap: 6px; align-items: stretch; justify-items: stretch; }
+.hf-gj .hf-ls-cartao .hf-gj-alvo > small { display: block; }
+.hf-gj .hf-gj-alvo .hf-campo { width: 100%; box-sizing: border-box; }
+.hf-gj .hf-gj-alvo .hf-dica { margin: 0; font-size: 11.5px; }
+.hf-gj .hf-gj-alvo .hf-campo { padding: 9px 12px; border-radius: 10px; }

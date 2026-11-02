@@ -229,9 +229,10 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
                   valor={controle} aoMudar={setControle} /></label>
             )}
             {(modelo === 'wan22_replace' || modelo === 'h3_swap') && (
-              <label className="hf-ctrl" title="Who leaves the video. 'person' for one person; 'woman in red:1' to pick one of several.">
-                <small>Who to replace</small>
+              <label className="hf-ctrl hf-gj-alvo" title="Who leaves the video. 'person' for one person; 'woman in red:1' to pick one of several.">
+                <small>Who to replace in the video</small>
                 <input className="hf-campo" value={alvo} onChange={(e) => setAlvo(e.target.value)} placeholder="person" />
+                <span className="hf-dica">"person" for one person. With several, describe one: "man in the green shirt".</span>
               </label>
             )}
             {modelo === 'h3_swap' && <>
