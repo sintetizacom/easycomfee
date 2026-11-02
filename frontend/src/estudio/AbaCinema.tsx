@@ -292,6 +292,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
         {dicas && (
           <Popup titulo="How it works" aoFechar={() => setDicas(false)}>
           <div className="hf-dicas hf-cin-dicas">
+        <details className="hf-dicas-secao" open>
+        <summary className="hf-dicas-modelo">The four steps</summary>
         <ul>
           <li><b>1. Write the scene</b>: who, where and what is happening, in a sentence or two. Any language works with Director mode on.</li>
           <li><b>2. Add your cast</b> (optional): pictures of people, objects or places. Call them <b>@image1</b>, <b>@image2</b>… in the scene, so every shot keeps the same faces and things.</li>
@@ -299,13 +301,16 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
           <li><b>4. Plan the shots</b>: pick the framing of each shot (wide, medium, close-up…) and, if you want, what happens in it. Then <b>Shoot this one</b>, or <b>Shoot all</b> at the bottom.</li>
           <li><b>Reshoot</b> any shot until it looks right; with <b>Takes per shot</b> above 1 you get several versions to pick from.</li>
         </ul>
-        <b className="hf-dicas-sub">Image or Video</b>
+        </details>
+        <details className="hf-dicas-secao">
+        <summary className="hf-dicas-modelo">Image or Video</summary>
         <ul>
           <li><b>Image</b> makes a still for each shot. <b>Video</b> makes a clip for each shot, from the text, with its own camera move and length.</li>
           <li>In Video, the cast pictures are <b>references</b> (LTX 2.5 on your GPU takes up to 4): they are not animated as the first frame.</li>
           <li><b>To animate a still you like</b>: shoot it in Image mode, then click <b>▶ Animate</b> on the result. It opens the Video tab in Image → Video with that picture.</li>
           <li>The small picture in each shot is just an example of the framing; it is replaced by your result.</li>
         </ul>
+        </details>
           </div>
           </Popup>
         )}

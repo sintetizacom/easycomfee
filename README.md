@@ -20,7 +20,16 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 
 - Tested with real Blender renders on a 16 GB card: up to 353 frames (14.7 s) in about 4 minutes.
 
-#### Advanced mode: no style image needed (experimental)
+**Beta.** Tips that make the difference, from our tests:
+
+- **Give each block its own color** and render in those colors: the model can then tell which block is which.
+- **Frame 1 is the anchor of the whole video.** Make the style image from the colored frame 1 with an edit model (FLUX 3 in the Image tab: *"Turn this 3D blockout into a real photograph of …, the red box becomes …"*). Generating it from a grey render made the model invent or move objects. Check it against the render first.
+- **Camera moving around still objects?** Put walls, buildings or a textured floor behind them. On a plain grey void the model cannot read the camera move and slides the objects instead.
+- **One description per block.** Describing a block twice makes the model add a second object.
+- **Keyframes only help when each one matches its frame**; frames that drift in different ways pull the video with them.
+- The optional [Blender Bridge](blender-bridge/README.md) does all of this for you from a chat.
+
+#### Advanced mode: no style image needed (beta)
 
 Turn on **Advanced** in the 3D render → Video box and the app makes the look with you, in three steps:
 
@@ -102,7 +111,7 @@ On smaller cards, **Config Models** shows which packages run well on that GPU an
 | **Voice** | Narrate a text, design a voice, or clone one from a short sample | OmniVoice (local) · Qwen3-TTS (Comfy Cloud) |
 | **Cinema Studio** | Direct the shot like a film set: camera, lens, light, film, look and grade cards, shot list, cast, Director mode | Image models + LTX |
 | **Genjutsu** | Swap a character in a video, keeping motion, camera and timing | **Recast** (Qwen Image Edit + LTX Union Control) · Wan Animate 2 · Wan 2.2 Animate Replace · MiniMax H3 Character Swap |
-| **VFX Studio** | One-click effects on your own footage: **Remove background** (alpha matte, transparent WebM or ProRes 4444, with choke, feather and black/white point controls), Day → Night, Remove people, Add water, Swap character, Expand frame, Colorize, Unblur, Remove compression, Refine details, Restore, Follow depth, 3D render → Video, Slow motion, **Video → Depth map** (video or EXR frames) | LTX 2.5 / 2.3 IC-LoRAs · Video Depth Anything |
+| **VFX Studio** | One-click effects on your own footage: **Remove background** (alpha matte, transparent WebM or ProRes 4444, with choke, feather and black/white point controls), Relight, Add sound (foley), Cinemagraph, Upscale 2×, SDR → HDR (HLG, 10-bit), Day → Night, Remove people, Add water, Swap character, Expand frame, Colorize, Unblur, Remove compression, Refine details, Restore, Follow depth, 3D render → Video, Slow motion, **Video → Depth map** (video or EXR frames) | LTX 2.5 / 2.3 IC-LoRAs · Video Depth Anything |
 | **Assets** | Everything you made | |
 | **Advanced** | ComfyUI itself, with its node editor, inside the app | |
 

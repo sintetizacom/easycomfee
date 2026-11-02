@@ -126,15 +126,22 @@ pacote("ltx25", "LTX 2.5 Video", "video",
           ("IC-LoRA-Restore", "ltx-2.5-22b-ic-lora-restore-1.0", "Restore"),
           ("IC-LoRA-Water-Simulation", "ltx-2.5-22b-ic-lora-water-simulation-0.9", "Water Simulation"),
           ("IC-LoRA-Alpha-Gen", "ltx-2.5-22b-ic-lora-alpha-gen-0.9", "Alpha Gen (remove background)"),
+          ("IC-LoRA-Pixel-Spatial-Upscaler", "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0", "Pixel Spatial Upscaler (Upscale 2x)"),
+          ("IC-LoRA-SDR-To-HDR", "ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0", "SDR to HDR"),
+          ("LoRA-Cinemagraph", "ltx-2.5-22b-lora-cinemagraph-0.9", "Cinemagraph"),
           ("LoRA-Slow-Motion-Control", "ltx-2.5-22b-lora-slow-motion-control-1.0", "Slow Motion Control")]],
+    # O LTXVLoadConditioning le da pasta "embeddings", nao de loras.
+    ("embeddings", "LTX/2.5/ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors", "Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR", "ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors", True, "SDR to HDR (scene embedding)"),
     ("loras", "LTX/2.5/LTX-2.5-Licon-MSR-V1.safetensors", "LiconStudio/LTX-2.5-Multiple-Subject-Reference", "LTX-2.5-Licon-MSR-V1.safetensors", True, "Multi-subject reference (MSR)"),
 ])
 
 pacote("ltx23", "LTX 2.3 add-ons", "video",
-       "LTX 2.3 IC-LoRAs used by Expand frame and Character swap in video.",
-       16, ["expand frame", "character swap (video)"], [
+       "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight and Foley.",
+       16, ["expand frame", "character swap (video)", "relight", "foley"], [
     ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-in-outpainting-0.9.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-In-Outpainting", "ltx-2.3-22b-ic-lora-in-outpainting-0.9.safetensors", False, "In/Outpainting IC-LoRA"),
     ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control", "ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors", False, "Union Control IC-LoRA"),
+    ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-relight-1.0.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-Relight", "ltx-2.3-22b-ic-lora-relight-1.0.safetensors", True, "Relight IC-LoRA"),
+    ("loras", "LTX/2.3/ltx-2.3-22b-lora-foley-v2a-1.0.safetensors", "Lightricks/LTX-2.3-22b-LoRA-Foley-V2A", "ltx-2.3-22b-lora-foley-v2a-1.0.safetensors", True, "Foley (video to sound) LoRA"),
     # O "Follow depth" calcula a profundidade com ele (no segundo motor).
     ("videodepthanything", "video_depth_anything_vits.pth", "depth-anything/Video-Depth-Anything-Small", "video_depth_anything_vits.pth", False, "Video Depth Anything Small"),
 ])

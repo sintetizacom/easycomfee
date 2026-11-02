@@ -315,6 +315,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         <div role={conta ? 'tabpanel' : undefined} id="mq-painel" aria-labelledby={conta ? `mq-aba-${aba}` : undefined}>
         {aba === 'api' ? conta : <>
         <InicioComWindows />
+        <ModoSeguro />
 
         <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
 
@@ -346,7 +347,6 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         )}
 
         <Atualizacoes />
-        <ModoSeguro />
         <BlenderBridge />
 
         {/* As duas opcoes de filtro juntas, sem caixa, uma em cima da outra. */}
@@ -518,15 +518,18 @@ function ModoSeguro() {
     location.reload()
   }
   return (
-    <section className="mq-cartao mq-atualizar">
+    <section className="mq-cartao mq-interruptor">
       <div>
-        <span className="mq-rotulo">Safe mode</span>
+        <span className="mq-rotulo" id="mq-seguro-rotulo">Safe mode</span>
         <p className="mq-sub">{ligado === false
-          ? 'Off. Prompts are not checked and results are shown as generated. You are responsible for what you create.'
-          : 'On. Explicit prompts are blocked and any result detected as NSFW is shown blurred (the file on disk is kept).'}</p>
+          ? 'Prompts are not checked and results are shown as generated. You are responsible for what you create.'
+          : 'Explicit prompts are blocked and any result detected as NSFW is shown blurred (the file on disk is kept).'}</p>
       </div>
-      {ligado !== null && <button className={ligado ? 'mq-botao-sec' : 'mq-botao mq-botao-forte'} onClick={() => trocar(!ligado)}>
-        {ligado ? 'Turn off' : 'Turn on'}</button>}
+      <button type="button" role="switch" aria-checked={!!ligado} aria-labelledby="mq-seguro-rotulo"
+        className="mq-seletor" data-ligado={!!ligado} disabled={ligado === null} onClick={() => trocar(!ligado)}>
+        <span className="mq-seletor-bola" aria-hidden />
+        <span className="mq-seletor-texto">{ligado ? 'On' : 'Off'}</span>
+      </button>
     </section>
   )
 }

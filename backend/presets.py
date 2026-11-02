@@ -2821,6 +2821,29 @@ VIDEO_TRANSFORMAR = {
                   "lora": "ltx-2.5-22b-ic-lora-alpha-gen-0.9.safetensors",
                   "nota": "Máscara alfa quadro a quadro, sem fundo verde. O modelo escolhe o primeiro plano.",
                   "texto": "", "max_quadros": 145},
+        # Pixel Spatial Upscaler: a referencia entra em meia resolucao e o video sai 2x
+        # maior (o no le o fator do proprio LoRA). Inventa detalhe: nao e restauracao fiel.
+        # Testado em 02/11/2026: 49 quadros em 1984x1088, ~3 min na placa de 16 GB.
+        "ampliar2x": {"rotulo": "Ampliar 2x",
+                      "lora": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+                      "nota": "Dobra a resolução inventando detalhe; não é restauração fiel.",
+                      # Sai em Full HD: 49 quadros (2 s) ate medir a memoria na placa de 16 GB.
+                      "texto": "", "fator": 2, "max_quadros": 49},
+        # Relight (LoRA do LTX 2.3, sobre o 2.5 como o Expand frame): cada quadro leva a
+        # "bola de luz" no canto (ver relight.py) e o texto diz a luz e a direcao.
+        # So cenas externas. Testado em 02/11/2026: noite virou dia, mantendo pessoas e movimento.
+        "relight": {"rotulo": "Reiluminar",
+                    "lora_completo": "LTX/2.3/ltx-2.3-22b-ic-lora-relight-1.0.safetensors",
+                    "nota": "Troca a luz de uma cena externa: tipo de luz e direção.",
+                    "texto": "", "relight": True, "max_quadros": 121},
+        # SDR -> HDR: grafo proprio (workflows.sdr_para_hdr), sem texto.
+        "hdr": {"rotulo": "SDR para HDR", "lora": "ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+                "nota": "Converte para HDR (HLG BT.2020, 10 bits) para gradação.",
+                "texto": "", "hdr": True, "max_quadros": 121},
+        # Foley: grafo proprio (workflows.foley_ltx); o texto descreve o som.
+        "foley": {"rotulo": "Som do vídeo (foley)", "lora_completo": "LTX/2.3/ltx-2.3-22b-lora-foley-v2a-1.0.safetensors",
+                  "nota": "Cria os efeitos sonoros a partir do vídeo. Sem fala nem música.",
+                  "texto": "", "foley": True, "max_quadros": 169},
         "nitidez": {"rotulo": "Tirar o desfoque",
                     "lora": "ltx-2.5-22b-ic-lora-deblur-0.9.safetensors",
                     "nota": "Recupera a nitidez de um vídeo borrado.", "texto": ""},
@@ -2920,6 +2943,35 @@ def tamanho_transformar(largura: int, altura: int) -> tuple[int, int]:
 # arquivo continua a 24 fps. MEDIDO em 17/10/2026, imagem->video de 5 s, mesma
 # seed: diferenca media entre quadros 0,92 sem o LoRA e 0,38 com velocidade 0,2,
 # no mesmo tempo de geracao (~2 min). Testado so nos modos texto e imagem.
+# Cinemagraph (LoRA do LTX 2.5): uma imagem vira um loop em que so UMA coisa se move.
+# Palavra-gatilho obrigatoria; o texto diz o que se move e que o resto fica parado.
+# Testado em 02/11/2026: com gente na imagem, as pessoas tambem andam (o cartao avisa).
+CINEMAGRAPH = {
+    "lora": "LTX/2.5/creative_lab/ltx-2.5-22b-lora-cinemagraph-0.9.safetensors",
+    "forca": 1.1,
+    "gatilho": "CINEMAGRAPH_MOTION",
+    "fixo": "Locked-off static camera, everything else stays perfectly still, seamless natural loop.",
+}
+
+# Foley V2A (LoRA do LTX 2.3): o video entra congelado e so o audio e gerado.
+# Testado em 02/11/2026: gera o som (um pouco baixo, ~-41 dB de media). Ver workflows.foley_ltx.
+FOLEY = {
+    "lora": "LTX/2.3/ltx-2.3-22b-lora-foley-v2a-1.0.safetensors",
+    "forca": 1.0,
+    "max_quadros": 169,   # ~7 s a 24 fps, o que o workflow oficial aceita
+    "fim": "No speech is present. No music is present.",
+    "negativo": "music, singing, speech, talking, voice, low quality, distorted, noise, hum",
+}
+
+# SDR -> HDR (IC-LoRA do LTX 2.5): sem texto (o "scene embedding" faz o papel dele);
+# sai um video HLG BT.2020 de 10 bits e, se pedido, quadros EXR para gradacao.
+# Testado em 02/11/2026: HLG BT.2020 10 bits em ~3 min. Ver workflows.sdr_para_hdr.
+HDR = {
+    "lora": "LTX/2.5/creative_lab/ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+    "embedding": "LTX/2.5/ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",  # pasta embeddings
+    "max_quadros": 121,
+}
+
 CAMERA_LENTA = {
     "lora": "LTX/2.5/creative_lab/ltx-2.5-22b-lora-slow-motion-control-1.0.safetensors",
     "velocidades": [1.0, 0.5, 0.25, 0.2],

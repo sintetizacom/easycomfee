@@ -42,6 +42,7 @@ import miniaturas
 import seguro
 import previa
 import presets
+import relight
 import prompting
 import workflows
 import voz
@@ -497,6 +498,11 @@ class PedidoGeracao(Pedido):
     # Controle de estrutura.
     tipo_controle: str = "contorno"
     forca_controle: float = Field(1.0, ge=0.1, le=2.0)
+    # Relight: tipo de luz e direcao (listas em relight.py).
+    relight_luz: str = ""
+    relight_direcao: str = ""
+    # Cinemagraph: imagem -> loop em que so uma coisa se move (presets.CINEMAGRAPH).
+    cinemagraph: bool = False
     # Freio do artefato nas edições: o tipo escolhe QUAIS defeitos combater,
     # o nível escolhe com que força.
     tipo_imagem: str = presets.TIPO_IMAGEM_PADRAO
@@ -1172,6 +1178,15 @@ async def montar(tarefa: Tarefa):
         imagem = p.referencias[0] if p.referencias else None
         if p.modo_video == "imagem" and not imagem:
             raise ValueError("envie a imagem de partida")
+        if p.cinemagraph:
+            if not imagem:
+                raise ValueError("o Cinemagraph parte de uma imagem")
+            c = presets.CINEMAGRAPH
+            corpo = p.prompt.strip()
+            if not corpo.startswith(c["gatilho"]):
+                corpo = f"{c['gatilho']}. {corpo}"
+            p.prompt = f"{corpo} {c['fixo']}"
+            tarefa.prompt_final = p.prompt
         g = workflows.gerar_video_ltx(
             p.prompt, seed, largura=larg, altura=alt, duracao=p.duracao_video,
             imagem=imagem, com_audio=p.com_audio,
@@ -1180,6 +1195,8 @@ async def montar(tarefa: Tarefa):
             forca_audio_referencia=p.forca_audio_referencia, prefixo=prefixo)
         if p.velocidade_video < 1:
             g = workflows.aplicar_camera_lenta(g, p.velocidade_video)
+        if p.cinemagraph:
+            g = workflows.aplicar_lora_ltx(g, presets.CINEMAGRAPH["lora"], presets.CINEMAGRAPH["forca"], "cinemagraph")
         return g
 
     if p.modelo == "transformar_video":
@@ -1230,10 +1247,19 @@ async def montar(tarefa: Tarefa):
                          else (lambda l, a: presets.tamanho_maquete(l, a, lado)) if efeito.get("quadros_chave")
                          else presets.tamanho_transformar)(d["largura"], d["altura"])
         com_audio = bool(await asyncio.to_thread(miniaturas.tem_audio, caminho))
+        sufixo = pathlib.Path(caminho).suffix
+        if efeito.get("relight"):
+            if p.relight_luz not in relight.LUZES or p.relight_direcao not in relight.DIRECOES:
+                raise ValueError("escolha o tipo de luz e a direção")
+            # A bola de luz entra por ultimo, ja no tamanho que o grafo usa.
+            origem = await asyncio.to_thread(relight.preparar, origem, larg, alt, quadros,
+                                             p.relight_direcao, p.relight_luz)
+            sufixo = ".mp4"
         # O LoadVideo do v0.41 so le da pasta de entrada.
-        entrada = await comfy.enviar_imagem(
-            f"transf_{uuid.uuid4().hex[:12]}{pathlib.Path(caminho).suffix}", origem)
+        entrada = await comfy.enviar_imagem(f"transf_{uuid.uuid4().hex[:12]}{sufixo}", origem)
         texto = " ".join(t for t in (p.prompt.strip(), efeito["texto"]) if t)
+        if efeito.get("relight"):
+            texto = relight.texto(p.relight_luz, p.relight_direcao)
         tarefa.prompt_final = texto
         tarefa.largura, tarefa.altura = larg, alt
         if inicio or p.quadros_maquete:
@@ -1260,9 +1286,22 @@ async def montar(tarefa: Tarefa):
                 entrada, cfg["lora_pasta"] + efeito["lora"], texto, quadros, larg, alt,
                 estilo, chaves, seed=seed, com_audio=com_audio,
                 prefixo=f"editor/video_{p.efeito_video}", inicio=inicio)
+        if efeito.get("foley"):
+            if not p.prompt.strip():
+                raise ValueError("descreva o som: o que faz barulho e em que material")
+            return workflows.foley_ltx(entrada, p.prompt, quadros, larg, alt, seed=seed,
+                                       prefixo=f"editor/video_{p.efeito_video}")
+        if efeito.get("hdr"):
+            return workflows.sdr_para_hdr(entrada, quadros, larg, alt, seed=seed, com_audio=com_audio,
+                                          prefixo=f"editor/video_{p.efeito_video}")
+        # Ampliar 2x: a referencia fica no tamanho de sempre e o video sai `fator` vezes maior.
+        fator = efeito.get("fator", 1)
+        if fator > 1:
+            tarefa.largura, tarefa.altura = larg * fator, alt * fator
         g = workflows.transformar_video(
-            entrada, cfg["lora_pasta"] + efeito["lora"], texto, quadros, larg, alt,
-            seed=seed, com_audio=com_audio, prefixo=f"editor/video_{p.efeito_video}")
+            entrada, efeito.get("lora_completo") or cfg["lora_pasta"] + efeito["lora"], texto,
+            quadros, larg * fator, alt * fator, seed=seed, com_audio=com_audio,
+            prefixo=f"editor/video_{p.efeito_video}", ref=(larg, alt) if fator > 1 else None)
         return workflows.em_base_ltx23(g) if comfy.na_nuvem() else g
 
     if p.modelo == "profundidade_video":

@@ -231,6 +231,42 @@
      "requer_aceite": true
     },
     {
+     "arquivo": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.5/creative_lab",
+     "repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler",
+     "caminho": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+     "opcional": true,
+     "rotulo": "Pixel Spatial Upscaler (Upscale 2x)",
+     "tamanho": 327322640,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.5/creative_lab",
+     "repo": "Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR",
+     "caminho": "ltx-2.5-22b-ic-lora-sdr-to-hdr-1.0.safetensors",
+     "opcional": true,
+     "rotulo": "SDR to HDR",
+     "tamanho": 1308787472,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-22b-lora-cinemagraph-0.9.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.5/creative_lab",
+     "repo": "Lightricks/LTX-2.5-22b-LoRA-Cinemagraph",
+     "caminho": "ltx-2.5-22b-lora-cinemagraph-0.9.safetensors",
+     "opcional": true,
+     "rotulo": "Cinemagraph",
+     "tamanho": 201462650,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
      "arquivo": "ltx-2.5-22b-lora-slow-motion-control-1.0.safetensors",
      "pasta": "loras",
      "subpasta": "LTX/2.5/creative_lab",
@@ -239,6 +275,18 @@
      "opcional": true,
      "rotulo": "Slow Motion Control",
      "tamanho": 654474448,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",
+     "pasta": "embeddings",
+     "subpasta": "LTX/2.5",
+     "repo": "Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR",
+     "caminho": "ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors",
+     "opcional": true,
+     "rotulo": "SDR to HDR (scene embedding)",
+     "tamanho": 12614165,
      "licenca": "other",
      "requer_aceite": true
     },
@@ -260,11 +308,13 @@
    "id": "ltx23",
    "nome": "LTX 2.3 add-ons",
    "tipo": "video",
-   "descricao": "LTX 2.3 IC-LoRAs used by Expand frame and Character swap in video.",
+   "descricao": "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight and Foley.",
    "vram_min_gb": 16,
    "modos": [
     "expand frame",
-    "character swap (video)"
+    "character swap (video)",
+    "relight",
+    "foley"
    ],
    "nos_extras": [],
    "requisitos": {
@@ -301,6 +351,30 @@
      "tamanho": 654465352,
      "licenca": "other",
      "requer_aceite": false
+    },
+    {
+     "arquivo": "ltx-2.3-22b-ic-lora-relight-1.0.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.3",
+     "repo": "Lightricks/LTX-2.3-22b-IC-LoRA-Relight",
+     "caminho": "ltx-2.3-22b-ic-lora-relight-1.0.safetensors",
+     "opcional": true,
+     "rotulo": "Relight IC-LoRA",
+     "tamanho": 327309305,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.3-22b-lora-foley-v2a-1.0.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.3",
+     "repo": "Lightricks/LTX-2.3-22b-LoRA-Foley-V2A",
+     "caminho": "ltx-2.3-22b-lora-foley-v2a-1.0.safetensors",
+     "opcional": true,
+     "rotulo": "Foley (video to sound) LoRA",
+     "tamanho": 226709270,
+     "licenca": "other",
+     "requer_aceite": true
     },
     {
      "arquivo": "video_depth_anything_vits.pth",

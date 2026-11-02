@@ -2657,3 +2657,29 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-recorte-campo input { accent-color: var(--hf-neon); }
 .hf-recorte-baixar { display: flex; gap: 8px; flex-wrap: wrap; }
 .hf-recorte-baixar a { text-decoration: none; }
+
+/* Relight: tipo de luz e direcao. */
+.hf-relight { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.hf-relight label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--hf-apagado); }
+.hf-relight .hf-dica { grid-column: 1 / -1; margin: 0; }
+
+/* VFX Studio: efeitos em dois grupos recolhiveis (Ready e Beta). */
+.hf-vfx-grupo { margin-bottom: 10px; }
+.hf-vfx-grupo > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 6px 2px 8px; }
+.hf-vfx-grupo > summary::-webkit-details-marker { display: none; }
+.hf-vfx-grupo > summary::before { content: '▸'; color: var(--hf-neon); transition: transform .15s; }
+.hf-vfx-grupo[open] > summary::before { transform: rotate(90deg); }
+.hf-vfx-grupo > summary span { font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--hf-texto); }
+.hf-vfx-grupo > summary small { color: var(--hf-apagado); font-size: 11px; }
+
+/* Beta · Tips: cada modelo e um menu recolhivel; o nome e o cabecalho, diferente do inicio das dicas. */
+.hf-dicas-secao { border-top: 1px solid var(--hf-linha); }
+.hf-dicas-secao:first-child { border-top: 0; }
+.hf-dicas-modelo { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 4px;
+  font-size: 17px; font-weight: 800; color: var(--hf-texto); }
+.hf-dicas-modelo::-webkit-details-marker { display: none; }
+.hf-dicas-modelo::before { content: ''; width: 4px; height: 18px; border-radius: 2px; background: var(--hf-neon); }
+.hf-dicas-modelo::after { content: '▸'; margin-left: auto; color: var(--hf-neon); transition: transform .15s; }
+.hf-dicas-secao[open] > .hf-dicas-modelo::after { transform: rotate(90deg); }
+.hf-dicas-secao > ul, .hf-dicas-secao > .hf-dicas-sub { margin-left: 14px; }
+.hf-dicas-secao[open] { padding-bottom: 12px; }

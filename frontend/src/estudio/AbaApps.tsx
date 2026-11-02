@@ -12,6 +12,8 @@ import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, rotulo
 export type App = {
   id: string; nome: string; frase: string; texto?: string
   imagem?: string; imagemOpcional?: boolean; formatos?: boolean; video?: boolean; chaves?: boolean
+  /** Sem caixa de texto (o modelo ignora o texto); dica = o que escrever; luz = escolhas do Relight; beta = ainda nao testado na GPU. */
+  semTexto?: boolean; dica?: string; textoObrigatorio?: boolean; luz?: boolean; beta?: boolean
 }
 
 type Chave = { id: number; img: Referencia | null; quadro: number; vista?: Vista }
@@ -161,7 +163,7 @@ function AvisoMaquete({ aoFechar }: { aoFechar: () => void }) {
     <div className="hf-aviso-fundo" onClick={fechar}>
       <div className="hf-aviso-janela" role="dialog" aria-modal="true" aria-labelledby="aviso-maquete-titulo"
         onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') fechar() }}>
-        <span className="hf-selo-neon hf-selo-solto">Experimental</span>
+        <span className="hf-selo-neon hf-selo-solto">Beta</span>
         <h2 id="aviso-maquete-titulo">3D render → Video: before you start</h2>
         <ul>
           <li><b>Still in development:</b> it needs more testing, results change from shot to shot and some renders will not work yet.</li>
@@ -179,7 +181,7 @@ function AvisoMaquete({ aoFechar }: { aoFechar: () => void }) {
             and paints the scene like that image.</li>
         </ul>
         <p className="hf-dica">Best results when the blocks have the rough shape of the real object (a low sports car, a person), not just a cube.
-          More tips in “Experimental · Tips”, next to the page title.</p>
+          More tips in “Beta · Tips”, next to the page title.</p>
         <div className="hf-linha-controles">
           <label className="hf-toggle"><input type="checkbox" checked={naoMostrar} onChange={(e) => setNaoMostrar(e.target.checked)} /> Don't show this again</label>
           <button ref={botao} type="button" className="hf-gerar" onClick={fechar}>Got it</button>
@@ -232,9 +234,84 @@ function AjustesRecorte({ valor, aoMudar, webm, mov }: { valor: Recorte; aoMudar
   )
 }
 
+// Relight (LTX-2.3 IC-LoRA): as luzes e direcoes que o modelo conhece (backend/relight.py).
+const LUZES_RELIGHT = ['hard directional sunlight', 'hard high-angle sunlight', 'hard low-angle sunlight', 'soft diffused daylight',
+  'soft warm afternoon light', 'cool soft daylight', 'dim overcast light', 'strong backlight with rim light', 'soft hazy backlight',
+  'warm golden low front sun', 'warm golden low side sun', 'frontal sunlight']
+const DIRECOES_RELIGHT = ['the front', 'the front-right', 'the right', 'the back-right', 'behind', 'the back-left', 'the left', 'the front-left']
+
+// Dicas de cada efeito beta (o 3D render tem as suas, no proprio Popup). Vem dos cartoes
+// dos modelos da Lightricks e dos testes de 02/11/2026 numa placa de 16 GB.
+const DICAS_BETA: Record<string, { dicas: [string, string][]; saber: [string, string][] }> = {
+  relight: {
+    dicas: [
+      ['Outdoor shots only.', 'The model was trained on exteriors; interiors are not supported.'],
+      ['Pick a light that fits the direction.', '“Warm golden low side sun” from the right or left reads best; backlit looks (“strong backlight”, “soft hazy backlight”) tend to come from behind whatever you pick.'],
+      ['Shots with sky and ground work best:', 'the model needs room to show where the light falls and where the shadows go.'],
+      ['It relights, it does not restyle.', 'People, objects and motion stay the same; only the light changes (night can become day).'],
+    ],
+    saber: [
+      ['Up to 5 s,', 'about 2 min on a 16 GB card.'],
+      ['A small light ball is drawn in the corner of each frame', 'to tell the model the light direction. It is part of how the model works.'],
+    ],
+  },
+  foley: {
+    dicas: [
+      ['Describe what makes the sound and on what:', '“horse hooves clopping on wet cobblestones”, “a wooden door slams shut”, “light rain on a car roof”.'],
+      ['Add the timing and the character of the sound:', '“steady”, “one loud knock at the end”, “distant”, “muffled”.'],
+      ['One clear sound source per clip', 'gives the most convincing result; busy scenes get a mix.'],
+      ['Try 2 or 3 takes.', 'The result changes a lot from one take to the next.'],
+    ],
+    saber: [
+      ['No speech, no music:', 'the app asks for sound effects only.'],
+      ['Up to 7 s.', 'The video is kept exactly as it was; only the sound is new.'],
+      ['The sound can come out quiet or slightly out of sync.', 'Raise the volume in your editor if needed.'],
+    ],
+  },
+  cinemagraph: {
+    dicas: [
+      ['Say what moves, and only that:', '“Only the waterfall flows”, “only the steam rises”, “only her hair moves in the wind”.'],
+      ['Pick stills without people,', 'or the people will start to move too.'],
+      ['One moving element,', 'with a locked-off camera: water, smoke, fire, clouds, flags, hair.'],
+      ['Do not mention the camera', '(no pan, zoom or parallax): the camera stays still by design.'],
+    ],
+    saber: [
+      ['5 s at 720p,', 'about 2 min on a 16 GB card. The app adds the trigger word and “seamless loop” for you.'],
+    ],
+  },
+  ampliar2x: {
+    dicas: [
+      ['Best on soft or low-resolution footage:', 'it redraws texture, hair, fur and edges.'],
+      ['It invents detail.', 'Not for footage that must stay faithful (documentary, faces you need to recognize, small text).'],
+      ['Keep the framing:', 'the video comes out exactly 2× larger, with the same crop.'],
+    ],
+    saber: [
+      ['Up to 2 s for now,', 'about 3 min on a 16 GB card: the output is Full HD and uses a lot of memory.'],
+    ],
+  },
+  hdr: {
+    dicas: [
+      ['Footage with bright highlights gains the most:', 'sunsets, lamps, reflections, neon.'],
+      ['No prompt needed.', 'The model was trained with a fixed caption.'],
+      ['Open the result in an HDR timeline', '(DaVinci Resolve, Premiere with HDR settings). In a browser or on a normal screen it looks washed out: that is expected.'],
+    ],
+    saber: [
+      ['The file is HLG, BT.2020, 10-bit.', 'Up to 5 s, about 3 min on a 16 GB card.'],
+    ],
+  },
+}
+
+// Beta: os efeitos ainda em teste (o 3D render -> Video e os marcados com beta).
+const ehBeta = (a: App) => !!a.beta || a.id === 'maquete'
+
 export const APPS: App[] = [
   { id: 'noite', nome: 'Day → Night', frase: 'The same shot at night: dark sky, streetlights and windows on.' },
-  { id: 'alpha', nome: 'Remove background', frase: 'Cuts out the subject with a clean alpha matte, no green screen: hair, smoke and glass included. Up to 6 s. Download it as a transparent video.' },
+  { id: 'alpha', nome: 'Remove background', frase: 'Cuts out the subject with a clean alpha matte, no green screen: hair, smoke and glass included. Up to 6 s. Download it as a transparent video.', semTexto: true },
+  { id: 'relight', nome: 'Relight', frase: 'Changes the light of an outdoor shot: pick the kind of light and where it comes from.', luz: true, semTexto: true, beta: true },
+  { id: 'foley', nome: 'Add sound (foley)', frase: 'Creates the sound effects of a silent clip: steps, doors, rain. No speech or music. Up to 7 s.', textoObrigatorio: true, dica: 'What makes sound and on what: boots crunching on gravel, a wooden door slams shut, light rain on a car roof', beta: true },
+  { id: 'cinemagraph', nome: 'Cinemagraph', frase: 'Brings one thing in a still to life in a seamless loop while the rest stays frozen. Best on scenes without people.', imagem: 'Still image', video: false, textoObrigatorio: true, dica: 'What moves, and only that: only the water in the fountain flows', beta: true },
+  { id: 'ampliar2x', nome: 'Upscale 2×', frase: 'Doubles the resolution by inventing fine detail (not a faithful restoration). Up to 2 s.', semTexto: true, beta: true },
+  { id: 'hdr', nome: 'SDR → HDR', frase: 'Turns ordinary footage into HDR (HLG, BT.2020, 10-bit) for grading.', semTexto: true, beta: true },
   { id: 'limpar', nome: 'Remove people', frase: 'Erases people and cars that move and rebuilds the background.' },
   { id: 'agua', nome: 'Add water', frase: 'Flood, rain, waves and splashes. Describe the water you want.', texto: 'The ground is flooded with shallow rushing water' },
   { id: 'trocar', nome: 'Swap character', frase: 'Keeps the motion of the video, takes the look from a new first frame.', imagem: 'New first frame' },
@@ -253,7 +330,7 @@ export const APPS: App[] = [
 // Comfy Cloud has the LTX 2.3 version of most of these LoRAs (nuvem.SUBSTITUTOS);
 // these two exist only in the 2.5 Creative Lab, so they need your own GPU.
 // The layout-to-render LoRA (3D render → Video) is a 2.5 one too.
-const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha'])
+const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha', 'relight', 'foley', 'cinemagraph', 'ampliar2x', 'hdr'])
 
 export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const tarefas = useTarefas()
@@ -266,6 +343,8 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [video, setVideo] = useState<Referencia | null>(null)
   const [imagem, setImagem] = useState<Referencia | null>(null)
   const [texto, setTexto] = useState('')
+  const [luzRelight, setLuzRelight] = useState(LUZES_RELIGHT[0])
+  const [direcaoRelight, setDirecaoRelight] = useState('the right')
   const [formato, setFormato] = useState('16:9')
   // Video -> Depth map: cinza ou colorido, e quadros EXR opcionais.
   const [corMapa, setCorMapa] = useState<'gray' | 'inferno'>('gray')
@@ -521,11 +600,11 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
   const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id)
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
-  const pronto = app && !bloqueado && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem)
+  const pronto = app && !bloqueado && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || !!texto.trim())
 
   const custo = useCusto(!app || bloqueado ? null : ehMapa
     ? { modelo: 'profundidade_video', prompt: '', proporcao: '1:1', referencias: video ? [`entrada:${video.nome}`] : [] }
-    : app.id === 'slowmo'
+    : app.id === 'slowmo' || app.id === 'cinemagraph'
     ? { modelo: 'video', modelo_video: 'ltx', modo_video: 'imagem', prompt: 'x', proporcao: '1:1',
         proporcao_video: '16:9', resolucao_video: '720p', duracao_video: 5, com_audio: false, referencias: ['a.png'] }
     : { modelo: 'transformar_video', efeito_video: app.id, prompt: 'x', proporcao: '1:1',
@@ -538,6 +617,12 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
       if (ehMapa) {
         await api.gerar({ modelo: 'profundidade_video', prompt: '', proporcao: '1:1', mapa_cor: corMapa, exr,
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (app.id === 'cinemagraph') {
+        await api.gerar({
+          modelo: 'video', modelo_video: 'ltx', modo_video: 'imagem', proporcao: '1:1', prompt: `CINEMAGRAPH_MOTION. ${texto.trim()}`,
+          proporcao_video: '16:9', resolucao_video: '720p', duracao_video: 5, com_audio: false,
+          cinemagraph: true, referencias: [imagem!.nome],
+        } as Parameters<typeof api.gerar>[0])
       } else if (app.id === 'slowmo') {
         await api.gerar({
           modelo: 'video', modelo_video: 'ltx', modo_video: 'imagem', proporcao: '1:1',
@@ -550,6 +635,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           modelo: 'transformar_video', efeito_video: app.id, prompt: texto.trim(), proporcao: '1:1',
           formato_saida: formato, referencias: [`entrada:${video!.nome}`, ...(imagem ? [imagem.nome] : [])],
           ...(app.id === 'maquete' ? { lado_maquete: Number(lado), inicio_maquete: inicioQ, quadros_maquete: durQ } : {}),
+          ...(app.luz ? { relight_luz: luzRelight, relight_direcao: direcaoRelight } : {}),
           ...(app.chaves ? { chaves_video: chavesUsadas.filter((c) => c.img).map((c) => ({ imagem: c.img!.nome, quadro: c.quadro })) } : {}),
         })
       }
@@ -560,7 +646,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const quadroMaquete = (prompt: string) => prompt.includes('a grey 3D blockout of a film shot')
   // Os prints cinza do render (quadros_maquete) ficam nos passos e em Assets, nao aqui: enchiam a galeria.
   const minhas = tarefas.filter((t) => t.modelo === 'transformar_video' || t.modelo === 'profundidade_video'
-    || (t.modelo === 'video' && t.prompt.includes('Slow motion')) || quadroMaquete(t.prompt))
+    || (t.modelo === 'video' && (t.prompt.includes('Slow motion') || t.prompt.includes('CINEMAGRAPH_MOTION'))) || quadroMaquete(t.prompt))
 
   const tarefaFeita = aplicadoEm ? minhas.find((t) => t.estado === 'pronto' && t.criada_em >= aplicadoEm) : undefined
   const resultado = tarefaFeita ? arquivos(tarefaFeita)[0] : undefined
@@ -574,24 +660,27 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   return (
     <div className="hf-aba hf-img hf-vfx">
       <TituloPagina antes="Transform your" destaque="footage" sub="One-click LTX effects for videos you already have.">
-        {/* As dicas do 3D render ficam ao lado do titulo, como o How it works do Cinema, e so nesse efeito. */}
-        {app?.id === 'maquete' && (
-          <button type="button" className="hf-cin-dicas-botao" onClick={() => setDicasMaquete(true)}><b>Experimental</b> · Tips <i aria-hidden>›</i></button>
-        )}
-        {dicasMaquete && app?.id === 'maquete' && (
-          <Popup titulo="3D render → Video · Tips for better results" aoFechar={() => setDicasMaquete(false)}>
+        {/* Um so Beta · Tips ao lado do titulo, com uma secao para cada efeito beta. */}
+        <button type="button" className="hf-cin-dicas-botao" onClick={() => setDicasMaquete(true)}><b>Beta</b> · Tips <i aria-hidden>›</i></button>
+        {dicasMaquete && (
+          <Popup titulo="Beta effects · Tips for better results" aoFechar={() => setDicasMaquete(false)}>
             <div className="hf-dicas hf-cin-dicas">
+              <details className="hf-dicas-secao" open={!app || app.id === 'maquete' || !DICAS_BETA[app.id]}>
+              <summary className="hf-dicas-modelo">3D render → Video</summary>
               <ul>
                 <li><b>Shape the blocks roughly like the real thing</b> (a low box for a car, a simple figure for a person), on a visible ground, with smooth camera moves at 24 fps.</li>
-                <li><b>Take a screenshot wherever a new side of the object shows</b> (it turns, the camera goes around it): the model only invents what it never saw.</li>
-                <li><b>Name each cast picture</b> and pick the side the object is seen from in every frame.</li>
-                <li><b>Describe the scene</b> (“a green sports car on a desert road at sunset”), not the camera: the camera comes from your render.</li>
+                <li><b>Give each block its own color</b> and render in those colors, not all grey: the model can then tell which block is which.</li>
+                <li><b>Camera moving around still objects?</b> Put something behind them (walls, buildings, a textured or checkered floor). On a plain grey void the model cannot see the camera move and slides the objects instead.</li>
+                <li><b>Frame 1 is the anchor of the whole video:</b> whatever it adds or moves, the video repeats. Make it from the colored frame 1 of your render with FLUX 3 in the Image tab, as an edit: “Turn this 3D blockout into a real photograph of …, the red box becomes …”, keeping the framing. Check it against the render before generating the video.</li>
+                <li><b>Describe each block once</b> (“the white sphere is a stone ball”). Two descriptions of one block make the model add a second object.</li>
+                <li><b>Describe the scene</b> (“a green sports car on a desert road at sunset”) and say if the objects stand still; the camera comes from your render.</li>
+                <li><b>Take a screenshot wherever a new side of the object shows</b> (it turns, the camera goes around it): the model only invents what it never saw. Name each cast picture and pick the side the object is seen from.</li>
+                <li><b>Keyframes only help when each one matches its frame</b>: frames made separately that drift in different ways pull the video with them.</li>
                 <li><b>Shoot 2 or 3 takes of a frame</b> and keep the best one, using the slider to compare it with the render.</li>
-                <li>Simple mode: make the Look from frame 1 of the render, with the same framing and aspect ratio.</li>
               </ul>
-              <b className="hf-dicas-sub">Good to know</b>
+              <b className="hf-dicas-sub">3D render → Video · good to know</b>
               <ul>
-                <li><b>Still in development.</b> This mode needs more testing: results change from shot to shot, and some renders will not work yet.</li>
+                <li><b>Beta.</b> This mode needs more testing: results change from shot to shot, and some renders will not work yet.</li>
                 <li><b>Tested only on NVIDIA</b> (RTX 5070 Ti, 16 GB). It needs at least 16 GB of VRAM.</li>
                 <li><b>On a 16 GB card, keep 720p videos to 10 s or less.</b> 576p handles the full 14.7 s. 1080p needs more than 16 GB.</li>
                 <li><b>Go easy on PCs with little memory.</b> Close Premiere, After Effects, games and other heavy apps, and do not run other generations at the same time.
@@ -599,6 +688,13 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                 <li><b>Typical times on 16 GB:</b> about 1 to 1.5 min per frame with FLUX 3, about 5 min for a 14.7 s video at 576p, about 8 min at 720p.</li>
                 <li><b>Screenshots wait in line:</b> while a video is generating, new screenshots show “Taking the screenshot…” until it ends.</li>
               </ul>
+              </details>
+              {APPS.filter((a) => DICAS_BETA[a.id]).map((a) => (
+                <details key={a.id} className="hf-dicas-secao" open={app?.id === a.id}>
+                  <summary className="hf-dicas-modelo">{a.nome}</summary>
+                  <ul>{[...DICAS_BETA[a.id].dicas, ...DICAS_BETA[a.id].saber].map((d, k) => <li key={k}><b>{d[0]}</b> {d[1]}</li>)}</ul>
+                </details>
+              ))}
                         </div>
           </Popup>
         )}
@@ -609,20 +705,27 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           <label className="hf-vfx-busca"><span aria-hidden>⌕</span>
             <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Search effects…" aria-label="Search effects" /></label>
           <span className="hf-img-titulo">Effects</span>
-          <div className="hf-vfx-lista">
-            {[...APPS.filter((x) => x.id === 'maquete'), ...APPS.filter((x) => x.id !== 'maquete')]
-              .filter((a) => !busca.trim() || (a.nome + ' ' + a.frase).toLowerCase().includes(busca.trim().toLowerCase()))
-              .map((a) => (
+          {([['Ready', APPS.filter((x) => !ehBeta(x))], ['Beta', [...APPS.filter((x) => x.id === 'maquete'), ...APPS.filter((x) => x.beta)]]] as const).map(([grupo, lista]) => {
+            const achados = lista.filter((a) => !busca.trim() || (a.nome + ' ' + a.frase).toLowerCase().includes(busca.trim().toLowerCase()))
+            if (!achados.length) return null
+            return (
+              <details key={grupo} className="hf-vfx-grupo" open>
+                <summary><span>{grupo}</span><small>{achados.length}{grupo === 'Beta' ? ' · still being tested' : ''}</small></summary>
+                <div className="hf-vfx-lista">
+                  {achados.map((a) => (
               <button key={a.id} className="hf-app hf-vfx-cartao" data-ativo={app?.id === a.id} aria-pressed={app?.id === a.id} onClick={() => abrir(a)}>
-                <video src={`/exemplos/${a.id}.mp4?v=11#t=${a.id === 'alpha' ? 2 : 1.5}`} muted loop playsInline preload="metadata"
+                <video src={`/exemplos/${a.id}.mp4?v=17#t=${a.id === 'alpha' ? 2 : ['relight', 'ampliar2x', 'hdr', 'foley', 'cinemagraph'].includes(a.id) ? 1.8 : 1.5}`} muted loop playsInline preload="metadata"
                   onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}) }} onMouseLeave={(e) => e.currentTarget.pause()}
                   onError={(e) => { (e.currentTarget as HTMLVideoElement).style.visibility = 'hidden' }} />
-                {a.id === 'maquete' && <small className="hf-selo-neon">Experimental</small>}
+                {ehBeta(a) && <small className="hf-selo-neon">Beta</small>}
                 <b>{a.nome}{naNuvem && SO_LOCAL.has(a.id) && <small> · local GPU</small>}</b>
                 <span>{a.frase}</span>
               </button>
-            ))}
-          </div>
+                  ))}
+                </div>
+              </details>
+            )
+          })}
         </aside>
 
         <section className="hf-vfx-centro">
@@ -638,7 +741,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
             {video && resultado ? <ThenNow antes={urlEntrada(video.nome)} depois={transparente || urlImagem(resultado)} ehVideo={transparente ? true : undefined} modo={comparar} rotulos={['Before', 'After']} />
               : resultado ? <video src={transparente || urlImagem(resultado)} controls autoPlay loop muted playsInline />
               : video ? <video src={urlEntrada(video.nome)} controls muted playsInline />
-              : app ? <><video src={`/exemplos/${app.id}.mp4?v=11`} autoPlay loop muted playsInline /><span className="hf-vfx-exemplo">Example · drop your video on the right</span></>
+              : app ? <><video src={`/exemplos/${app.id}.mp4?v=17`} autoPlay loop muted playsInline /><span className="hf-vfx-exemplo">Example · drop your video on the right</span></>
               : <div className="hf-img-vazio"><b>Pick an effect</b><span>Choose one on the left.</span></div>}
           </div>
           {transparente && <AjustesRecorte valor={recorte} aoMudar={setRecorte} webm={urlRecorte('webm')} mov={urlRecorte('mov')} />}
@@ -647,8 +750,8 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
         <aside className="hf-img-col hf-img-dir hf-vfx-dir" aria-label="Effect settings">
           {app ? (<>
             <div className="hf-vfx-cabeca">
-              <video src={`/exemplos/${app.id}.mp4?v=11`} autoPlay loop muted playsInline />
-              {app.id === 'maquete' && <small className="hf-selo-neon">Experimental</small>}
+              <video src={`/exemplos/${app.id}.mp4?v=17`} autoPlay loop muted playsInline />
+              {app.id === 'maquete' && <small className="hf-selo-neon">Beta</small>}
               <b>{app.nome}</b>
               <span>{app.frase}</span>
             </div>
@@ -750,8 +853,15 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                 restyle it in the Image tab (Flux 3 with the captured frame as the base) and drop it here. 24 frames = 1 s, counted from 1 as in Blender.</p>
             </div>
           )}
-          {!ehMapa && !(app.id === 'maquete' && modoMaquete === 'avancado') && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
-            placeholder="Optional: describe what you want to see…" />}
+          {app.luz && <div className="hf-relight">
+            <label>Light<select className="hf-select" value={luzRelight} onChange={(e) => setLuzRelight(e.target.value)}>
+              {LUZES_RELIGHT.map((l) => <option key={l} value={l}>{l[0].toUpperCase() + l.slice(1)}</option>)}</select></label>
+            <label>From<select className="hf-select" value={direcaoRelight} onChange={(e) => setDirecaoRelight(e.target.value)}>
+              {DIRECOES_RELIGHT.map((d) => <option key={d} value={d}>{d.replace('the ', '').replace(/^./, (c) => c.toUpperCase())}</option>)}</select></label>
+            <p className="hf-dica">Outdoor shots only. A small light ball is drawn in the corner of each frame to guide the model.</p>
+          </div>}
+          {!ehMapa && !app.semTexto && !(app.id === 'maquete' && modoMaquete === 'avancado') && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
+            placeholder={app.dica ?? 'Optional: describe what you want to see…'} />}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           {!(app.id === 'maquete' && modoMaquete === 'avancado') && <div className="hf-linha-controles">
             {ehMapa && <Chips rotulo="Look" opcoes={[{ id: 'gray', rotulo: 'Gray' }, { id: 'inferno', rotulo: 'Color' }]} valor={corMapa} aoMudar={setCorMapa} />}

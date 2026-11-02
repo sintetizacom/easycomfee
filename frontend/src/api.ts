@@ -326,6 +326,11 @@ export type PedidoGeracao = {
   quadros_extrair?: number[]
   /** < 1 liga a camera lenta no LTX 2.5. */
   velocidade_video?: number
+  /** Cinemagraph (LoRA do LTX 2.5): so uma coisa se move, em loop. */
+  cinemagraph?: boolean
+  /** Relight: tipo de luz e direcao (backend/relight.py). */
+  relight_luz?: string
+  relight_direcao?: string
   lote?: number
   seed?: number | null
   steps?: number | null

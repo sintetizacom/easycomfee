@@ -61,8 +61,8 @@ function Cartao({ fluxo, capaPadrao, tam }: { fluxo: Fluxo; capaPadrao: string; 
       style={tam ? { gridColumn: `span ${tam[0]}`, gridRow: `span ${tam[1]}` } : undefined}>
       <div className="hf-est2-cartao-img">
         <Capa src={fluxo.capa ?? capaPadrao} />
-        {/* O 3D render -> Video ainda e experimental (o mesmo selo do VFX Studio). */}
-        {fluxo.destino === '#apps/maquete' && <small className="hf-selo-neon hf-est2-experimental">Experimental</small>}
+        {/* O 3D render -> Video ainda e beta (o mesmo selo do VFX Studio). */}
+        {fluxo.destino === '#apps/maquete' && <small className="hf-selo-neon hf-est2-experimental">Beta</small>}
         <div className="hf-est2-selos">
           {s.modelo && <span className="hf-est2-selo hf-est2-selo-modelo">{s.modelo}</span>}
           {s.gpu && <span className="hf-est2-selo">⚙ GPU</span>}

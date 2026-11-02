@@ -3104,7 +3104,7 @@ TEMPORAL_LTX = (4096, 4)
 
 
 def transformar_video(entrada, lora, texto, quadros, largura, altura, seed=42,
-                      com_audio=True, prefixo="editor/video_transformado"):
+                      com_audio=True, prefixo="editor/video_transformado", ref=None):
     """IC-LoRA do LTX 2.5 Creative Lab sobre um video da pasta de entrada.
 
     Molde do exemplo LTX-2.5_V2V_ICLoRA_Single_Stage_Distilled da Lightricks,
@@ -3125,9 +3125,12 @@ def transformar_video(entrada, lora, texto, quadros, largura, altura, seed=42,
         "partes": {"class_type": "GetVideoComponents", "inputs": {"video": ["carga", 0]}},
         "corte": {"class_type": "ImageFromBatch",
                   "inputs": {"image": ["partes", 0], "batch_index": 0, "length": quadros}},
+        # `ref`: guia menor que a saida (Pixel Spatial Upscaler: metade; o no le o
+        # fator do proprio LoRA em latent_downscale_factor).
         "tam": {"class_type": "ResizeImageMaskNode", "inputs": {
             "input": ["corte", 0], "resize_type": "scale dimensions",
-            "resize_type.width": largura, "resize_type.height": altura,
+            "resize_type.width": (ref or (largura, altura))[0],
+            "resize_type.height": (ref or (largura, altura))[1],
             "resize_type.crop": "center", "scale_method": "lanczos"}},
     }
     _texto(g, "pos", "clip", texto)
@@ -3174,6 +3177,20 @@ def transformar_video(entrada, lora, texto, quadros, largura, altura, seed=42,
     return g
 
 
+def aplicar_lora_ltx(g, lora, forca, chave):
+    """Poe um LoRA comum logo depois do UNETLoader de um grafo do LTX ja montado."""
+    unet = next(k for k, v in g.items() if v["class_type"] == "UNETLoader")
+    g[chave] = {"class_type": "LoraLoaderModelOnly", "inputs": {
+        "model": [unet, 0], "lora_name": win(lora), "strength_model": forca}}
+    for k, v in g.items():
+        if k == chave:
+            continue
+        for e, x in v["inputs"].items():
+            if x == [unet, 0]:
+                v["inputs"][e] = [chave, 0]
+    return g
+
+
 def aplicar_camera_lenta(g, velocidade):
     """Poe o LoRA Slow-Motion-Control num grafo do LTX 2.5 ja montado.
 
@@ -3181,15 +3198,7 @@ def aplicar_camera_lenta(g, velocidade):
     dizer fps / velocidade ao modelo. Ver CAMERA_LENTA em presets.
     """
     from presets import CAMERA_LENTA
-    unet = next(k for k, v in g.items() if v["class_type"] == "UNETLoader")
-    g["camera_lenta"] = {"class_type": "LoraLoaderModelOnly", "inputs": {
-        "model": [unet, 0], "lora_name": win(CAMERA_LENTA["lora"]), "strength_model": 1.0}}
-    for k, v in g.items():
-        if k == "camera_lenta":
-            continue
-        for e, x in v["inputs"].items():
-            if x == [unet, 0]:
-                v["inputs"][e] = ["camera_lenta", 0]
+    aplicar_lora_ltx(g, CAMERA_LENTA["lora"], 1.0, "camera_lenta")
     for v in g.values():
         if v["class_type"] == "LTXVConditioning":
             v["inputs"]["frame_rate"] = round(float(v["inputs"]["frame_rate"]) / velocidade, 3)
@@ -3974,4 +3983,126 @@ def mapa_profundidade(entrada, quadros, colormap="gray", exr_pasta=None, max_res
     }
     if exr_pasta:
         g["exr"] = {"class_type": "VideoDepthAnythingSaveEXR", "inputs": {"depths": ["dproc", 0], "folder_name": exr_pasta}}
+    return g
+
+
+def sdr_para_hdr(entrada, quadros, largura, altura, seed=42, com_audio=True,
+                 prefixo="editor/video_hdr"):
+    """SDR -> HDR (IC-LoRA do LTX 2.5), no molde do LTX-2.5_ICLoRA_SDR_to_HDR_Distilled
+    oficial: sem texto (o scene embedding entra como positivo e negativo, CFG 1), a guia
+    vai para ACEScct, o VAE decodifica em float32 e a saida volta de ACEScct para HDR
+    (HLG BT.2020, 10 bits). Testado em 02/11/2026."""
+    from presets import HDR
+    p = VIDEO_LTX
+    g = {
+        "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
+        "lora": {"class_type": "LTXICLoRALoaderModelOnly", "inputs": {
+            "model": ["unet", 0], "lora_name": win(HDR["lora"]), "strength_model": 1.0}},
+        "vae_v0": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_video"])}},
+        "vae_v": {"class_type": "LTXVVAEForceFloat32", "inputs": {"vae": ["vae_v0", 0]}},
+        "vae_a": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_audio"])}},
+        "cena": {"class_type": "LTXVLoadConditioning", "inputs": {"file_name": win(HDR["embedding"]), "device": "cpu"}},
+        "carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+        "partes": {"class_type": "GetVideoComponents", "inputs": {"video": ["carga", 0]}},
+        "corte": {"class_type": "ImageFromBatch", "inputs": {"image": ["partes", 0], "batch_index": 0, "length": quadros}},
+        "aces": {"class_type": "ImageColorSpace", "inputs": {"image": ["corte", 0], "source": "sRGB", "destination": "HDR ACEScct"}},
+        "tam": {"class_type": "ResizeImageMaskNode", "inputs": {
+            "input": ["aces", 0], "resize_type": "scale dimensions", "resize_type.width": largura,
+            "resize_type.height": altura, "resize_type.crop": "center", "scale_method": "lanczos"}},
+        "cond": {"class_type": "LTXVConditioning", "inputs": {
+            "positive": ["cena", 0], "negative": ["cena", 0], "frame_rate": ["partes", 2]}},
+        "vazio": {"class_type": "EmptyLTXVLatentVideo", "inputs": {
+            "width": largura, "height": altura, "length": quadros, "batch_size": 1}},
+        "guia": {"class_type": "LTXAddVideoICLoRAGuide", "inputs": {
+            "positive": ["cond", 0], "negative": ["cond", 1], "vae": ["vae_v", 0],
+            "latent": ["vazio", 0], "image": ["tam", 0], "frame_idx": 0, "strength": 1.0,
+            "latent_downscale_factor": ["lora", 1], "crop": "disabled",
+            "use_tiled_encode": False, "tile_size": 256, "tile_overlap": 64,
+            "use_streaming": False, "tile_frames": 97}},
+        "som": {"class_type": "LTXVEmptyLatentAudio", "inputs": {
+            "frames_number": quadros, "frame_rate": ["partes", 2], "batch_size": 1, "audio_vae": ["vae_a", 0]}},
+    }
+    g["av"] = {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["guia", 2], "audio_latent": ["som", 0]}}
+    g["guiador"] = {"class_type": "CFGGuider", "inputs": {
+        "model": ["lora", 0], "positive": ["guia", 0], "negative": ["guia", 1], "cfg": 1}}
+    g["ruido"] = {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}}
+    g["amostrador"] = {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}}
+    g["sigmas"] = {"class_type": "ManualSigmas", "inputs": {
+        "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"}}
+    g["amostra"] = {"class_type": "SamplerCustomAdvanced", "inputs": {
+        "noise": ["ruido", 0], "guider": ["guiador", 0], "sampler": ["amostrador", 0],
+        "sigmas": ["sigmas", 0], "latent_image": ["av", 0]}}
+    g["separa"] = {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["amostra", 0]}}
+    g["tira_guia"] = {"class_type": "LTXVCropGuides", "inputs": {
+        "positive": ["guia", 0], "negative": ["guia", 1], "latent": ["separa", 0]}}
+    # O oficial decodifica em 64/8, que faz a emenda a cada 56 quadros. O tempo inteiro de
+    # uma vez (TEMPORAL_LTX), com o VAE em float32, passou de 23 min e nao terminou em
+    # 02/11/2026 (a memoria transbordou para a RAM). 192/48 e o do 3D render, medido sem
+    # emenda visivel; ladrilho espacial menor pelo float32.
+    g["decodifica"] = {"class_type": "VAEDecodeTiled", "inputs": {
+        "samples": ["tira_guia", 2], "vae": ["vae_v", 0], "tile_size": 384,
+        "overlap": 64, "temporal_size": 192, "temporal_overlap": 48}}
+    g["hdr"] = {"class_type": "ImageColorSpace", "inputs": {
+        "image": ["decodifica", 0], "source": "HDR ACEScct", "destination": "HDR"}}
+    video = {"images": ["hdr", 0], "fps": ["partes", 2], "bit_depth": 10, "color_space": "HDR", "codec": "none"}
+    if com_audio:
+        video["audio"] = ["partes", 1]
+    g["video"] = {"class_type": "CreateVideo", "inputs": video}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {
+        "video": ["video", 0], "filename_prefix": prefixo, "format": "auto", "format.codec": "auto", "codec": "auto"}}
+    return g
+
+
+def foley_ltx(entrada, texto, quadros, largura, altura, seed=42, prefixo="editor/video_foley"):
+    """Foley V2A (LoRA do LTX 2.3, sobre o 2.5 como o Expand frame): o video entra
+    codificado e MANTIDO (mascara de video zerada) e so o audio e gerado, guiado pelo
+    texto. Sai o video original com o som novo. Sem o workflow oficial (fechado no
+    Hugging Face), montado pelo LTXVSetAudioVideoMaskByTime. Testado em 02/11/2026."""
+    from presets import FOLEY
+    p = VIDEO_LTX
+    segundos = quadros / 24
+    g = {
+        "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
+        "lora": {"class_type": "LoraLoaderModelOnly", "inputs": {
+            "model": ["unet", 0], "lora_name": win(FOLEY["lora"]), "strength_model": FOLEY["forca"]}},
+        "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": win(p["clip"]), "type": p["clip_type"], "device": "default"}},
+        "vae_v": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_video"])}},
+        "vae_a": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_audio"])}},
+        "carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+        "partes": {"class_type": "GetVideoComponents", "inputs": {"video": ["carga", 0]}},
+        "corte": {"class_type": "ImageFromBatch", "inputs": {"image": ["partes", 0], "batch_index": 0, "length": quadros}},
+        "tam": {"class_type": "ResizeImageMaskNode", "inputs": {
+            "input": ["corte", 0], "resize_type": "scale dimensions", "resize_type.width": largura,
+            "resize_type.height": altura, "resize_type.crop": "center", "scale_method": "lanczos"}},
+        "latente_v": {"class_type": "VAEEncode", "inputs": {"pixels": ["tam", 0], "vae": ["vae_v", 0]}},
+        "som": {"class_type": "LTXVEmptyLatentAudio", "inputs": {
+            "frames_number": quadros, "frame_rate": 24, "batch_size": 1, "audio_vae": ["vae_a", 0]}},
+    }
+    _texto(g, "pos", "clip", f"{texto.strip()} {FOLEY['fim']}".strip())
+    _texto(g, "neg", "clip", FOLEY["negativo"])
+    g["cond"] = {"class_type": "LTXVConditioning", "inputs": {
+        "positive": ["pos", 0], "negative": ["neg", 0], "frame_rate": 24}}
+    g["av"] = {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["latente_v", 0], "audio_latent": ["som", 0]}}
+    g["mascara"] = {"class_type": "LTXVSetAudioVideoMaskByTime", "inputs": {
+        "av_latent": ["av", 0], "positive": ["cond", 0], "negative": ["cond", 1], "model": ["lora", 0],
+        "vae": ["vae_v", 0], "audio_vae": ["vae_a", 0], "start_time": 0.0, "end_time": round(segundos, 3),
+        "video_fps": 24.0, "mask_video": False, "mask_audio": True,
+        "mask_init_value_video": 0.0, "mask_init_value_audio": 0.0, "slope_len": 3}}
+    g["guiador"] = {"class_type": "CFGGuider", "inputs": {
+        "model": ["lora", 0], "positive": ["mascara", 0], "negative": ["mascara", 1], "cfg": 1}}
+    g["ruido"] = {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}}
+    g["amostrador"] = {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_ancestral"}}
+    g["sigmas"] = {"class_type": "ManualSigmas", "inputs": {
+        "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"}}
+    g["amostra"] = {"class_type": "SamplerCustomAdvanced", "inputs": {
+        "noise": ["ruido", 0], "guider": ["guiador", 0], "sampler": ["amostrador", 0],
+        "sigmas": ["sigmas", 0], "latent_image": ["mascara", 2]}}
+    g["separa"] = {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["amostra", 0]}}
+    g["audio"] = {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["separa", 1], "audio_vae": ["vae_a", 0]}}
+    # Os quadros ORIGINAIS (sem passar pelo VAE) com o som gerado.
+    g["video"] = {"class_type": "CreateVideo", "inputs": {
+        "images": ["corte", 0], "fps": ["partes", 2], "audio": ["audio", 0],
+        "bit_depth": "auto", "color_space": "sRGB", "codec": "none"}}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {
+        "video": ["video", 0], "filename_prefix": prefixo, "format": "auto", "format.codec": "auto", "codec": "auto"}}
     return g
