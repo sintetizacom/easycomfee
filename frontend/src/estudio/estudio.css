@@ -918,10 +918,11 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
   .hf-linha-dir b { white-space: normal; overflow: visible; }
 }
 /* Faixa "ComfyUI isn't running" (AvisoComfy.tsx), logo abaixo da barra de cima. */
-/* No topo da pagina, no fluxo (empurra o conteudo), sem chegar aos botoes da direita. */
-.hf-aviso-comfy { display: block; width: fit-content; max-width: calc(100% - 300px); margin: 22px 0 -6px; padding: 7px 12px;
-  background: #3A2A12; color: #F4F0E8; border: 1px solid #6B4A1C; border-radius: 10px; font-size: 12.5px; line-height: 1.35;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Faixa fina presa ao topo, da barra lateral ate a borda direita; nao empurra nada. */
+.hf-aviso-comfy { position: fixed; top: 0; left: var(--hf-lateral-larg, 72px); right: 0; z-index: 40; height: 24px; margin: 0; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center; gap: 6px; background: #3A2A12; color: #F4F0E8;
+  border-bottom: 1px solid #6B4A1C; font-size: 12px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hf-aviso-comfy b { flex: none; }
 .hf-aviso-comfy b { color: #F5A33C; }
 .hf-aviso-comfy code { background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 .hf-looks-dica { color: var(--hf-apagado); font-size: 11.5px; }
@@ -2805,3 +2806,4 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-ast-capa i { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
   font-style: normal; font-size: 13px; color: var(--hf-neon); background: rgba(14, 14, 18, .75); }
 .hf-ast-previa-capa { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; margin-bottom: 10px; display: block; }
+@media (max-width: 700px) { .hf-aviso-comfy { left: 0; } }

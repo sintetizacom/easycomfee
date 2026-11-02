@@ -313,12 +313,11 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         <div className="hf-img-faixa" ref={faixa}>
           {emCurso.map((t) => <div key={t.id} className="hf-img-faixa-item hf-img-faixa-curso"><CartaoTarefa t={t} /></div>)}
           {recentes.map((a) => (
-            <button key={a.subpasta + a.nome} type="button" className="hf-img-faixa-item hf-vid-item" data-ativo={palco?.nome === a.nome}
-              onClick={() => setSelecionado(a)} title="Play it in the big player">
-              <video src={urlImagem(a) + '#t=0.5'} muted preload="metadata" playsInline
-                onLoadedMetadata={(e) => { const d = e.currentTarget.duration; const el = e.currentTarget.nextElementSibling; if (el && isFinite(d)) el.textContent = `00:${String(Math.round(d)).padStart(2, '0')}` }} />
-              <span className="hf-vid-dur" />
-            </button>
+            // Os mesmos botoes das outras galerias (menu com Send to Genjutsu / VFX Studio);
+            // clique mostra no player grande.
+            <div key={a.subpasta + a.nome} className="hf-img-faixa-item hf-faixa-midia hf-vid-item" data-ativo={palco?.nome === a.nome} title="Play it in the big player">
+              <Midia nome={a.nome} subpasta={a.subpasta} aoClicar={() => setSelecionado(a)} />
+            </div>
           ))}
           {!recentes.length && !emCurso.length && <p className="hf-vazio">Your videos will appear here.</p>}
         </div>

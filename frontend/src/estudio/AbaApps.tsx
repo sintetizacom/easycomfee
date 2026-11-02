@@ -3,7 +3,7 @@ import { MotorCtx } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Popup } from './AbaCinema'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, rotuloCusto, useCusto, useTarefas, Galeria, MAX_PROMPT, TituloPagina } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, rotuloCusto, useCusto, useTarefas, Galeria, MAX_PROMPT, TituloPagina } from './comum'
 
 // VFX Apps: one card per effect, all open-weight LTX IC-LoRAs. Pick a card,
 // drop a video, press Apply. Each card id is an effect of VIDEO_TRANSFORMAR
@@ -355,6 +355,8 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const semPacote = ehMapa && !!instalados && !instalados.has('profundidade')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
+  useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
   const [chaves, setChaves] = useState<Chave[]>([])
   const proximo = useRef(1)

@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow } from './Visualizador'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Genjutsu: recast a video with a new cast, place or style while its motion,
 // camera and timing stay. Models (backend genjutsu.py):
@@ -68,6 +68,8 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   const [turbo, setTurbo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // "Send to Genjutsu" num video da galeria: vira o video de entrada.
+  useVideoRecebido(setVideo, setErro)
   // Recast in flight: the frame job, and what the video job needs once it is done.
   const pendente = useRef<{ id: string; video: string; texto: string; controle: string } | null>(null)
   const [etapa, setEtapa] = useState('')

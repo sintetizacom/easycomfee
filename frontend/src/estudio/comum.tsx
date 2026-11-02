@@ -187,6 +187,36 @@ function editarImagem(e: { nome: string; subpasta: string }) {
   window.dispatchEvent(new Event('easycomfee:editar'))
 }
 
+// "Send to Genjutsu / VFX Studio": o video fica guardado aqui, a aba abre e o pega
+// (pegarVideo) ao montar ou pelo evento, e o sobe como o video de entrada dela.
+let paraVideo: { nome: string; subpasta: string } | null = null
+export const EVENTO_VIDEO = 'easycomfee:video'
+export function pegarVideo() { const e = paraVideo; paraVideo = null; return e }
+function mandarVideo(hash: string, e: { nome: string; subpasta: string }) {
+  paraVideo = e
+  location.hash = hash
+  window.dispatchEvent(new Event(EVENTO_VIDEO))
+}
+/** Um video da galeria como entrada de outra aba (copia para a pasta de entrada). */
+export async function videoDaGaleria(e: { nome: string; subpasta: string }) {
+  const r = await fetch(urlImagem(e))
+  if (!r.ok) throw new Error('Could not read the video from the gallery.')
+  const blob = await r.blob()
+  return api.enviarReferencia(new File([blob], e.nome, { type: blob.type || 'video/mp4' }))
+}
+/** Na aba que recebe: pega o video enviado ao montar e a cada envio novo. */
+export function useVideoRecebido(aoReceber: (r: Referencia) => void, aoFalhar: (m: string) => void) {
+  useEffect(() => {
+    const pegar = () => {
+      const e = pegarVideo()
+      if (e) videoDaGaleria(e).then(aoReceber).catch((x) => aoFalhar(mensagem(x)))
+    }
+    pegar()
+    window.addEventListener(EVENTO_VIDEO, pegar)
+    return () => window.removeEventListener(EVENTO_VIDEO, pegar)
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 /** Leva para outra aba e entrega o arquivo ao primeiro slot de imagem dela. */
 function irComImagem(hash: string, e: { nome: string; subpasta: string }) {
   // Ja na aba com um modelo no endereco (#image/qwen21): ficar nele, e nao voltar a
@@ -294,6 +324,8 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
       } },
     ] : []),
     ...(video ? [
+      { rotulo: 'Send to Genjutsu', acao: () => mandarVideo('#genjutsu', arq) },
+      { rotulo: 'Send to VFX Studio', acao: () => mandarVideo('#apps', arq) },
       { rotulo: 'Upscale', acao: () => { location.hash = '#ltx/ampliar' } },
       { rotulo: 'Depth map', acao: () => { location.hash = '#apps/mapa_profundidade' } },
     ] : []),
@@ -312,7 +344,7 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
       {eAudio(nome) ? <audio src={url} controls className="hf-audio" />
         : video ? <>
             {/* The tile is a preview (plays muted on hover); a click opens the viewer with the full player. */}
-            <video src={url} loop muted playsInline preload="metadata" className="hf-midia hf-midia-video" onClick={abrir}
+            <video src={url} loop muted playsInline preload="metadata" className="hf-midia hf-midia-video" onClick={clicar} onDoubleClick={abrir}
               onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}) }}
               onMouseLeave={(e) => { e.currentTarget.pause() }} />
             <span className="hf-play" aria-hidden>▶</span>
