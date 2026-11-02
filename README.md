@@ -8,11 +8,15 @@ LTX is the core of the app: video, keyframes, VFX, camera moves, lip sync and th
 
 ### Made with the app (before → after, open LTX models on a 16 GB GPU)
 
-| Day → Night | 3D render → Video | Remove compression |
+| Day → Night | 3D render → Video `BETA` | Remove compression |
 |---|---|---|
 | ![Day to Night: the same shot at night](docs/galeria/noite.gif) | ![A grey Blender blockout becomes a finished film shot](docs/galeria/maquete-blender.gif) | ![Blocky compressed footage cleaned up](docs/galeria/compressao.gif) |
 | **Add water** | **Expand frame** (inside the green box is the original vertical clip) | **Follow depth** |
 | ![A street flooded with water](docs/galeria/agua.gif) | ![A vertical clip expanded to widescreen](docs/galeria/expandir.gif) | ![The same street turned into a snowy night](docs/galeria/profundidade.gif) |
+| **Remove background** (alpha matte, no green screen) | **Relight** `BETA` (overcast → strong backlight) | **Cinemagraph** `BETA` (only the water moves) |
+| ![A woman cut out of a night market onto a transparent background](docs/galeria/alpha.gif) | ![An overcast mountain trail relit with strong backlight](docs/galeria/relight.gif) | ![A still waterfall photo where only the water flows](docs/galeria/cinemagraph.gif) |
+| **Add sound** `BETA` (silent clip → hooves on stone, with sound in the app) | **Upscale 2×** `BETA` | **SDR → HDR** `BETA` (HLG, 10-bit; shown here tone-mapped) |
+| ![A silent clip of a horse gets the sound of its hooves](docs/galeria/foley.gif) | ![A low-resolution cat close-up upscaled 2x](docs/galeria/ampliar2x.gif) | ![A sunset over the sea converted to HDR](docs/galeria/hdr.gif) |
 
 ### From a Blender blockout to a finished shot
 
@@ -111,7 +115,7 @@ On smaller cards, **Config Models** shows which packages run well on that GPU an
 | **Voice** | Narrate a text, design a voice, or clone one from a short sample | OmniVoice (local) · Qwen3-TTS (Comfy Cloud) |
 | **Cinema Studio** | Direct the shot like a film set: camera, lens, light, film, look and grade cards, shot list, cast, Director mode | Image models + LTX |
 | **Genjutsu** | Swap a character in a video, keeping motion, camera and timing | **Recast** (Qwen Image Edit + LTX Union Control) · Wan Animate 2 · Wan 2.2 Animate Replace · MiniMax H3 Character Swap |
-| **VFX Studio** | One-click effects on your own footage: **Remove background** (alpha matte, transparent WebM or ProRes 4444, with choke, feather and black/white point controls), Relight, Add sound (foley), Cinemagraph, Upscale 2×, SDR → HDR (HLG, 10-bit), Day → Night, Remove people, Add water, Swap character, Expand frame, Colorize, Unblur, Remove compression, Refine details, Restore, Follow depth, 3D render → Video, Slow motion, **Video → Depth map** (video or EXR frames) | LTX 2.5 / 2.3 IC-LoRAs · Video Depth Anything |
+| **VFX Studio** | One-click effects on your own footage, in two groups. **Ready:** **Remove background** (alpha matte, transparent WebM or ProRes 4444, with choke, feather and black/white point controls), Day → Night, Remove people, Add water, Swap character, Expand frame, Colorize, Unblur, Remove compression, Refine details, Restore, Follow depth, Slow motion, **Video → Depth map** (video or EXR frames). **Beta** (tips for each one in *Beta · Tips*): 3D render → Video, Relight, Add sound (foley), Cinemagraph, Upscale 2×, SDR → HDR (HLG, 10-bit) | LTX 2.5 / 2.3 IC-LoRAs · Video Depth Anything |
 | **Assets** | Everything you made | |
 | **Advanced** | ComfyUI itself, with its node editor, inside the app | |
 
@@ -227,6 +231,7 @@ install.bat
 - If EasyComfee installed ComfyUI, it starts it for you. Right after turning the PC on, ComfyUI takes a minute or two to load; a strip at the top says *ComfyUI is starting* and goes away by itself, and the model menus fill in on their own.
 - If you use your own ComfyUI, start it first, as usual.
 - **Start ComfyUI with Windows** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI while the PC starts, so it is ready when you open the studio. Off removes it; it also shows in Task Manager → Startup apps.
+- **Safe mode** (Config Models → Local models, **on by default**): explicit prompts are refused, local models get an anti-nudity negative prompt, and any result a small on-device classifier (Falconsai NSFW detector, Apache-2.0, ONNX on the CPU) marks as NSFW is shown blurred; the file on disk is kept. Open-weight models have no filter of their own, so turning it off is your choice and your responsibility.
 
 Then open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
 
@@ -297,7 +302,7 @@ The studio's code is released under the [MIT License](LICENSE). Models are not p
 | Model | Used for | License |
 |---|---|---|
 | LTX 2.5 (Lightricks) | Video, VFX, Cinema Studio, Recast | [LTX-2.x Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x) |
-| LTX 2.3 (Lightricks) | Video, Lip Sync, Union Control, In/Outpainting | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2) |
+| LTX 2.3 (Lightricks) | Video, Lip Sync, Union Control, In/Outpainting, Relight, Add sound (Foley V2A) | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2); the Foley V2A LoRA card says part of its training data (FoleyBench) is CC BY-NC-SA, non-commercial |
 | LTX-Video 2B 0.9.8 | Light video | Apache 2.0 / LTX-Video license |
 | MiniMax H3 · FastH3 | Video, Character Swap | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) |
 | Wan 2.2 5B · Wan 2.1 1.3B · Wan Animate | Light video, Genjutsu | Apache 2.0 |
