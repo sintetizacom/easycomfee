@@ -2813,3 +2813,10 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
   background: repeating-conic-gradient(#3a3a44 0 25%, #24242c 0 50%) 0 0 / 20px 20px; }
 /* Videos com o cartao padrao (Midia): o video volta a receber o mouse (tocar ao passar, clique duplo abre). */
 .hf-vid-item .hf-midia-caixa video { pointer-events: auto; }
+/* Recast: aprovar o primeiro quadro antes de animar. */
+.hf-gj-aprovar { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 20px; align-items: center; margin-top: 16px;
+  padding: 18px; border: 1px solid var(--hf-neon); border-radius: 14px; background: #17171E; }
+.hf-gj-aprovar img { width: 100%; border-radius: 10px; display: block; cursor: zoom-in; }
+.hf-gj-aprovar b { display: block; margin-bottom: 6px; }
+.hf-gj-aprovar-botoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+@media (max-width: 760px) { .hf-gj-aprovar { grid-template-columns: 1fr; } }

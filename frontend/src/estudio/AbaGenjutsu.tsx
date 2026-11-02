@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
-import { ThenNow } from './Visualizador'
+import { ThenNow, abrirVisualizador } from './Visualizador'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Genjutsu: recast a video with a new cast, place or style while its motion,
@@ -73,6 +73,9 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   // Recast in flight: the frame job, and what the video job needs once it is done.
   const pendente = useRef<{ id: string; video: string; texto: string; controle: string } | null>(null)
   const [etapa, setEtapa] = useState('')
+  // Recast em duas etapas: o primeiro quadro novo espera a aprovacao antes de animar
+  // (um quadro errado vira um video inteiro errado, e o video e a parte demorada).
+  const [aprovar, setAprovar] = useState<{ quadro: { nome: string; subpasta: string }; video: string; texto: string; controle: string } | null>(null)
   // Jobs started here (the Recast steps are ordinary image and video jobs).
   const [meus, setMeus] = useState<string[]>([])
   const anotar = (id: string) => setMeus((m) => [id, ...m])
@@ -115,21 +118,30 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
     if (!t || (t.estado !== 'pronto' && t.estado !== 'erro')) return
     pendente.current = null
     if (t.estado === 'erro') { setEtapa(''); setErro(t.erro || 'The first frame failed.'); return }
-    const quadro = arquivos(t)[0]
+    setEtapa('')
+    setAprovar({ quadro: arquivos(t)[0], video: p.video, texto: p.texto, controle: p.controle })
+  }, [tarefas])
+
+  // Etapa 2, so depois de aprovar: o LTX Union Control leva o video inteiro para o quadro aprovado.
+  const animar = () => {
+    const a = aprovar
+    if (!a) return
+    setAprovar(null)
     setEtapa('Animating the video…')
-    referenciaDaGaleria({ arquivo: quadro.nome, subpasta: quadro.subpasta })
+    referenciaDaGaleria({ arquivo: a.quadro.nome, subpasta: a.quadro.subpasta })
       .then((r) => api.gerar({
-        modelo: 'transformar_video', efeito_video: 'trocar', controle_troca: p.controle, prompt: p.texto,
-        proporcao: '1:1', referencias: [`entrada:${p.video}`, r.nome],
+        modelo: 'transformar_video', efeito_video: 'trocar', controle_troca: a.controle, prompt: a.texto,
+        proporcao: '1:1', referencias: [`entrada:${a.video}`, r.nome],
       } as Parameters<typeof api.gerar>[0]))
       .then((v) => anotar(v.id))
       .catch((e) => setErro(mensagem(e)))
       .finally(() => setEtapa(''))
-  }, [tarefas])
+  }
 
   const gerar = async () => {
     if (!video) return
     setErro(null)
+    setAprovar(null)
     try {
       if (modelo === 'recast') {
         setEtapa('Redrawing the first frame…')
@@ -238,6 +250,21 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
           </section>
         </div>
         {erro && <p className="hf-erro">{erro}</p>}
+        {aprovar && (
+          <section className="hf-gj-aprovar" aria-label="Approve the new first frame">
+            <img src={urlImagem(aprovar.quadro)} alt="New first frame" onClick={() => abrirVisualizador(aprovar.quadro)} />
+            <div>
+              <b>Step 1 of 2 · check the new first frame</b>
+              <p className="hf-dica">The whole video will follow this look: the character, clothes and place. If it is not right,
+                redraw it (each try comes out different) or change the photo or the direction, before spending time on the video.</p>
+              <div className="hf-gj-aprovar-botoes">
+                <button type="button" className="hf-botao" onClick={animar}>Animate with this frame →</button>
+                <button type="button" className="hf-botao-sec" onClick={() => void gerar()}>Redraw the frame</button>
+                <button type="button" className="hf-botao-sec" onClick={() => setAprovar(null)}>Cancel</button>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
       {video && resultado && (

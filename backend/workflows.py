@@ -3449,7 +3449,17 @@ def trocar_personagem_video(entrada, lora, texto, quadros, largura, altura, prim
         "vae": ["vae_v", 0], "latent": ["inplace1" if primeiro else "vazio", 0], "image": ["sinal_tam", 0], "frame_idx": 0, "strength": 1.0,
         "latent_downscale_factor": ["lora", 1], "crop": "disabled", "use_tiled_encode": False, "tile_size": 256,
         "tile_overlap": 64, "use_streaming": False, "tile_frames": 97}}
-    g["av1"] = {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["guia", 2], "audio_latent": ["som", 0]}}
+    # Audio original "congelado" (LTXVSetAudioRefTokens, como no Expand frame): o modelo
+    # desenha a boca OUVINDO a fala. Antes o audio era gerado do zero e so trocado pelo
+    # original no fim, entao os labios nao acompanhavam a fala (02/11/2026).
+    if com_audio:
+        del g["som"]
+        g["audio_lat"] = {"class_type": "VAEEncodeAudio", "inputs": {"audio": ["partes", 1], "vae": ["vae_a", 0]}}
+        g["ref1"] = {"class_type": "LTXVSetAudioRefTokens", "inputs": {"positive": ["guia", 0], "negative": ["guia", 1], "audio_latent": ["audio_lat", 0]}}
+        pos1, neg1, som1 = ["ref1", 0], ["ref1", 1], ["ref1", 2]
+    else:
+        pos1, neg1, som1 = ["guia", 0], ["guia", 1], ["som", 0]
+    g["av1"] = {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["guia", 2], "audio_latent": som1}}
 
     def amostrar(suf, pos, neg, latente, sigmas, semente):
         g[f"guiador{suf}"] = {"class_type": "CFGGuider", "inputs": {"model": ["lora", 0], "positive": pos, "negative": neg, "cfg": 1}}
@@ -3460,15 +3470,20 @@ def trocar_personagem_video(entrada, lora, texto, quadros, largura, altura, prim
             "guider": [f"guiador{suf}", 0], "sampler": [f"amostrador{suf}", 0], "sigmas": [f"sigmas{suf}", 0], "latent_image": latente}}
         g[f"separa{suf}"] = {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": [f"amostra{suf}", 0]}}
 
-    amostrar("1", ["guia", 0], ["guia", 1], ["av1", 0], "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0", seed)
+    amostrar("1", pos1, neg1, ["av1", 0], "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0", seed)
     g["tira1"] = {"class_type": "LTXVCropGuides", "inputs": {"positive": ["guia", 0], "negative": ["guia", 1], "latent": ["separa1", 0]}}
     g["amplia"] = {"class_type": "LTXVLatentUpsampler", "inputs": {"samples": ["tira1", 2], "upscale_model": ["ups", 0], "vae": ["vae_v", 0]}}
     if primeiro:
         g["inplace2"] = {"class_type": "LTXVImgToVideoInplace", "inputs": {"vae": ["vae_v", 0], "image": ["q1_tam", 0],
             "latent": ["amplia", 0], "strength": 1.0, "bypass": False}}
+    if com_audio:
+        g["ref2"] = {"class_type": "LTXVSetAudioRefTokens", "inputs": {"positive": ["tira1", 0], "negative": ["tira1", 1], "audio_latent": ["audio_lat", 0]}}
+        pos2, neg2, som2 = ["ref2", 0], ["ref2", 1], ["ref2", 2]
+    else:
+        pos2, neg2, som2 = ["tira1", 0], ["tira1", 1], ["separa1", 1]
     g["av2"] = {"class_type": "LTXVConcatAVLatent", "inputs": {
-        "video_latent": ["inplace2" if primeiro else "amplia", 0], "audio_latent": ["separa1", 1]}}
-    amostrar("2", ["tira1", 0], ["tira1", 1], ["av2", 0], "0.909375, 0.725, 0.421875, 0.0", seed + 1)
+        "video_latent": ["inplace2" if primeiro else "amplia", 0], "audio_latent": som2}}
+    amostrar("2", pos2, neg2, ["av2", 0], "0.909375, 0.725, 0.421875, 0.0", seed + 1)
     g["decodifica"] = {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["separa2", 0], "vae": ["vae_v", 0],
                        "tile_size": 512, "overlap": 64, "temporal_size": TEMPORAL_LTX[0], "temporal_overlap": TEMPORAL_LTX[1]}}
     video = {"images": ["decodifica", 0], "fps": 24, "bit_depth": "auto", "color_space": "sRGB", "codec": "none"}
