@@ -827,8 +827,10 @@ html .mq-remover:hover { color: #F4F0E8; }
 html .mq-remover:disabled { opacity: .5; cursor: default; }
 /* Audio: os icones nao ficam por cima do player (cobriam o tempo e o volume);
    vao numa linha propria acima dele, sempre visiveis. */
-.hf-midia-caixa[data-audio] .hf-acoes-topo { position: static; opacity: 1; justify-content: flex-end; margin-top: 8px; }
-.hf-midia-caixa[data-audio] .hf-audio { margin-top: 6px; }
+/* Cartao de audio: atalhos na primeira linha, o player no meio, o prompt (legenda do cartao) embaixo. */
+.hf-midia-caixa[data-audio] { display: flex; flex-direction: column; }
+.hf-midia-caixa[data-audio] .hf-acoes-topo { position: static; opacity: 1; order: -1; justify-content: flex-end; margin: 0 0 8px; }
+.hf-midia-caixa[data-audio] .hf-audio { margin: 0 0 4px; }
 /* Then & Now (Visualizador): antes e depois lado a lado ou com cortina arrastavel. */
 .hf-tn-lado { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; height: 100%; align-items: center; }
 .hf-tn-lado figure { margin: 0; position: relative; display: grid; place-items: center; min-height: 0; }
