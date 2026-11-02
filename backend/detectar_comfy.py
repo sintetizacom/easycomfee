@@ -24,9 +24,9 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = RAIZ / "config.json"
 EXEMPLO = RAIZ / "config.example.json"
 DOWNLOAD = "https://www.comfy.org/download"
-# Quem ja tinha ComfyUI abre o proprio: o atalho do EasyComfee nao o liga.
-AVISO_DA_PESSOA = ("\nImportant: EasyComfee uses this ComfyUI but does not start it.\n"
-                   "Every time: open your ComfyUI first, wait until it is ready, then open EasyComfee.")
+# Quem ja tinha ComfyUI: o atalho acha a porta dele ou o abre (ver iniciar_comfy.py).
+AVISO_DA_PESSOA = ("\nEasyComfee will use this ComfyUI. The shortcut finds it if it is already open,\n"
+                   "or opens it for you (portable or Desktop). With a manual install, open it yourself first.")
 
 
 def _e_comfy(p: pathlib.Path) -> bool:

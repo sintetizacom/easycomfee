@@ -62,7 +62,6 @@ popd
 echo.
 call "%~dp0criar-atalho.bat"
 echo Done. Open EasyComfee from the shortcut on your Desktop (or run start.bat).
-echo If you already had ComfyUI: open your ComfyUI first, then EasyComfee.
 pause
 exit /b 0
 

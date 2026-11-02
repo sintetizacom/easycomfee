@@ -9,8 +9,8 @@ import { MotorCtx } from './motor'
 const DEMORA_MS = 3 * 60 * 1000
 
 // Uma faixa so: "subindo" (o app acabou de abrir) e "fora" viravam duas mensagens.
-// Quem ja tinha ComfyUI (o instalador gravou comfy_iniciar: false) abre o proprio:
-// o atalho nao o liga, e "esta subindo" fazia a pessoa esperar por nada.
+// Quem ja tinha ComfyUI (o instalador gravou comfy_iniciar: false): o atalho acha a porta
+// dele ou abre o dele (portatil, Desktop); numa instalacao manual a pessoa abre.
 export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const { naNuvem } = useContext(MotorCtx)
   const [fora, setFora] = useState(false)
@@ -39,7 +39,7 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   return (
     <div className="hf-aviso-comfy" role="status" title={ajuda}>
       {daPessoa
-        ? <><b>Open your ComfyUI.</b> EasyComfee uses the ComfyUI you already had and doesn't start it. This page connects by itself when it's up.</>
+        ? <><b>Waiting for your ComfyUI…</b> The shortcut opens it when it can; if no ComfyUI window appears, open it yourself. This page connects by itself.</>
         : demorou
           ? <><b>ComfyUI is taking long to start.</b> Check its window for an error, or close it and open it again. No GPU? Use Comfy Cloud in Config Models.</>
           : <><b>ComfyUI is starting…</b> about a minute or two after the PC starts. Not coming up? Open ComfyUI, or use Comfy Cloud in Config Models.</>}
