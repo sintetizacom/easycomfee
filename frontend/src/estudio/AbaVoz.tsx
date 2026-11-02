@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { api } from '../api'
+import { useEffect, useRef, useState } from 'react'
+import { api, urlImagem } from '../api'
 import { GruposAbertos, useEscolha } from './motor'
-import { BotaoGerar, CartaoTarefa, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
+import { EVENTO_VOZES, BotaoGerar, CartaoTarefa, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
 
 // Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
 // on Comfy Cloud, where OmniVoice is missing, Qwen3-TTS (voz.grafo_nuvem),
@@ -35,6 +35,9 @@ const VOZES_LOCAIS = [
   { id: 'casual', rotulo: 'Young casual', tags: 'male, young adult, moderate pitch', seed: 1107 },
   { id: 'calm', rotulo: 'Calm presenter', tags: 'female, middle-aged, moderate pitch', seed: 1108 },
 ]
+type MinhaVoz = { id: string; nome: string; tipo: 'criar' | 'clonar'; amostra: { nome: string; subpasta: string }
+  instrucao?: string; seed?: number; referencia?: string; transcricao?: string }
+
 // Fala comum: ~15 caracteres por segundo. Serve para avisar do limite do Lip Sync.
 const segundosDe = (texto: string) => Math.round(texto.trim().length / 15)
 // O mesmo teto do servidor (12.000 caracteres, uns 13 min de fala): antes a caixa
@@ -50,7 +53,34 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const [idioma, setIdioma] = useState('English')
   const [falante, setFalante] = useState('Ryan')
   const [vozLocal, setVozLocal] = useState('')
+  // Amostra de cada voz pronta: a mesma frase, gerada uma vez (public/vozes/<id>.mp3).
+  const [tocando, setTocando] = useState<string | null>(null)
+  const player = useRef<HTMLAudioElement | null>(null)
+  const ouvir = (id: string, url = `/vozes/${id}.mp3`) => {
+    player.current?.pause()
+    if (tocando === id) { setTocando(null); return }
+    const a = new Audio(url)
+    a.onended = () => setTocando((t) => (t === id ? null : t))
+    player.current = a
+    setTocando(id)
+    a.play().catch(() => setTocando(null))
+  }
+  useEffect(() => () => player.current?.pause(), [])
   const [busca, setBusca] = useState('')
+  // Minhas vozes: salvas pelo menu de um audio do Design ou do Clone (EVENTO_VOZES avisa).
+  const [vozesMinhas, setVozesMinhas] = useState<MinhaVoz[]>([])
+  useEffect(() => {
+    const ler = () => { fetch('/api/voz/minhas').then((r) => (r.ok ? r.json() : [])).then(setVozesMinhas).catch(() => {}) }
+    ler()
+    window.addEventListener(EVENTO_VOZES, ler)
+    return () => window.removeEventListener(EVENTO_VOZES, ler)
+  }, [])
+  const apagarMinha = async (v: MinhaVoz) => {
+    if (!confirm(`Delete the voice "${v.nome}"? The audio files stay in the gallery.`)) return
+    await fetch(`/api/voz/minhas/${v.id}`, { method: 'DELETE' })
+    if (vozLocal === `minha:${v.id}`) setVozLocal('')
+    window.dispatchEvent(new Event(EVENTO_VOZES))
+  }
   const [instrucao, setInstrucao] = useLembrado('voice.instrucao', '')
   // Narrate na nuvem: "como dizer" (excited, whispering...). Era o mesmo campo da
   // descricao do Design a voice, que ia escondida no pedido do Narrate.
@@ -65,7 +95,14 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
 
   // Narrate local com voz pronta = Voice Design com as tags e a seed dela.
   const pronta = modo === 'narrar' && !naNuvem ? VOZES_LOCAIS.find((v) => v.id === vozLocal && v.tags) : undefined
-  const pedido = {
+  // Voz salva: refaz o Design (descricao + seed) ou o Clone (gravacao + transcricao).
+  const minhasVisiveis = vozesMinhas.filter((v) => v.nome.toLowerCase().includes(busca.trim().toLowerCase()))
+  const minha = modo === 'narrar' && !naNuvem ? vozesMinhas.find((v) => `minha:${v.id}` === vozLocal) : undefined
+  const pedido = minha ? {
+    modelo: 'voz', modo_voz: minha.tipo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma, falante_voz: falante,
+    ...(minha.tipo === 'criar' ? { instrucao_voz: minha.instrucao, seed: minha.seed }
+      : { instrucao_voz: '', referencia_voz: minha.referencia, transcricao_voz: minha.transcricao ?? '' }),
+  } : {
     modelo: 'voz', modo_voz: pronta ? 'criar' : modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
     falante_voz: falante,
     instrucao_voz: pronta ? pronta.tags : modo === 'criar' ? instrucao.trim() : modo === 'narrar' && naNuvem ? comoDizer.trim() : '', ...(pronta ? { seed: pronta.seed } : {}),
@@ -142,14 +179,47 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
             ) : (
               <>
                 <div className="hf-vzn-lista" role="radiogroup" aria-label="Voice">
+                  <details className="hf-vzn-grupo" open>
+                  <summary>Default voices</summary>
                   {VOZES_LOCAIS.filter((v) => `${v.rotulo} ${v.tags}`.toLowerCase().includes(busca.trim().toLowerCase())).map((v) => (
                     <button key={v.id} type="button" role="radio" aria-checked={vozLocal === v.id} data-ativo={vozLocal === v.id} onClick={() => setVozLocal(v.id)}>
                       <i aria-hidden>{v.rotulo[0]}</i><b>{v.rotulo}</b>
                       {v.tags && <span>{v.tags.split(', ').map((t) => <small key={t}>{t}</small>)}</span>}
+                      {v.id
+                        ? <span role="button" tabIndex={0} className="hf-vzn-ouvir" data-tocando={tocando === v.id || undefined}
+                            title={tocando === v.id ? 'Stop' : 'Hear this voice'} aria-label={`${tocando === v.id ? 'Stop' : 'Hear'} ${v.rotulo}`}
+                            onClick={(e) => { e.stopPropagation(); ouvir(v.id) }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); ouvir(v.id) } }}>
+                            {tocando === v.id
+                              ? <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor" /></svg>
+                              : <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden><path d="M3.5 1.8v8.4a.6.6 0 0 0 .9.5l6.6-4.2a.6.6 0 0 0 0-1L4.4 1.3a.6.6 0 0 0-.9.5z" fill="currentColor" /></svg>}</span>
+                        : <em className="hf-vzn-varia">varies each time</em>}
                     </button>
                   ))}
+                  </details>
+                  <details className="hf-vzn-grupo" open={vozesMinhas.length > 0 || undefined}>
+                  <summary>My voices <small>{vozesMinhas.length}</small></summary>
+                  {vozesMinhas.length === 0 && <p className="hf-vzn-vazio">No saved voices yet. Make one in <b>Design a voice</b> or <b>Clone a voice</b>, then use <b>⋮ → Save to my voices</b> on the result.</p>}
+                    {minhasVisiveis.map((v) => {
+                      const id = `minha:${v.id}`
+                      return (
+                        <button key={id} type="button" role="radio" aria-checked={vozLocal === id} data-ativo={vozLocal === id} onClick={() => setVozLocal(id)}>
+                          <i aria-hidden>{v.nome[0]?.toUpperCase()}</i><b>{v.nome}</b>
+                          <span><small>{v.tipo === 'criar' ? 'designed' : 'cloned'}</small>
+                            <small className="hf-vzn-apagar" role="button" tabIndex={0} title="Delete this voice"
+                              onClick={(e) => { e.stopPropagation(); void apagarMinha(v) }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); void apagarMinha(v) } }}>delete</small></span>
+                          <span role="button" tabIndex={0} className="hf-vzn-ouvir" data-tocando={tocando === id || undefined}
+                            title={tocando === id ? 'Stop' : 'Hear this voice'} aria-label={`${tocando === id ? 'Stop' : 'Hear'} ${v.nome}`}
+                            onClick={(e) => { e.stopPropagation(); ouvir(id, urlImagem(v.amostra)) }}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); ouvir(id, urlImagem(v.amostra)) } }}>
+                            {tocando === id ? <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor" /></svg> : <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden><path d="M3.5 1.8v8.4a.6.6 0 0 0 .9.5l6.6-4.2a.6.6 0 0 0 0-1L4.4 1.3a.6.6 0 0 0-.9.5z" fill="currentColor" /></svg>}</span>
+                        </button>
+                      )
+                    })}
+                  </details>
                 </div>
-                <p className="hf-dica">{vozLocal ? 'The same voice in any language.' : 'Auto: OmniVoice picks a natural voice for the language.'} Want your own? Use <b>Design a voice</b> or <b>Clone a voice</b>.</p>
+                <p className="hf-dica">{vozLocal ? 'The same voice in any language.' : 'Auto: OmniVoice picks a natural voice for the language.'} Want your own? Use <b>Design a voice</b> or <b>Clone a voice</b>, then <b>⋮ → Save to my voices</b> on the result.</p>
               </>
             ))}
             {modo === 'criar' && (

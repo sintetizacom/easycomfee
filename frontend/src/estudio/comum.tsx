@@ -62,6 +62,8 @@ export function parteDoHash(n: number): string {
 }
 
 export const EVENTO_REMOVIDO = 'openfield:removido'
+/** Uma voz foi salva ou apagada em My voices (a aba Voice rele a lista). */
+export const EVENTO_VOZES = 'easycomfee:vozes'
 const EVENTO_DISPENSADO = 'openfield:dispensado'
 
 /** As tarefas para as galerias das abas. Os testes de diagnostico (teste: true) ficam
@@ -282,6 +284,14 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
     ] : []),
     ...(eAudio(nome) ? [
       { rotulo: 'Send to Lip Sync (as the voice)', acao: () => mandarFalaParaLipSync(arq) },
+      { rotulo: 'Save to my voices', acao: async () => {
+        const nomeVoz = window.prompt('Name this voice (it appears in Voice > Narrate > My voices):')?.trim()
+        if (!nomeVoz) return
+        const r = await fetch('/api/voz/minhas', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: nomeVoz, arquivo: nome, subpasta }) })
+        if (!r.ok) { avisar(textoDoDetalhe((await r.json().catch(() => ({}))).detail, 'Could not save the voice')); return }
+        window.dispatchEvent(new Event(EVENTO_VOZES)); avisar('Saved to My voices')
+      } },
     ] : []),
     ...(video ? [
       { rotulo: 'Upscale', acao: () => { location.hash = '#ltx/ampliar' } },

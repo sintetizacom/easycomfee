@@ -46,6 +46,7 @@ import relight
 import prompting
 import workflows
 import voz
+import minhas_vozes
 import avatar
 import precos
 import ltx23
@@ -3811,6 +3812,9 @@ async def gerar(pedido: PedidoGeracao):
             raise HTTPException(400, "Envie a referência de voz e sua transcrição.")
         if pedido.modo_voz == "criar" and not pedido.instrucao_voz.strip():
             raise HTTPException(400, "Escolha as características da voz.")
+        if pedido.modo_voz == "criar" and not comfy.na_nuvem() and not voz.tags_omnivoice(pedido.instrucao_voz):
+            raise HTTPException(400, "On your GPU, describe the voice with gender, age, pitch, whisper or accent "
+                                     "(e.g. elderly woman, low pitch, british accent).")
         if pedido.referencia_voz and (pathlib.PurePosixPath(pedido.referencia_voz).name != pedido.referencia_voz or chr(92) in pedido.referencia_voz):
             raise HTTPException(400, "Referência de voz inválida.")
         caps = await voz.capacidades()
@@ -3901,6 +3905,37 @@ async def audio_referencia_plenio(request: Request):
                                      params={"filename": nome, "subfolder": "", "type": "temp"})
     return Response(resposta.content, status_code=resposta.status_code,
                     media_type=resposta.headers.get("content-type", "application/octet-stream"))
+
+
+class SalvarVoz(BaseModel):
+    nome: str = Field(..., max_length=60)
+    arquivo: str = Field(..., max_length=300)
+    subpasta: str = Field("", max_length=120)
+
+
+@app.get("/api/voz/minhas")
+async def vozes_minhas():
+    return minhas_vozes.listar()
+
+
+@app.post("/api/voz/minhas")
+async def vozes_minhas_salvar(c: SalvarVoz):
+    item = biblioteca.por_arquivo(c.subpasta, c.arquivo)
+    if item is None:
+        raise HTTPException(404, "This audio is not in the gallery.")
+    try:
+        voz_salva = minhas_vozes.voz_de(item["parametros"] | {"modelo": item.get("modelo")},
+                                        c.nome, c.arquivo, c.subpasta)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return minhas_vozes.salvar(voz_salva)
+
+
+@app.delete("/api/voz/minhas/{voz_id}")
+async def vozes_minhas_remover(voz_id: str):
+    if not minhas_vozes.remover(voz_id):
+        raise HTTPException(404, "Voice not found.")
+    return {"ok": True}
 
 
 @app.get("/api/voz")

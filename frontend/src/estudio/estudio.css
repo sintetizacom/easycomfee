@@ -2749,6 +2749,48 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-funcao-menu button[data-ativo="true"] b { color: var(--hf-neon); }
 .hf-funcao-menu small { opacity: .7; }
 .hf-separar { max-width: 900px; }
-.hf-faixa { position: relative; }
-.hf-faixa-rotulo { position: absolute; top: 6px; left: 10px; z-index: 2; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
-  letter-spacing: .04em; text-transform: uppercase; color: var(--hf-neon); background: rgba(212, 230, 74, .1); }
+/* Faixas do Split into stems: nome e botoes numa linha, o player inteiro embaixo. */
+/* Cartoes de audio (musica, voz, faixas): respiro dentro do cartao. */
+.hf-tarefa:has([data-audio]) { padding: 18px 18px 16px; }
+.hf-tarefa:has([data-audio]) .hf-midia-caixa[data-audio] .hf-acoes-topo { margin-bottom: 12px; }
+.hf-tarefa:has([data-audio]) > :not(.hf-faixa):not(.hf-midia-caixa) { margin-top: 14px; }
+.hf-faixa { position: relative; padding: 18px 0 16px; }
+.hf-faixa:first-child { padding-top: 0; }
+.hf-faixa + .hf-faixa { border-top: 1px solid rgba(244, 240, 232, .08); }
+.hf-faixa-rotulo { position: absolute; left: 0; top: 21px; z-index: 2; padding: 3px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--hf-neon); background: rgba(212, 230, 74, .1); pointer-events: none; }
+.hf-faixa:first-child .hf-faixa-rotulo { top: 3px; }
+.hf-faixa .hf-midia-caixa[data-audio] .hf-acoes-topo { margin: 0 0 12px; }
+.hf-faixa .hf-midia-caixa[data-audio] .hf-acoes-topo .hf-icone { opacity: .65; }
+.hf-faixa .hf-midia-caixa[data-audio] .hf-acoes-topo .hf-icone:hover { opacity: 1; }
+.hf-faixa .hf-midia-caixa[data-audio] .hf-audio { height: 44px; margin: 0; }
+/* Ouvir uma voz pronta antes de gerar (aba Voice). */
+.hf-vzn-lista > button { position: relative; padding-right: 52px; }
+.hf-vzn-ouvir { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid rgba(244, 240, 232, .18); background: #0E0E12; color: #F4F0E8; font-size: 11px; cursor: pointer; }
+.hf-vzn-ouvir:hover, .hf-vzn-ouvir:focus-visible { border-color: var(--hf-neon); color: var(--hf-neon); outline: none; }
+.hf-vzn-ouvir[data-tocando] { background: var(--hf-neon); color: #191220; border-color: var(--hf-neon); }
+.hf-vzn-varia { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 11px; font-style: normal; opacity: .55; }
+.hf-vzn-lista .hf-vzn-ouvir { display: flex; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 0; padding: 0 0 0 2px; overflow: visible;
+  width: 30px; height: 30px; background: rgba(244, 240, 232, .06); border-color: rgba(244, 240, 232, .14); transition: background .15s, border-color .15s, color .15s; }
+.hf-vzn-lista .hf-vzn-ouvir[data-tocando] { padding: 0; background: var(--hf-neon); color: #191220; }
+/* Busca de vozes: sem borda em volta, texto com folga da borda. */
+.hf-vfx-busca.hf-vzn-busca { border: 0; background: #0E0E12; border-radius: 10px; padding: 0 12px; gap: 8px; }
+.hf-vfx-busca.hf-vzn-busca input { border: 0; outline: none; box-shadow: none; background: none; padding: 9px 4px 9px 2px; border-radius: 0; }
+.hf-vzn-secao { display: block; margin: 10px 4px 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+.hf-vzn-lista .hf-vzn-apagar { cursor: pointer; opacity: .7; }
+.hf-vzn-lista .hf-vzn-apagar:hover { color: #FF8A8E; border-color: #E5484D99; opacity: 1; }
+/* Lista de vozes em dois grupos que abrem e fecham (como o Beta Tips). */
+.hf-vzn-grupo { display: flex; flex-direction: column; gap: inherit; }
+.hf-vzn-grupo + .hf-vzn-grupo { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--hf-linha); }
+.hf-vzn-grupo > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--hf-texto); }
+.hf-vzn-grupo > summary::-webkit-details-marker { display: none; }
+.hf-vzn-grupo > summary::before { content: ''; width: 3px; height: 12px; border-radius: 2px; background: var(--hf-neon); }
+.hf-vzn-grupo > summary::after { content: '▸'; margin-left: auto; color: var(--hf-neon); transition: transform .15s; }
+.hf-vzn-grupo[open] > summary::after { transform: rotate(90deg); }
+.hf-vzn-grupo > summary small { opacity: .55; font-weight: 600; }
+.hf-vzn-grupo[open] > button + button, .hf-vzn-grupo[open] > summary + button { margin-top: 6px; }
+.hf-vzn-vazio { margin: 2px 4px 8px; font-size: 12px; line-height: 1.45; opacity: .7; }
+.hf-vzn-grupo > button { width: 100%; box-sizing: border-box; }
+.hf-vzn-grupo > button { position: relative; padding-right: 52px; }

@@ -1,4 +1,5 @@
 """Voz local usando os nós já instalados do TTS Audio Suite."""
+import re
 import httpx
 import comfy
 from nomes_audio import nome_audio
@@ -54,7 +55,7 @@ def grafo(p, seed):
     if p.modo_voz == "criar":
         g["fala"] = {"class_type": "UnifiedVoiceDesignerNode", "inputs": {
             "TTS_engine": ["motor_voz", 0], "reference_text": p.prompt,
-            "voice_instruction": p.instrucao_voz, "seed": seed}}
+            "voice_instruction": tags_omnivoice(p.instrucao_voz), "seed": seed}}
         audio = ["fala", 1]
     else:
         inputs = {"TTS_engine": ["motor_voz", 0], "text": p.prompt,
@@ -113,3 +114,50 @@ def grafo_nuvem(p, seed):
     if p.modo_voz == "clonar":
         g["ref_voz"] = {"class_type": "LoadAudio", "inputs": {"audio": p.referencia_voz}}
     return g
+
+
+# O Voice Design do OmniVoice (local) so aceita itens de uma lista fixa; uma descricao
+# livre ("Powerful deep male voice, dramatic...") derrubava a geracao. Aqui a descricao
+# vira esses itens: genero, idade, tom, sussurro e sotaque. (A nuvem, Qwen3-TTS, le texto livre.)
+_SOTAQUES = ("american", "british", "australian", "canadian", "indian", "chinese", "korean",
+             "japanese", "portuguese", "russian")
+
+
+def tags_omnivoice(texto: str) -> str:
+    t = " " + re.sub(r"[^a-z\- ]+", " ", texto.lower()) + " "
+    def tem(*palavras):
+        return any(re.search(rf"\b{p}\b", t) for p in palavras)
+    itens = []
+    if tem("female", "woman", "women", "girl", "lady", "grandma", "grandmother", "she", "her", "feminine"):
+        itens.append("female")
+    elif tem("male", "man", "men", "boy", "guy", "grandpa", "grandfather", "he", "his", "masculine"):
+        itens.append("male")
+    if tem("child", "kid", "children"):
+        itens.append("child")
+    elif tem("teen", "teenager", "teenage"):
+        itens.append("teenager")
+    elif tem("middle-aged", "middle aged"):
+        itens.append("middle-aged")
+    elif tem("young"):
+        itens.append("young adult")
+    elif tem("elderly", "old", "grandma", "grandpa", "grandmother", "grandfather", "senior"):
+        itens.append("elderly")
+    elif tem("mature", "adult"):
+        itens.append("middle-aged")
+    if tem("very low pitch", "very deep", "very low"):
+        itens.append("very low pitch")
+    elif tem("very high pitch", "very high"):
+        itens.append("very high pitch")
+    elif tem("low pitch", "deep", "low", "bass", "baritone"):
+        itens.append("low pitch")
+    elif tem("high pitch", "high", "bright", "squeaky"):
+        itens.append("high pitch")
+    elif tem("moderate pitch", "moderate", "medium"):
+        itens.append("moderate pitch")
+    if tem("whisper", "whispering", "whispered"):
+        itens.append("whisper")
+    for s in _SOTAQUES:
+        if tem(s):
+            itens.append(f"{s} accent")
+            break
+    return ", ".join(itens)

@@ -67,3 +67,4 @@ blender-bridge/server/.venv/
 blender-bridge/output/
 blender-bridge/blender_bridge_addon.zip
 blender-bridge/mcp-config.json
+backend/minhas_vozes.json
