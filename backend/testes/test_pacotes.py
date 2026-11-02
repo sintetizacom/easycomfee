@@ -18,6 +18,8 @@ def teste_catalogo_tem_campos_para_baixar():
                 origem = a["derivado"]["de"]
                 assert any(f"{b['pasta']}/{b['subpasta']}/{b['arquivo']}" == origem for b in p["arquivos"])
                 assert a["derivado"]["prefixos"] and a["tamanho"] > 0
+            elif a.get("url_direta"):
+                assert pacotes.url_download(a) == a["url_direta"] and a["tamanho"] > 0
             else:
                 # O nome local pode diferir do nome na origem (Flux 3, Kroma).
                 assert a["repo"] and a["caminho"] and a["tamanho"] > 0

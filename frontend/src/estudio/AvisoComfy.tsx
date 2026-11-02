@@ -5,7 +5,8 @@
 import { useContext, useEffect, useState } from 'react'
 import { MotorCtx } from './motor'
 
-export default function AvisoComfy() {
+// Uma faixa so: "subindo" (o app acabou de abrir) e "fora" viravam duas mensagens.
+export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const { naNuvem } = useContext(MotorCtx)
   const [fora, setFora] = useState(false)
   useEffect(() => {
@@ -19,11 +20,11 @@ export default function AvisoComfy() {
     const t = setInterval(ler, 4000)
     return () => { vivo = false; clearInterval(t) }
   }, [])
-  if (!fora || naNuvem) return null
+  if (!(fora || subindo) || naNuvem) return null
   return (
-    <div className="hf-aviso-comfy" role="alert">
-      <b>ComfyUI isn't running.</b> Open ComfyUI first (ComfyUI Desktop, or <code>run_nvidia_gpu.bat</code> in the
-      portable folder); this page connects by itself when it's up. No GPU? Use Comfy Cloud in <b>Config Models</b>.
+    <div className="hf-aviso-comfy" role="status"
+      title="If it doesn't come up, open ComfyUI (ComfyUI Desktop, or run_nvidia_gpu.bat in the portable folder). No GPU? Use Comfy Cloud in Config Models.">
+      <b>ComfyUI is starting…</b> about a minute or two after the PC starts. Not coming up? Open ComfyUI, or use Comfy Cloud in Config Models.
     </div>
   )
 }

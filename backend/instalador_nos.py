@@ -108,7 +108,11 @@ def _extrair(dados: bytes, destino: pathlib.Path):
 
 async def _dependencias(pasta: pathlib.Path, no: dict):
     req = pasta / "requirements.txt"
-    if not req.exists():
+    # pip_extra: o que o no usa mas nao poe no requirements. O Plenio deixa o faster-whisper
+    # (letra do YuE2 Cover) como opcional, e o CTranslate2 dele precisa da cuBLAS do CUDA 12
+    # para rodar na placa: sem ela a transcricao caia no processador (minutos, 02/11/2026).
+    extra = list(no.get("pip_extra") or [])
+    if not req.exists() and not extra:
         return
     python = config.COMFY_PYTHON
     if (no.get("motor") == "segundo"
@@ -117,8 +121,9 @@ async def _dependencias(pasta: pathlib.Path, no: dict):
         python = (raiz / ".venv" / "Scripts" / "python.exe") if raiz else None
     if not python or not python.exists():
         raise RuntimeError("Nao achei o Python do ComfyUI; informe comfy_python no config.json.")
+    alvos = (["-r", str(req)] if req.exists() else []) + extra
     proc = await asyncio.create_subprocess_exec(
-        str(python), "-m", "pip", "install", "-r", str(req),
+        str(python), "-m", "pip", "install", *alvos,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     saida, _ = await proc.communicate()
     texto = saida.decode("utf-8", "replace")

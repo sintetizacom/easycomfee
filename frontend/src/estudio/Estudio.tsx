@@ -254,12 +254,8 @@ export default function Estudio() {
           <BotaoDesligar />
         </div>
       </header>
-      <AvisoComfy />
-
-      {motorSubindo && !naNuvem && (
-        <p className="hf-aviso-partida" role="status">ComfyUI is starting (or not running yet). It usually takes a minute or two after the PC starts; this message goes away by itself.</p>
-      )}
       <main className={aba === 'advanced' ? 'hf-avancado' : 'hf-corpo'}>
+        <AvisoComfy subindo={motorSubindo} />
         <ProtegeAba key={aba}>
         {aba === 'image' && <AbaImagem key={chave} modelos={modelos} apiModelos={soAbertos ? [] : apiImagem} apiOcultos={soAbertos ? apiImagem : []} naNuvem={naNuvem} />}
         {aba === 'video' && <AbaVideo key={chave} apiGeradores={soAbertos ? [] : geradores.filter((g) => g.nuvem)} apiOcultos={soAbertos ? geradores.filter((g) => g.nuvem) : []} naNuvem={naNuvem} pronto={modelos.length > 0} />}

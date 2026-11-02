@@ -24,6 +24,12 @@ const ETAPAS: [RegExp, string][] = [
   [/^preparando o motor.*/, 'Starting the engine'], [/^preparando a geração.*/, 'Preparing the generation'], [/^preparando.*/, 'Preparing'],
   [/^(lendo|analisando)/, 'Reading the inputs'], [/^enriquecendo o prompt$/, 'Improving the prompt'],
   [/^escrevendo o layout$/, 'Writing the layout'], [/^aplicando o estilo$/, 'Applying the style'],
+  [/^transcrevendo a letra$/, 'Transcribing the lyrics'], [/^transcrevendo a melodia$/, 'Transcribing the melody'],
+  [/^escrevendo a partitura$/, 'Writing the score'], [/^compondo e cantando$/, 'Composing and singing'], [/^escrevendo a letra$/, 'Writing the lyrics'],
+  [/^lendo a afinação da voz$/, 'Reading the vocal pitch'], [/^conferindo a voz$/, 'Checking the vocals'],
+  [/^montando a partitura$/, 'Building the score'], [/^ligando o motor de vídeo$/, 'Starting the video engine'],
+  [/^masterizando$/, 'Mastering'], [/^decodificando$/, 'Decoding'], [/^codificando a entrada$/, 'Encoding the input'],
+  [/^interpretando o texto$/, 'Reading the prompt'], [/^lendo a entrada$/, 'Reading the inputs'],
   [/^separando/, 'Separating the tracks'], [/^juntando/, 'Mixing'], [/^transcrevendo/, 'Transcribing'],
   [/^treinando \((\d+) de (\d+) épocas\)$/, 'Training ($1 of $2 epochs)'], [/^variação (\d+)$/, 'Variation $1'],
   [/^retomad/, 'Resumed after a restart'], [/refazendo$/, 'Retrying'],
@@ -96,7 +102,11 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
   const naEspera = tarefa.estado === 'na_fila'
   const inicio = tarefa.iniciada_em || tarefa.criada_em
   const ultimoAvanco = tarefa.ultimo_avanco_em || inicio
-  const semAvanco = !falhou && !naEspera && agora - ultimoAvanco >= 120
+  // Travado so quando nem a placa nem o processador trabalham: etapas como a transcricao
+  // da letra rodam no processador e nao contam passos (02/11/2026).
+  const ocioso = !medidas || ((medidas.gpu?.uso_pct ?? 0) < 15 && (medidas.cpu_pct ?? 0) < 15)
+  const semAvanco = !falhou && !naEspera && agora - ultimoAvanco >= 120 && ocioso
+  const inicioEtapa = tarefa.etapa_iniciada_em || inicio
   const recente = !!medidas?.coletado_em && agora - medidas.coletado_em < 20
   const respondendo = conexao && recente && medidas?.motor_respondendo
   const gpu = recente ? medidas?.gpu : null
@@ -153,7 +163,8 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
         : tarefa.erro || 'The generation stopped. Check the engine before trying again.'}</p> : <>
       <div className="andamento-metricas">
         <div><span>{tarefa.iniciada_em ? 'Generating for' : 'Since sent'}</span><strong>{tempo(agora - inicio)}</strong></div>
-        <div><span>Stage steps</span><strong>{total ? `${passo} / ${total}` : 'Waiting'}</strong></div>
+        <div><span>Stage steps</span><strong>{total ? `${passo} / ${total}` : tarefa.iniciada_em ? `No step count · ${tempo(agora - inicioEtapa)}` : 'Waiting'}</strong></div>
+        <div><span>CPU</span><strong>{medidas?.cpu_pct != null ? `${Math.round(medidas.cpu_pct)}% busy` : 'No reading'}</strong></div>
         <div><span>GPU</span><strong>{gpu ? `${Math.round(gpu.uso_pct)}% busy` : 'No reading'}</strong></div>
         <div><span>GPU memory</span><strong>{gpu ? `${gpu.vram_usada_gib.toFixed(1)} / ${gpu.vram_total_gib.toFixed(1)} GB` : 'No reading'}</strong></div>
         <div><span>System RAM</span><strong>{ram ? `${ram.usada_gib.toFixed(1)} / ${ram.total_gib.toFixed(1)} GB` : 'No reading'}</strong></div>
@@ -161,14 +172,14 @@ export default function PainelAndamento({ tarefa, naFila }: { tarefa: Tarefa; na
       <div className="andamento-rodape">
         <span>{naEspera ? 'Your request starts when the engine is free.'
           : amostrando && !passo ? 'Preparing the first step. The engine has not confirmed a finished step yet.'
+          : !total && !ocioso ? 'This stage reports no steps; the GPU or CPU is working on it.'
           : tarefa.ultimo_avanco_em ? `Last confirmed progress ${tempo(agora - ultimoAvanco)} ago.`
           : 'Waiting for the engine to confirm the first progress.'}</span>
         <span>{naFila > 0 ? `${naFila} waiting in queue` : 'Nothing else in the queue'}</span>
       </div>
       {semAvanco && <p className="andamento-alerta" role="status">
         No confirmed progress for {tempo(agora - ultimoAvanco)}.
-        {gpu && gpu.uso_pct > 5 ? ' The GPU is busy, but that does not prove this request is moving.'
-          : ' Check the connection and the engine before trying again.'}
+        {' Neither the GPU nor the CPU is working: the engine may be stuck. Check the connection and the engine before trying again.'}
       </p>}
       <small className="andamento-nota">Steps are for the current stage; preparing, decoding and saving take time too. Memory and GPU use include other programs.</small>
       </>}

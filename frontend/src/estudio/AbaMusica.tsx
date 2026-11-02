@@ -3,6 +3,7 @@ import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha } from './motor'
 import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
+import BlocoSeparar from './BlocoSeparar'
 import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
@@ -42,7 +43,15 @@ const MAX_LETRA = 12000
 const BPM_MIN = 40, BPM_MAX = 240
 const IDIOMAS: Record<string, string> = { en: 'English', pt: 'Portuguese', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', ja: 'Japanese', zh: 'Chinese', ko: 'Korean' }
 
+// Funcoes da aba, no menu ao lado do titulo.
+const FUNCOES = {
+  criar: { rotulo: 'Create a song', dica: 'Style, lyrics and a full track from a music model.' },
+  separar: { rotulo: 'Split into stems', dica: 'Vocals, drums, bass and other from any song (your GPU).' },
+}
+
 export default function AbaMusica() {
+  const [funcao, setFuncao] = useState<keyof typeof FUNCOES>('criar')
+  const [menuFuncao, setMenuFuncao] = useState(false)
   const tarefas = useTarefas()
   const [modelos, setModelos] = useState<ModeloMusica[]>([])
   const [modelo, setModelo] = useState(() => parteDoHash(1) || 'minimax-music3')
@@ -126,11 +135,25 @@ export default function AbaMusica() {
 
   // As etapas de revisao do YuE2 (letra, partitura) terminam "prontas" mas so com
   // texto, que o painel de revisao usa; na galeria ficariam cartoes vazios.
-  const minhas = tarefas.filter((t) => t.modelo === 'musica' && !(t.estado === 'pronto' && t.imagens.length === 0))
+  const minhas = tarefas.filter((t) => (t.modelo === 'musica' || t.modelo === 'separar') && !(t.estado === 'pronto' && t.imagens.length === 0))
 
   return (
     <div className="hf-aba hf-img hf-mun">
-      <TituloPagina antes="Make a" destaque="song" sub="Describe the style, write the lyrics, get a full track." />
+      <TituloPagina antes={funcao === 'separar' ? 'Split a' : 'Make a'} destaque={funcao === 'separar' ? 'song into stems' : 'song'}
+        sub={funcao === 'separar' ? 'Vocals, drums, bass and other, each as its own track.' : 'Describe the style, write the lyrics, get a full track.'}>
+        <div className="hf-funcao">
+          <button type="button" className="hf-funcao-botao" aria-haspopup="menu" aria-expanded={menuFuncao}
+            onClick={() => setMenuFuncao((v) => !v)}>{FUNCOES[funcao].rotulo} ▾</button>
+          {menuFuncao && <div className="hf-funcao-menu" role="menu">
+            {(Object.keys(FUNCOES) as (keyof typeof FUNCOES)[]).map((f) => (
+              <button key={f} type="button" role="menuitemradio" aria-checked={funcao === f} data-ativo={funcao === f}
+                onClick={() => { setFuncao(f); setMenuFuncao(false) }}>
+                <b>{FUNCOES[f].rotulo}</b><small>{FUNCOES[f].dica}</small></button>
+            ))}
+          </div>}
+        </div>
+      </TituloPagina>
+      {funcao === 'separar' ? <BlocoSeparar naNuvem={naNuvem} /> : <>
       <div className="hf-mun-grade">
       <div className="hf-mun-esq">
       <div className="hf-mu-modelos">
@@ -262,6 +285,7 @@ export default function AbaMusica() {
         {erro && <p className="hf-erro">{erro}</p>}
       </aside>
       </div>
+      </>}
 
       <h3 className="hf-lsn-sub">Recent songs</h3>
 

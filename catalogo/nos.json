@@ -17,6 +17,6 @@
   {"pasta": "comfyui_controlnet_aux", "nome": "ControlNet Aux", "fonte": "registro", "id": "comfyui_controlnet_aux", "versao": "1.1.5", "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux", "pacotes": ["zimage"]},
   {"pasta": "seedvr2_videoupscaler", "nome": "SeedVR2 Video Upscaler", "fonte": "registro", "id": "seedvr2_videoupscaler", "versao": "2.5.24", "repo": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler", "pacotes": ["upscale"]},
   {"pasta": "ComfyUI-WanVideoWrapper", "nome": "WanVideoWrapper", "fonte": "github", "repo": "https://github.com/kijai/ComfyUI-WanVideoWrapper", "commit": "088128b224242e110d3906c6750e9a3a348a659b", "pacotes": ["avatar"]},
-  {"pasta": "Plenio-Music-Production-System", "nome": "Plenio Music Production", "fonte": "github", "repo": "https://github.com/jplenio/Plenio-Music-Production-System", "commit": "930382dc230b01af6f21ddea2586c8607965c44c", "pacotes": ["musica"], "motor": "segundo"}
+  {"pasta": "Plenio-Music-Production-System", "nome": "Plenio Music Production", "fonte": "github", "repo": "https://github.com/jplenio/Plenio-Music-Production-System", "commit": "930382dc230b01af6f21ddea2586c8607965c44c", "pacotes": ["musica"], "motor": "segundo", "pip_extra": ["faster-whisper==1.2.1", "ctranslate2==4.8.3", "nvidia-cublas-cu12"]}
  ]
 }

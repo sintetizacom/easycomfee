@@ -284,7 +284,7 @@ class PedidoGeracao(Pedido):
     # Separar faixas: a musica vem da galeria (id) ou de um envio (refaudio_).
     separar_item: int = 0
     referencia_separar: str = ""
-    modo_separar: str = Field("4", pattern="^(4|6|voz)$")
+    modo_separar: str = Field("plenio", pattern="^(plenio|4|6|voz)$")
     formato_separar: str = Field("flac", pattern="^(flac|mp3)$")
     # Trocar voz (Applio/RVC): a musica vem como na separacao (separar_item
     # ou referencia_separar), a voz e um modelo treinado, o tom em semitons.
@@ -1918,12 +1918,23 @@ async def separar_faixas(tarefa: Tarefa):
         prompt = item.get("prompt") or ""
     else:
         entrada = ENTRADA_DO_MOTOR / p.referencia_separar
-        base = "Áudio enviado"
+        # A aba Music manda o nome do arquivo enviado no prompt.
+        base = (pathlib.Path(p.prompt).stem.strip() if p.modo_separar == "plenio" else "") or "Áudio enviado"
     if not entrada.exists():
         raise RuntimeError("O arquivo da música não foi encontrado no disco.")
 
-    feitos = await separacao.separar(entrada, p.modo_separar, SAIDA_DO_MOTOR / "faixas", base,
-                                     formato=p.formato_separar)
+    if p.modo_separar == "plenio":
+        # Pelo ComfyUI (segundo motor, ja escolhido em _executar).
+        nome = await comfy.enviar_imagem(f"refaudio_separar{entrada.suffix}", entrada.read_bytes())
+        tarefa.detalhe = "separando as faixas"
+        await anunciar(tarefa)
+        saidas = await comfy.executar(separacao.grafo_plenio(nome))
+        feitos = await separacao.gravar_plenio(
+            saidas, lambda n, sub: comfy.imagem(n, sub, "output"),
+            SAIDA_DO_MOTOR / "faixas", base, formato=p.formato_separar)
+    else:
+        feitos = await separacao.separar(entrada, p.modo_separar, SAIDA_DO_MOTOR / "faixas", base,
+                                         formato=p.formato_separar)
     if not feitos:
         raise RuntimeError("O separador não devolveu nenhuma faixa.")
 
@@ -1954,7 +1965,7 @@ async def _executar(tarefa):
     if presets.usa_motor_flux3(tarefa.pedido) and not comfy.na_nuvem():
         # Esta tarefa inteira (envio, historico, leitura do resultado) fala
         # com o segundo motor. O contexto e desta Task; as outras nao mudam.
-        tarefa.detalhe = "preparando o motor do Flux 3"
+        tarefa.detalhe = "ligando o motor de vídeo"
         await anunciar(tarefa)
         await motor_flux3.garantir()
         comfy.MOTOR.set(comfy.BASE_FLUX3)
@@ -2051,6 +2062,16 @@ async def operario():
             # modelo para descarregar. Para desligar, LIBERAR_APOS_GERAR.
             if LIBERAR_APOS_GERAR:
                 await comfy.liberar_memoria()
+                # O segundo motor (LTX, YuE2, Flux 3) tambem: sem o --cache-none no
+                # lancador dele (02/11/2026, para o YuE2 Cover nao refazer a mesma
+                # transcricao a cada no que a pede), e esta chamada que devolve a placa.
+                if (comfy.BASE_FLUX3 != comfy.BASE_PRINCIPAL and not comfy.na_nuvem()
+                        and presets.usa_motor_flux3(tarefa.pedido)):
+                    token = comfy.MOTOR.set(comfy.BASE_FLUX3)
+                    try:
+                        await comfy.liberar_memoria()
+                    finally:
+                        comfy.MOTOR.reset(token)
             FILA.task_done()
 
 
@@ -2335,6 +2356,50 @@ ETAPAS = {
 }
 
 
+# Etapa pelo TIPO do no, para os grafos cujos nos nao tem nome nosso (musica, Plenio,
+# workflows numerados): sem isto o painel ficava em "Preparing" na etapa toda.
+_ETAPA_POR_CLASSE = [
+    (r"^PlenioTranscribeLyrics$", "transcrevendo a letra"),
+    (r"^PlenioSungPitch$", "lendo a afinação da voz"),
+    (r"^PlenioVocalCheck$", "conferindo a voz"),
+    (r"^(PlenioSongSheet|PlenioScoreTools|PlenioApplyArrangement|PlenioComposeArrangement|PlenioParseDraft)$", "montando a partitura"),
+    (r"^(PlenioEngine|AudioEncoderLoader|PlenioAudioModelLoader)$", "carregando o modelo"),
+    (r"^TextGenerate$", "escrevendo a letra"),
+    (r"^(SheetSage2AudioToABC|PlenioTranscribeScore)$", "transcrevendo a melodia"),
+    (r"^YuE2GenerateABC$", "escrevendo a partitura"),
+    (r"^YuE2GenerateMusic$", "compondo e cantando"),
+    (r"^(PlenioSongBrief|PlenioCoverBrief|PlenioLocalLLM|PlenioComposePrompt|PlenioFitLyrics)$", "escrevendo a letra"),
+    (r"^PlenioSeparateStems$", "separando as faixas"),
+    (r"^(PlenioLoudness|PlenioEQ|PlenioRefine)$", "masterizando"),
+    (r"^(PlenioExportRelease|Save\w*|PreviewAudio)$", "salvando"),
+    (r"(Loader|LoadCheckpoint|Checkpoint)", "carregando o modelo"),
+    (r"^Load(Image|Video|Audio)", "lendo a entrada"),
+    (r"VAEDecode|AudioVAEDecode|VAEDecodeAudio", "decodificando"),
+    (r"VAEEncode", "codificando a entrada"),
+    (r"(KSampler|SamplerCustom)", "gerando"),
+    (r"(TextEncode|CLIPTextEncode)", "interpretando o texto"),
+]
+
+
+# Nos que rodam num instante (interruptores, numeros, sementes, lacos): nao trocam a etapa
+# que o painel mostra, senao ela piscava "preparando" entre as de verdade.
+_NOS_UTILITARIOS = re.compile(r"^(ComfySwitchNode|Primitive\w*|ComfyMathExpression|PlenioSeed|PlenioCreativity|"
+                              r"PlenioWriterChoice|StartLoop|EndLoop|ConditioningZeroOut|Reroute)$")
+
+
+def _no_utilitario(tarefa, no: str) -> bool:
+    classe = (getattr(tarefa, "_grafo", None) or {}).get(no, {}).get("class_type", "")
+    return bool(classe and _NOS_UTILITARIOS.match(classe))
+
+
+def _etapa_da_classe(tarefa, no: str) -> str | None:
+    classe = (getattr(tarefa, "_grafo", None) or {}).get(no, {}).get("class_type", "")
+    for padrao, rotulo in _ETAPA_POR_CLASSE:
+        if classe and re.search(padrao, classe):
+            return rotulo
+    return None
+
+
 async def do_motor(evento: dict):
     """Traduz os eventos do ComfyUI em progresso das nossas tarefas."""
     tipo = evento.get("type")
@@ -2355,7 +2420,9 @@ async def do_motor(evento: dict):
         await anunciar(tarefa)
     elif tipo == "executing" and dados.get("node"):
         no = str(dados["node"])
-        rotulo = ETAPAS.get(no, "preparando a geração")
+        if _no_utilitario(tarefa, no):
+            return
+        rotulo = ETAPAS.get(no) or _etapa_da_classe(tarefa, no) or "preparando a geração"
         if tarefa.pedido.modelo == "video":
             if no == "prep":
                 rotulo = "preparando o vídeo e a referência"
@@ -2452,6 +2519,8 @@ async def iniciar():
     app.state.tarefas_fundo = [
         asyncio.create_task(operar_apos_recuperar()),
         asyncio.create_task(comfy.acompanhar(do_motor)),
+        *([asyncio.create_task(comfy.acompanhar(do_motor, base=comfy.BASE_FLUX3))]
+          if comfy.BASE_FLUX3 != comfy.BASE_PRINCIPAL else []),
         # Vigia de instâncias: dois motores brigariam pela GPU.
         asyncio.create_task(motores.vigiar()),
         asyncio.create_task(andamento.vigiar(atualizar_fila_monitor)),
@@ -3634,7 +3703,10 @@ async def gerar(pedido: PedidoGeracao):
         pedido.lote = pedido.variacoes = 1
 
     if pedido.modelo == "separar":
-        caps = separacao.disponivel()
+        if pedido.modo_separar == "plenio" and comfy.na_nuvem():
+            raise HTTPException(400, "Split into stems runs on your GPU: switch to Local.")
+        caps = (separacao.plenio_disponivel() if pedido.modo_separar == "plenio"
+                else separacao.disponivel())
         if not caps["disponivel"]:
             raise HTTPException(503, caps["motivo"])
         if pedido.separar_item:
@@ -4184,7 +4256,7 @@ async def _versao_segura(dados: bytes, nome: str, subpasta: str, mime: str) -> t
 
 
 @app.get("/api/imagem")
-async def imagem(nome: str, subpasta: str = "", tipo: str = "output"):
+async def imagem(request: Request, nome: str, subpasta: str = "", tipo: str = "output"):
     if subpasta == "finalizacoes_musica":
         if pathlib.Path(nome).name != nome or "/" in nome or "\\" in nome or not nome.startswith("musica_final_") or not nome.endswith(".flac"):
             raise HTTPException(404, "áudio não encontrado")
@@ -4200,9 +4272,72 @@ async def imagem(nome: str, subpasta: str = "", tipo: str = "output"):
         dados, mime = await _versao_segura(dados, nome, subpasta, mime)
     # O tipo tem que casar com o arquivo. Servindo um mp4 como image/png o
     # navegador se recusa a toca-lo, e o <video> fica preto sem dizer por que.
+    cab = {"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=604800"}
+    # Range: o player de audio/video do navegador pede o arquivo em pedacos.
+    # Devolver o arquivo inteiro com 200 fazia o Chrome pular para o fim de
+    # uma musica longa (o cover parava em 1:07).
+    faixa = _faixa_pedida(request.headers.get("range"), len(dados))
+    if faixa:
+        ini, fim = faixa
+        return Response(dados[ini:fim + 1], status_code=206, media_type=mime,
+                        headers=cab | {"Content-Range": f"bytes {ini}-{fim}/{len(dados)}"})
+    return Response(dados, media_type=mime, headers=cab)
+
+
+def _faixa_pedida(valor: str | None, total: int) -> tuple[int, int] | None:
+    """O primeiro trecho de um cabecalho Range ("bytes=ini-fim", "ini-" ou "-n")."""
+    m = re.fullmatch(r"\s*bytes=(\d*)-(\d*)\s*(?:,.*)?", valor or "")
+    if not m or total <= 0 or not (m.group(1) or m.group(2)):
+        return None
+    if m.group(1):
+        ini = int(m.group(1))
+        fim = min(int(m.group(2)), total - 1) if m.group(2) else total - 1
+    else:
+        ini, fim = max(0, total - int(m.group(2))), total - 1
+    return (ini, fim) if ini <= fim < total else None
+
+
+_AUDIO_SAIDA = {"mp3": (["-c:a", "libmp3lame", "-b:a", "320k"], "audio/mpeg"),
+                "flac": (["-c:a", "flac", "-compression_level", "5"], "audio/flac")}
+
+
+@app.get("/api/audio/baixar")
+async def baixar_audio(nome: str, subpasta: str = "", tipo: str = "output",
+                       formato: str = Query("mp3", pattern="^(mp3|flac)$")):
+    """Uma musica ou voz no formato escolhido (MP3 320 kbps ou FLAC), convertida na hora."""
+    if subpasta == "finalizacoes_musica":
+        if pathlib.Path(nome).name != nome or not nome.startswith("musica_final_") or not nome.endswith(".flac"):
+            raise HTTPException(404, "áudio não encontrado")
+        arquivo = musica.FINALIZACOES / nome
+        if not arquivo.is_file():
+            raise HTTPException(404, "áudio não encontrado")
+        dados = arquivo.read_bytes()
+    else:
+        try:
+            dados = await comfy.imagem(nome, subpasta, tipo)
+        except Exception as e:
+            raise _falha_ao_ler(e)
+    base = pathlib.Path(nome).stem
+    codec, mime = _AUDIO_SAIDA[formato]
+    if pathlib.Path(nome).suffix.lower() != f".{formato}":
+        def converter() -> bytes:
+            import tempfile
+            with tempfile.TemporaryDirectory() as d:
+                ent = pathlib.Path(d) / ("e" + pathlib.Path(nome).suffix)
+                sai = pathlib.Path(d) / f"s.{formato}"
+                ent.write_bytes(dados)
+                r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(ent), "-vn", *codec, str(sai)],
+                                   capture_output=True, text=True, timeout=300,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                if r.returncode:
+                    raise RuntimeError(r.stderr.strip()[-200:])
+                return sai.read_bytes()
+        try:
+            dados = await asyncio.to_thread(converter)
+        except (OSError, RuntimeError) as e:
+            raise HTTPException(500, f"não consegui converter o áudio: {e}")
     return Response(dados, media_type=mime,
-                    headers={"Accept-Ranges": "bytes",
-                             "Cache-Control": "public, max-age=604800"})
+                    headers={"Content-Disposition": f'attachment; filename="{base}.{formato}"'})
 
 
 @app.get("/api/miniatura")

@@ -918,8 +918,10 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
   .hf-linha-dir b { white-space: normal; overflow: visible; }
 }
 /* Faixa "ComfyUI isn't running" (AvisoComfy.tsx), logo abaixo da barra de cima. */
-.hf-aviso-comfy { position: sticky; top: 70px; z-index: 19; margin: 0; padding: 10px 24px; background: #3A2A12; color: #F4F0E8;
-  border-bottom: 1px solid #6B4A1C; font-size: 13.5px; line-height: 1.45; }
+/* No topo da pagina, no fluxo (empurra o conteudo), sem chegar aos botoes da direita. */
+.hf-aviso-comfy { display: block; width: fit-content; max-width: calc(100% - 300px); margin: 22px 0 -6px; padding: 7px 12px;
+  background: #3A2A12; color: #F4F0E8; border: 1px solid #6B4A1C; border-radius: 10px; font-size: 12.5px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hf-aviso-comfy b { color: #F5A33C; }
 .hf-aviso-comfy code { background: rgba(0, 0, 0, .3); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 .hf-looks-dica { color: var(--hf-apagado); font-size: 11.5px; }
@@ -2685,3 +2687,65 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-dicas-secao[open] > .hf-dicas-modelo::after { transform: rotate(90deg); }
 .hf-dicas-secao > ul, .hf-dicas-secao > .hf-dicas-sub { margin-left: 14px; }
 .hf-dicas-secao[open] { padding-bottom: 12px; }
+
+/* Download do audio: MP3 ou FLAC, no mesmo estilo do menu da midia. */
+.hf-menu-baixar { display: flex; flex-direction: column; min-width: 170px; }
+.hf-menu-baixar a { padding: 8px 10px; border-radius: 8px; color: #EFEAE6; text-decoration: none; font-size: 13px; }
+.hf-menu-baixar a:hover { background: #33293D; }
+.hf-midia-caixa[data-audio] .hf-menu-midia { top: 40px; }
+
+/* YuE2 Cover: a gravacao de origem numa linha so: nome, player, trocar e tirar. Aceita
+   arquivo do computador ou musica da galeria arrastados, vazia ou cheia. */
+.hf-origem { display: flex; align-items: center; gap: 10px; min-height: 48px; margin: 6px 0 10px; padding: 6px 10px;
+  border: 1px dashed #463A52; border-radius: 12px; font-size: 13px; }
+.hf-origem[data-cheio='true'] { border-style: solid; border-color: var(--hf-linha); background: rgba(255, 255, 255, .02); }
+.hf-origem[data-sobre] { border-color: var(--hf-neon); background: rgba(242, 255, 61, .06); }
+.hf-origem-vazia { flex: 1; align-self: stretch; display: grid; place-items: center; cursor: pointer; position: relative; color: var(--hf-texto); }
+.hf-origem-nome { max-width: 28%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hf-texto); font-weight: 600; }
+.hf-origem audio { flex: 1; min-width: 0; height: 36px; }
+.hf-origem-trocar { position: relative; white-space: nowrap; cursor: pointer; }
+.hf-origem-tirar { border: 0; background: none; color: var(--hf-apagado); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.hf-origem-tirar:hover { color: #FF8A8E; }
+
+/* Bloco do YuE2: gravacao de origem num cartao como o Style, seletores em grade,
+   a caixa Review a esquerda e o botao a direita. */
+.hf-yue-origem { margin: 14px 0; padding: 16px; border: 1px solid var(--hf-linha); border-radius: 14px; background: #1A1420; }
+.hf-yue-origem .hf-origem { margin: 0; }
+.hf-yue { padding: 0 16px 16px; }
+.hf-yue-controles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: stretch; margin-top: 4px; }
+@media (max-width: 900px) { .hf-yue-controles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hf-yue-controles .hf-ctrl { width: auto; min-width: 0; padding: 8px 12px; }
+.hf-yue-controles .hf-ctrl select { width: 100%; text-align: left; text-align-last: left; padding: 2px 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hf-yue-origem .hf-origem[data-cheio='true'] { border: 0; background: #241B2C; }
+.hf-yue-acao { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
+
+/* YuE2 (cartao da gravacao, revisao da letra e da partitura) na paleta high-end da aba
+   Music: os roxos antigos (#241B2C, #1A1420, #191220) destoavam dos outros cartoes. */
+.hf-mun .hf-yue-origem, .hf-mun .hf-revisao { background: #131319; border-color: rgba(244, 240, 232, .07); }
+.hf-mun .hf-yue-origem .hf-origem[data-cheio='true'] { background: #17171E; }
+.hf-mun .hf-origem { border-color: rgba(244, 240, 232, .14); }
+.hf-mun .hf-revisao .hf-abc, .hf-mun .hf-revisao .hf-ctrl textarea { background: #0E0E12; border-color: rgba(244, 240, 232, .08); }
+.hf-mun .hf-revisao .hf-botao-sec { background: #17171E; border-color: rgba(244, 240, 232, .12); }
+
+/* Split into stems (aba Music) */
+.hf-separar { margin: 18px 0 4px; padding: 20px; display: flex; flex-direction: column; gap: 16px; border: 1px solid rgba(244, 240, 232, .10); border-radius: 14px; background: #17171E; }
+.hf-separar-cabeca { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.hf-separar-cabeca small { color: var(--hf-texto-fraco, #9a96a8); }
+.hf-separar-linha { display: flex; }
+.hf-separar-linha .hf-origem { flex: 1; margin: 0; min-height: 96px; justify-content: center; }
+.hf-separar-acao { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hf-separar-acao .hf-dica { flex: 1 1 260px; margin: 0; }
+.hf-separar-formato { display: flex; align-items: center; gap: 8px; }
+.hf-separar-formato small { text-transform: uppercase; letter-spacing: .06em; opacity: .7; font-size: 11px; }
+.hf-separar-formato select { background: #0E0E12; color: inherit; border: 1px solid rgba(244, 240, 232, .14); border-radius: 10px; padding: 8px 10px; font: inherit; }
+.hf-funcao { position: relative; }
+.hf-funcao-botao { background: #17171E; color: inherit; border: 1px solid rgba(244, 240, 232, .16); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.hf-funcao-botao:hover { border-color: var(--hf-neon); }
+.hf-funcao-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 300px; display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: #131319; border: 1px solid rgba(244, 240, 232, .14); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }
+.hf-funcao-menu button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 9px 10px; color: inherit; font: inherit; cursor: pointer; }
+.hf-funcao-menu button:hover, .hf-funcao-menu button[data-ativo="true"] { background: rgba(244, 240, 232, .07); }
+.hf-funcao-menu button[data-ativo="true"] b { color: var(--hf-neon); }
+.hf-funcao-menu small { opacity: .7; }
+.hf-separar { max-width: 900px; }

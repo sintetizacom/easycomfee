@@ -302,6 +302,13 @@ pacote("wan22_animate", "Wan 2.2 Animate · Replace", "video",
 # baixar: (arquivo de origem, prefixos dos tensores que ficam). Ver
 # instalador.extrair_tensores.
 DERIVADO = "@derivado"
+# Arquivos fora do Hugging Face: url, tamanho e licenca conferidos a mao.
+DIRETO = "@direto"
+DIRETOS = {
+    "model_bs_roformer_ep_17_sdr_9.6568.ckpt": {
+        "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.12/model_bs_roformer_ep_17_sdr_9.6568.ckpt",
+        "tamanho": 527385512, "licenca": "mit"},
+}
 DERIVADOS = {
     "LTX/LTX_2.3/ltx-2.3-22b-dev-fp8_so_texto.safetensors": {
         "de": "checkpoints/LTX/LTX_2.3/ltx-2.3-22b-dev-fp8.safetensors",
@@ -350,6 +357,7 @@ pacote("musica", "Music models", "audio", "Songs with lyrics (YuE2, ACE-Step 1.5
     ("checkpoints", "StableAudio/stable_audio_3_medium_base.safetensors", SA, "checkpoints/stable_audio_3_medium_base.safetensors", True, "Stable Audio 3 medium"),
     ("text_encoders", "Gemma/t5gemma_b_b_ul2.safetensors", SA, "text_encoders/t5gemma_b_b_ul2.safetensors", True, "T5Gemma (Stable Audio)"),
     ("loras", "ar_lora_inst_v3abc_comfyui.safetensors", None, None, True, "AR instrumental LoRA"),
+    ("audio_separation", "model_bs_roformer_ep_17_sdr_9.6568.ckpt", DIRETO, None, True, "BS-RoFormer stems (Split into stems)"),
 ])
 
 
@@ -524,6 +532,10 @@ def main():
                 d = DERIVADOS[rel]
                 a.update(repo=None, caminho=None, tamanho=d["tamanho"], licenca="derived", requer_aceite=False,
                          derivado={"de": d["de"], "prefixos": d["prefixos"]})
+            elif rp == DIRETO:
+                d = DIRETOS[nome]
+                a.update(repo=None, caminho=None, url_direta=d["url"], tamanho=d["tamanho"],
+                         licenca=d["licenca"], requer_aceite=False)
             elif rp:
                 info = repo(rp)
                 if caminho not in info["arquivos"]:

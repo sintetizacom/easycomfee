@@ -2785,7 +2785,8 @@ def usa_motor_flux3(p) -> bool:
     return (p.modelo in MODELOS_MOTOR_FLUX3 or p.modelo in ("transformar_video", "profundidade_video")
             or (p.modelo == "video" and p.modo_video in ("ingredientes", "chaves"))
             or (p.modelo == "musica" and getattr(p, "modelo_musica", "") in ("yue2", "yue2-cover"))
-            or (p.modelo == "limpar_video" and p.metodo_video in METODOS_RTX))
+            or (p.modelo == "limpar_video" and p.metodo_video in METODOS_RTX)
+            or (p.modelo == "separar" and getattr(p, "modo_separar", "") == "plenio"))
 
 
 # LTX 2.5 Creative Lab (Lightricks): IC-LoRAs de video->video, no segundo

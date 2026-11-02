@@ -413,14 +413,21 @@ async def enviar_imagem(nome: str, dados: bytes) -> str:
         return r.json()["name"]
 
 
-async def acompanhar(ao_evento):
+async def acompanhar(ao_evento, base: str | None = None):
     """Escuta o WebSocket do motor e repassa cada evento para `ao_evento`.
 
     Reconecta sozinho: o ComfyUI pode ser reiniciado sem derrubar o app.
+    `base`: um segundo motor local (o v0.41 do LTX, YuE2 e Flux 3). Sem esta escuta
+    o painel nunca soube a etapa nem os passos do que roda nele (02/11/2026).
     """
+    ws_base = base.replace("http", "ws", 1).rstrip("/") + "/ws" if base else None
     while True:
         modo = MODO["motor"]
-        url = (f"{NUVEM_WS}?clientId={ID_CLIENTE}&token={chaves.chave() or ''}"
+        if ws_base and modo == "nuvem":
+            await asyncio.sleep(5)  # na nuvem so existe o motor dela
+            continue
+        url = (f"{ws_base}?clientId={ID_CLIENTE}" if ws_base
+               else f"{NUVEM_WS}?clientId={ID_CLIENTE}&token={chaves.chave() or ''}"
                if modo == "nuvem" else f"{WS}?clientId={ID_CLIENTE}")
         try:
             async with websockets.connect(url, max_size=None,

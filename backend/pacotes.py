@@ -24,6 +24,8 @@ def relativo(arq: dict) -> str:
 
 
 def url_download(arq: dict) -> str | None:
+    if arq.get("url_direta"):
+        return arq["url_direta"]  # fora do Hugging Face (ex.: release do GitHub)
     if not arq.get("repo"):
         return None  # sem origem publica: so instalacao manual
     return f"https://huggingface.co/{arq['repo']}/resolve/main/{arq['caminho']}"

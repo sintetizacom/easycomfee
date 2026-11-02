@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api'
-import { mensagem, textoDoDetalhe } from './comum'
+import { api, urlImagem } from '../api'
+import { TIPO_GALERIA, eAudio, mensagem, textoDoDetalhe } from './comum'
 
 // YuE2 through Plenio (second engine), in the new Music tab. Same flow as the
 // editor's music panel: Gemma writes title, style and lyrics, YuE2 plans the
@@ -31,11 +31,17 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
   const [duracao, setDuracao] = useState(120)
   const [revisar, setRevisar] = useState(true)
   // Cover
-  const [origem, setOrigem] = useState<{ nome: string; url: string } | null>(null)
+  const [origem, setOrigem] = useState<{ nome: string; url: string; rotulo: string } | null>(null)
   const [vozCover, setVozCover] = useState<'original' | 'nova' | 'instrumental'>('original')
   const [tema, setTema] = useState('')
   const [harmonia, setHarmonia] = useState<'nova' | 'manter'>('nova')
   const [subindo, setSubindo] = useState(false)
+  const [arrastando, setArrastando] = useState(false)
+  const enviarOrigem = async (f: File) => {
+    setSubindo(true); setErro(null)
+    try { setOrigem({ nome: (await api.enviarAudio(f)).nome, url: URL.createObjectURL(f), rotulo: f.name }) }
+    catch (x) { setErro(mensagem(x)) } finally { setSubindo(false) }
+  }
   // Review state
   const [fase, setFase] = useState<Fase>('inicio')
   const [caixa, setCaixa] = useState<Etapa | null>(null)
@@ -177,29 +183,62 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
   )
 
   return (
-    <>
-      <p className="hf-dica">
-        {cover ? 'Cover: melody and chords are transcribed from the recording, the lyrics are the original (transcribed), new ones or none, and YuE2 sings in the style you describe. Use only recordings you have the right to use; publishing a cover usually needs the composer’s permission.'
+    <div className="hf-yue">
+      {!cover && <p className="hf-dica">
+        {cover ? 'Cover: YuE2 sings the melody of your recording in a new style, with the original, new or no lyrics. Use only recordings you have the right to use.'
           : 'Plenio writes the title, style and lyrics from your description, YuE2 composes and sings, and the song comes out mastered (−14 LUFS) with the score as PDF.'}
-        {' '}<b>Non-commercial use</b> (YuE2 license).</p>
-
+        {' '}<b>Non-commercial use</b> (YuE2 license).</p>}
       {cover && (
-        <label className="hf-slot hf-slot-audio" data-cheio={!!origem} title="WAV, MP3, FLAC or OGG, 10 to 600 s, up to 40 MB.">
-          {origem ? <audio src={origem.url} controls /> : <span>{subindo ? 'Uploading…' : '+ Source recording'}</span>}
-          <input type="file" accept="audio/*" className="hf-arquivo" disabled={ocupado} onChange={async (e) => {
-            const f = e.target.files?.[0]
-            if (!f) return
-            setSubindo(true); setErro(null)
-            try { setOrigem({ nome: (await api.enviarAudio(f)).nome, url: URL.createObjectURL(f) }) }
-            catch (x) { setErro(mensagem(x)) } finally { setSubindo(false) }
-          }} />
-        </label>
+        <section className="hf-vz-coluna hf-yue-origem">
+        <span className="hf-grupo-rotulo">Source recording</span>
+        <div className="hf-origem" data-cheio={!!origem} data-sobre={arrastando || undefined}
+          title="WAV, MP3, FLAC or OGG, 10 to 600 s, up to 40 MB. Drop a file or a song from Recent songs here."
+          onDragOver={(e) => { if (ocupado) return; e.preventDefault(); setArrastando(true) }}
+          onDragLeave={() => setArrastando(false)}
+          onDrop={async (e) => {
+            e.preventDefault(); setArrastando(false)
+            if (ocupado) return
+            // Da galeria do app (uma musica gerada) ou um arquivo do computador.
+            const bruto = e.dataTransfer.getData(TIPO_GALERIA)
+            if (bruto) {
+              try {
+                const { nome, subpasta } = JSON.parse(bruto) as { nome: string; subpasta: string }
+                if (!eAudio(nome)) { setErro('Drop an audio file here.'); return }
+                const blob = await (await fetch(urlImagem({ nome, subpasta }))).blob()
+                await enviarOrigem(new File([blob], nome, { type: blob.type || 'audio/flac' }))
+              } catch (x) { setErro(mensagem(x)) }
+              return
+            }
+            const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith('audio/') || eAudio(x.name))
+            if (f) await enviarOrigem(f); else setErro('Drop an audio file here.')
+          }}>
+          {origem ? (<>
+            <span className="hf-origem-nome" title={origem.rotulo}>♪ {origem.rotulo}</span>
+            <audio src={origem.url} controls />
+            <label className="hf-botao-sec hf-origem-trocar">Replace
+              <input type="file" accept="audio/*" className="hf-arquivo" disabled={ocupado} onChange={async (e) => {
+                const f = e.target.files?.[0]; if (f) await enviarOrigem(f)
+              }} /></label>
+            <button type="button" className="hf-origem-tirar" disabled={ocupado} onClick={() => setOrigem(null)}
+              title="Remove the recording" aria-label="Remove the recording">×</button>
+          </>) : (
+            <label className="hf-origem-vazia">
+              <span>{subindo ? 'Uploading…' : '+ Source recording · click or drop a song'}</span>
+              <input type="file" accept="audio/*" className="hf-arquivo" disabled={ocupado} onChange={async (e) => {
+                const f = e.target.files?.[0]; if (f) await enviarOrigem(f)
+              }} />
+            </label>
+          )}
+        </div>
+        <p className="hf-dica">YuE2 sings the melody of your recording in a new style, with the original, new or no lyrics.
+          Use only recordings you have the right to use. <b>Non-commercial use</b> (YuE2 license).</p>
+        </section>
       )}
 
-      <div className="hf-linha-controles">
+      <div className="hf-linha-controles hf-yue-controles">
         <label className="hf-ctrl"><small>Preset style</small>
           <select value={estilo} onChange={(e) => setEstilo(e.target.value)} disabled={fase !== 'inicio'}>
-            <option value="none">None, just the description</option>
+            <option value="none">None</option>
             {opcoesEstilo.map((x) => <option key={x} value={x}>{x.replace('/', ' · ').replace(/-/g, ' ')}</option>)}
           </select></label>
         {cover ? <>
@@ -209,7 +248,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
             </select></label>
           <label className="hf-ctrl"><small>Harmony</small>
             <select value={harmonia} onChange={(e) => setHarmonia(e.target.value as 'nova')} disabled={fase !== 'inicio'}>
-              <option value="nova">New accompaniment</option><option value="manter">Keep the original chords</option>
+              <option value="nova">New chords</option><option value="manter">Original chords</option>
             </select></label>
         </> : (
           <label className="hf-ctrl"><small>Type</small>
@@ -240,7 +279,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
           placeholder="What the new lyrics are about, e.g. coming home after a long time" />
       )}
 
-      <div className="hf-linha-controles">
+      <div className="hf-linha-controles hf-yue-acao">
         <label className="hf-chave-dir"><input type="checkbox" checked={revisar} disabled={fase !== 'inicio'} onChange={(e) => setRevisar(e.target.checked)} />
           Review the {cover ? 'score and lyrics' : 'lyrics and score'} before the song</label>
         <button type="button" className="hf-botao" disabled={!podeComecar || ocupado}
@@ -255,6 +294,6 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
         ? <>{caixa === 'partitura' && caixaPartitura}{caixa === 'letra' && caixaLetra}</>
         : <>{caixa === 'letra' && caixaLetra}{caixa === 'partitura' && caixaPartitura}</>)}
       {erro && <p className="hf-erro">{erro}</p>}
-    </>
+    </div>
   )
 }

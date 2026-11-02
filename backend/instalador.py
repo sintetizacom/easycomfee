@@ -50,7 +50,8 @@ async def _baixar(cliente: httpx.AsyncClient, arq: dict, total_antes: int):
     parcial = final.with_name(final.name + ".part")
     final.parent.mkdir(parents=True, exist_ok=True)
     ja = parcial.stat().st_size if parcial.exists() else 0
-    cab = _cabecalhos() | ({"Range": f"bytes={ja}-"} if ja else {})
+    # O token do Hugging Face so vai para o Hugging Face.
+    cab = ({} if arq.get("url_direta") else _cabecalhos()) | ({"Range": f"bytes={ja}-"} if ja else {})
     async with cliente.stream("GET", pacotes.url_download(arq), headers=cab) as r:
         if r.status_code == 200:
             ja = 0  # o servidor ignorou o Range: recomeca
@@ -155,7 +156,7 @@ async def iniciar(id_pacote: str, opcionais: bool) -> dict:
         raise KeyError(id_pacote)
     # Sem o motor no ar, decide pelo disco.
     lista = [a for a in pacote["arquivos"]
-             if (a.get("repo") or a.get("derivado"))  # sem origem: instalacao manual
+             if (a.get("repo") or a.get("derivado") or a.get("url_direta"))  # sem origem: instalacao manual
              and (opcionais or not a["opcional"])
              and not (a["instalado"] or (a["instalado"] is None and destino(a).exists()))]
     # Os derivados por ultimo: precisam do arquivo de origem ja no disco.

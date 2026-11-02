@@ -263,6 +263,8 @@ export type Andamento = {
   na_fila: number | null
   gpu: { vram_usada_gib: number; vram_total_gib: number; uso_pct: number } | null
   ram: { usada_gib: number; total_gib: number } | null
+  /** Uso total do processador (%), para nao acusar travamento quando a etapa roda na CPU. */
+  cpu_pct?: number | null
 }
 
 export type ItemGaleria = {

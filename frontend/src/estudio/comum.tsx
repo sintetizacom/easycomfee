@@ -234,15 +234,16 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
   const video = eVideo(nome)
   const [aviso, setAviso] = useState('')
   const [menu, setMenu] = useState(false)
+  const [baixar, setBaixar] = useState(false)
   const caixa = useRef<HTMLDivElement>(null)
   const avisar = (t: string) => { setAviso(t); setTimeout(() => setAviso(''), 2200) }
 
   useEffect(() => {
-    if (!menu) return
-    const fora = (e: PointerEvent) => { if (!caixa.current?.contains(e.target as Node)) setMenu(false) }
+    if (!menu && !baixar) return
+    const fora = (e: PointerEvent) => { if (!caixa.current?.contains(e.target as Node)) { setMenu(false); setBaixar(false) } }
     document.addEventListener('pointerdown', fora)
     return () => document.removeEventListener('pointerdown', fora)
-  }, [menu])
+  }, [menu, baixar])
 
   // O prompt vem do registro da galeria, so quando pedem (copiar/reusar).
   const prompt = async () => {
@@ -294,7 +295,7 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
 
   return (
     <div ref={caixa} className="hf-midia-caixa" data-midia data-nome={nome} data-subpasta={subpasta} data-menu={menu} data-audio={eAudio(nome) || undefined}
-      draggable={imagem} onDragStart={(e) => {
+      draggable={imagem || eAudio(nome)} onDragStart={(e) => {
         e.dataTransfer.setData(TIPO_GALERIA, JSON.stringify(arq))
         e.dataTransfer.effectAllowed = 'copy'
       }}>
@@ -311,9 +312,20 @@ export function Midia({ nome, subpasta, aoClicar }: { nome: string; subpasta: st
       <div className="hf-acoes-topo">
         <button type="button" className="hf-icone" data-ativo={menu} onClick={() => setMenu((m) => !m)} title="More" aria-label="More actions" aria-expanded={menu}><Icone d="mais" /></button>
         <button type="button" className="hf-icone" onClick={remover} title="Remove from view (the file stays on disk)" aria-label="Remove from view"><Icone d="lixo" /></button>
-        <a className="hf-icone" href={url} download={nome} title="Download" aria-label="Download"><Icone d="baixar" /></a>
+        {eAudio(nome)
+          ? <button type="button" className="hf-icone" data-ativo={baixar} onClick={() => setBaixar((b) => !b)} title="Download as MP3 or FLAC"
+              aria-label="Download" aria-expanded={baixar}><Icone d="baixar" /></button>
+          : <a className="hf-icone" href={url} download={nome} title="Download" aria-label="Download"><Icone d="baixar" /></a>}
         <button type="button" className="hf-icone" onClick={abrir} title="Open the viewer" aria-label="Open the viewer"><Icone d="abrir" /></button>
       </div>
+      {baixar && (
+        <div className="hf-menu-midia hf-menu-baixar" role="menu">
+          {(['mp3', 'flac'] as const).map((f) => (
+            <a key={f} role="menuitem" href={`/api/audio/baixar?${new URLSearchParams({ nome, subpasta, formato: f })}`}
+              onClick={() => setBaixar(false)}>{f === 'mp3' ? 'MP3 · 320 kbps' : 'FLAC · lossless'}</a>
+          ))}
+        </div>
+      )}
       {menu && (
         <div className="hf-menu-midia" role="menu">
           {itens.map((it, k) => (
