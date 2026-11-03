@@ -209,7 +209,7 @@ export default function AbaMusica() {
               {comVoz ? <>
                 <textarea aria-label="Lyrics" className="hf-vz-caixa hf-mu-letra" value={letra} onChange={(e) => setLetra(e.target.value)} rows={7}
                   maxLength={MAX_LETRA}
-                  placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} /><Contador texto={letra} limite={MAX_PROMPT} />
+                  placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} /><Contador texto={letra} limite={MAX_LETRA} />
                 <div className="hf-vz-exemplos">
                   {['[Intro]', '[Verse]', '[Pre-Chorus]', '[Chorus]', '[Bridge]', '[Outro]'].map((m) => (
                     <button key={m} type="button" className="hf-botao-sec" onClick={() => inserir(m)}>{m}</button>

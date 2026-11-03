@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
-import { Contador, limitePrompt, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, limitePrompt, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
 
 // Genjutsu: recast a video with a new cast, place or style while its motion,
 // camera and timing stay. Models (backend genjutsu.py):
@@ -227,7 +227,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
 
           <section className="hf-ls-cartao hf-ls-cena">
             <header><b>3</b> Direction {(modelo === 'wan_animate2' || modelo === 'wan22_replace' || modelo === 'h3_swap') && <small>optional</small>}</header>
-            <textarea aria-label="Direction" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
+            <textarea aria-label="Direction" maxLength={limitePrompt(modelo)} value={texto} onChange={(e) => setTexto(e.target.value)} rows={4}
               placeholder={modelo === 'wan_animate2'
                 ? 'Describe the character and the background'
                 : modelo === 'h3_swap' ? 'e.g. the performer is singing; keep the original voice'
