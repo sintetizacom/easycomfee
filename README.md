@@ -145,7 +145,10 @@ Paid partner models (Kling, Veo, Seedance, Runway, Nano Banana…) are **off by 
 
 Open **Config Models → Local models**:
 
-1. **Your machine.** The app reads your GPU, VRAM, RAM and free disk from ComfyUI.
+> [!IMPORTANT]
+> **Press _Confirm_ in _Your machine_ first.** The model packages only appear after you confirm your machine (GPU, VRAM, RAM). If you only see the settings cards and no packages, this is why.
+
+1. **Your machine.** The app reads your GPU, VRAM, RAM and free disk from ComfyUI. **Check it and press Confirm** (or *I'll pick Comfy Cloud*); the packages show up right below.
 2. **Packages.** Each feature is a package, in collapsible groups (Image, Edit & tools, Video, Video effects & swap, Lip Sync, Music & voice). Every card says whether it **runs well**, is **limited** or **won't run** on your machine, with its size, license, source links and the files already present. Light packages (SD 1.5 from 4 GB, SDXL and LTX-Video 2B from 6 GB, Wan from 8 GB) make the app usable on small cards.
 3. **Download.** Files come straight from Hugging Face into the exact ComfyUI subfolders the workflows expect. Downloads resume if interrupted.
 4. **Custom nodes.** Missing node packs are installed at pinned versions. Then restart ComfyUI once.
@@ -233,7 +236,7 @@ install.bat
 - **Start ComfyUI with Windows** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI while the PC starts, so it is ready when you open the studio. Off removes it; it also shows in Task Manager → Startup apps.
 - **Safe mode** (Config Models → Local models, **on by default**): explicit prompts are refused, local models get an anti-nudity negative prompt, and any result a small on-device classifier (Falconsai NSFW detector, Apache-2.0, ONNX on the CPU) marks as NSFW is shown blurred; the file on disk is kept. Open-weight models have no filter of their own, so turning it off is your choice and your responsibility.
 
-Then open **Config Models** and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
+Then open **Config Models**, press **Confirm** in *Your machine* (the packages only appear after that), and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
 
 ### Updating
 
