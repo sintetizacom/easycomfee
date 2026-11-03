@@ -66,8 +66,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   useEffect(() => {
     fetch('/api/maquina').then((r) => r.json()).then((m) => setVramGb(m?.salvo?.vram_gb ?? null)).catch(() => {})
   }, [])
-  const apiOculta = pronto && motor !== escolhido ? apiOcultos.find((g) => g.id === escolhido) : undefined
-  const indisponivel = pronto && motor !== escolhido && !apiOculta
+  const escolhidoBase = escolhido === 'minimax-pika' ? 'minimax' : escolhido
+  const apiOculta = pronto && motor !== escolhidoBase ? apiOcultos.find((g) => g.id === escolhido) : undefined
+  const indisponivel = pronto && motor !== escolhidoBase && !apiOculta
   const escolher = useEscolha(setMotor)
   const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(ehPika ? 'minimax-pika' : motor, apiGeradores.some((g) => g.id === motor))
