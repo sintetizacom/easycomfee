@@ -51,6 +51,7 @@ import minhas_vozes
 import relatorio
 import pasta_resultados
 import scan_modelos
+import variantes
 import avatar
 import precos
 import ltx23
@@ -393,6 +394,8 @@ class PedidoGeracao(Pedido):
     # resolucao, nao pixels.
     proporcao_video: str = "16:9"
     resolucao_video: str = "480p"
+    # Versao do modelo (variantes.py): FLUX 3 "base"/"rapida", ACE-Step "turbo"/"xl". Vazio = padrao.
+    variante: str = Field("", pattern="^(|base|rapida|turbo|xl)$")
     # Seedance 2.5: rascunho (480p, devolve o id) e o final em 1080p a partir dele.
     rascunho_video: bool = False
     rascunho_id: str = Field("", pattern=r"^[\w.:-]{0,160}$")
@@ -702,6 +705,14 @@ def _caminho_de_entrada(referencia: str) -> str:
 
 
 async def montar(tarefa: Tarefa):
+    """O grafo do pedido, com a versao do modelo escolhida (variantes.aplicar)."""
+    g = await _montar(tarefa)
+    if isinstance(g, dict):
+        variantes.aplicar(g, tarefa.pedido)
+    return g
+
+
+async def _montar(tarefa: Tarefa):
     """Traduz o pedido num grafo do ComfyUI, chamando o LLM quando preciso."""
     global MOTOR_CARREGADO
     p = tarefa.pedido
@@ -730,6 +741,11 @@ async def montar(tarefa: Tarefa):
         tarefa.largura = tarefa.altura = 0
         tarefa.prompt_final = musica.configuracao_geracao(p)[0]
         cfg = next(c for c in await musica.catalogo() if c["id"] == p.modelo_musica)
+        if p.modelo_musica == "ace-step15" and p.variante == "xl" and not comfy.na_nuvem():
+            # XL escolhido: os pesos da alternativa XL, se estiverem instalados.
+            xl = musica.resolver(await comfy.info_nos(), "ace-step15", preferir_alt=True)
+            if xl["disponivel"]:
+                cfg = dict(cfg, pesos=xl["pesos"])
         if not cfg["disponivel"]: raise comfy.ErroComfy(cfg["motivo"])
         if cfg.get("plenio"):
             return musica.grafo_yue2(p, seed, p.estilo_musica, p.etapa_musica, p.docs_musica)
@@ -3037,6 +3053,21 @@ async def pasta_resultados_mudar(c: PastaResultados):
     except (OSError, ValueError) as e:
         raise HTTPException(400, str(e) or "Could not use that folder.")
     return {"pasta": str(p)}
+
+
+@app.get("/api/variantes")
+async def variantes_disponiveis():
+    """Quais versoes de cada modelo estao neste PC (para a chave Version)."""
+    r = variantes.disponiveis()
+    try:
+        info = await comfy.info_nos(comfy.BASE_PRINCIPAL)
+        turbo = musica.resolver(info, "ace-step15")
+        xl = musica.resolver(info, "ace-step15", preferir_alt=True)
+        r["ace-step15"] = [{"id": "turbo", "rotulo": "Standard · Turbo", "instalada": turbo["disponivel"] and turbo["pesos"].get("unet", "").find("xl") < 0},
+                           {"id": "xl", "rotulo": "XL · bigger, ~12 GB VRAM", "instalada": xl["disponivel"] and "xl" in xl["pesos"].get("unet", "")}]
+    except Exception:
+        pass
+    return r
 
 
 @app.post("/api/modelos/escanear")

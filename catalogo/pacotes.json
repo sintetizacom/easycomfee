@@ -642,6 +642,18 @@
      "tamanho": 336211292,
      "licenca": "other",
      "requer_aceite": true
+    },
+    {
+     "arquivo": "flux3_image_klein_fast_bf16.safetensors",
+     "pasta": "diffusion_models",
+     "subpasta": "Flux3",
+     "repo": "black-forest-labs/flux-3-image-klein-comfy",
+     "caminho": "diffusion_models/flux3-image-klein-bf16.safetensors",
+     "opcional": true,
+     "rotulo": "FLUX 3 Klein distilled · Fast version (bf16)",
+     "tamanho": 11097404512,
+     "licenca": "other",
+     "requer_aceite": true
     }
    ]
   },
@@ -1853,6 +1865,30 @@
      "opcional": true,
      "rotulo": "ACE-Step VAE",
      "tamanho": 337431732,
+     "licenca": "apache-2.0",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "acestep_v1.5_xl_turbo_bf16.safetensors",
+     "pasta": "diffusion_models",
+     "subpasta": "ACE-Step",
+     "repo": "Comfy-Org/ACE-Step-1.5",
+     "caminho": "split_files/diffusion_models/acestep_v1.5_xl_turbo_bf16.safetensors",
+     "opcional": true,
+     "rotulo": "ACE-Step 1.5 XL Turbo",
+     "tamanho": 9974719892,
+     "licenca": "apache-2.0",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "qwen_4b_ace15.safetensors",
+     "pasta": "text_encoders",
+     "subpasta": "ACE-Step",
+     "repo": "Comfy-Org/ACE-Step-1.5",
+     "caminho": "split_files/text_encoders/qwen_4b_ace15.safetensors",
+     "opcional": true,
+     "rotulo": "ACE-Step XL text encoder 4B",
+     "tamanho": 8379154232,
      "licenca": "apache-2.0",
      "requer_aceite": false
     },

@@ -419,6 +419,19 @@ function rotuloFaixa(a: { nome: string; subpasta: string }): string | null {
   return m ? FAIXAS[m[1]] ?? m[1] : null
 }
 
+/** Versoes instaladas de cada modelo (chave "Version"; variantes.py no servidor). */
+export type Versao = { id: string; rotulo: string; instalada: boolean }
+export function useVersoes(): Record<string, Versao[]> {
+  const [v, setV] = useState<Record<string, Versao[]>>({})
+  useEffect(() => { fetch('/api/variantes').then((r) => (r.ok ? r.json() : {})).then(setV).catch(() => {}) }, [])
+  return v
+}
+/** A versao escolhida, ou a primeira instalada quando a escolhida nao existe neste PC. */
+export function versaoValida(lista: Versao[] | undefined, escolhida: string): string {
+  if (!lista?.length) return ''
+  return lista.find((x) => x.id === escolhida && x.instalada)?.id ?? lista.find((x) => x.instalada)?.id ?? ''
+}
+
 /** One job: progress while it runs, the result when done. */
 export function CartaoTarefa({ t }: { t: Tarefa }) {
   const prontos = arquivos(t)

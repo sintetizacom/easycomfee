@@ -81,12 +81,13 @@ def _achar_pesos(info, pesos_cfg):
     return pesos, faltam
 
 
-def resolver(info, ident):
+def resolver(info, ident, preferir_alt=False):
     cfg = MODELOS[ident]
     faltam = [n for n in cfg["nos"] + ["KSampler", "VAEDecodeAudio", "SaveAudio"] if n not in info]
     pesos, faltam_pesos = _achar_pesos(info, cfg["pesos"])
     # Variantes do mesmo modelo (ex.: ACE-Step 1.5 XL): vale a primeira que estiver completa.
-    for alt in cfg.get("alternativas", []) if faltam_pesos else []:
+    # preferir_alt: a pessoa escolheu a variante (chave Version); ela vem antes do padrao.
+    for alt in cfg.get("alternativas", []) if (faltam_pesos or preferir_alt) else []:
         conjunto = {k: (v[0], v[1], alt.get(k, v[2])) for k, v in cfg["pesos"].items()}
         p_alt, f_alt = _achar_pesos(info, conjunto)
         if not f_alt:

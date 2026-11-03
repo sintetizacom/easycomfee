@@ -62,8 +62,6 @@ def teste_motor_fora_do_ar_nao_inventa_estado(monkeypatch):
 
 # Pedidos pelo codigo que NAO entram no catalogo, cada um com o motivo.
 FORA_DO_CATALOGO = {
-    "acestep_v1.5_xl_turbo_bf16.safetensors": "ACE-Step 1.5 XL: so reconhecido se a pessoa ja tiver (o pacote baixa o Turbo comum)",
-    "qwen_4b_ace15.safetensors": "codificador do ACE-Step 1.5 XL: idem",
     "nsfw_image_detection_int8.onnx": "classificador do Safe mode; o app baixa sozinho para backend/modelos_seguro",
     "https://huggingface.co/onnx-community/nsfw_image_detection-ONNX/resolve/main/onnx/model_quantized.onnx": "idem (URL)",
     "Krea/kroma-v0.3.1-nicegirls08_fp8_scaled.safetensors": "fusao pessoal do autor; o modo Kroma Foto fica fora da versao publica",

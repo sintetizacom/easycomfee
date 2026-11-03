@@ -176,6 +176,8 @@ pacote("flux3", "FLUX 3 Image Klein", "imagem",
     ("diffusion_models", "Flux3/flux3_image_klein_bf16.safetensors", BFL3, "diffusion_models/flux3-image-klein-base-bf16.safetensors", False, "FLUX 3 Klein base (bf16)"),
     ("text_encoders", "Flux3/qwen3vl_4b_int8_convrot.safetensors", BFL3, "text_encoders/qwen3vl_4b_int8_convrot.safetensors", False, "Qwen3-VL 4B (int8)"),
     ("vae", "Flux2/flux2-vae.safetensors", BFL3, "vae/flux2-vae.safetensors", False, "FLUX 2 VAE"),
+    # Versao destilada (chave Version > Fast; variantes.py a reconhece pelo tamanho).
+    ("diffusion_models", "Flux3/flux3_image_klein_fast_bf16.safetensors", BFL3, "diffusion_models/flux3-image-klein-bf16.safetensors", True, "FLUX 3 Klein distilled · Fast version (bf16)"),
 ])
 
 pacote("flux2_klein", "FLUX 2 Klein 9B", "imagem",
@@ -341,6 +343,7 @@ pacote("avatar", "LongCat Avatar 1.5", "video", "Talking avatar from a photo and
 
 YU = "Comfy-Org/YuE2"
 ACE = "Comfy-Org/ace_step_1.5_ComfyUI_files"
+ACE2 = "Comfy-Org/ACE-Step-1.5"  # o mesmo repositorio com o nome novo (o antigo redireciona)
 MM = "Comfy-Org/MiniMax-Music-3"
 SA = "Comfy-Org/stable-audio-3"
 pacote("musica", "Music models", "audio", "Songs with lyrics (YuE2, ACE-Step 1.5, MiniMax Music 3) and Stable Audio 3.",
@@ -351,6 +354,9 @@ pacote("musica", "Music models", "audio", "Songs with lyrics (YuE2, ACE-Step 1.5
     ("text_encoders", "ACE-Step/qwen_0.6b_ace15.safetensors", ACE, "split_files/text_encoders/qwen_0.6b_ace15.safetensors", True, "ACE-Step text encoder 0.6B"),
     ("text_encoders", "ACE-Step/qwen_1.7b_ace15.safetensors", ACE, "split_files/text_encoders/qwen_1.7b_ace15.safetensors", True, "ACE-Step text encoder 1.7B"),
     ("vae", "ACE-Step/ace_1.5_vae.safetensors", ACE, "split_files/vae/ace_1.5_vae.safetensors", True, "ACE-Step VAE"),
+    # ACE-Step 1.5 XL Turbo (chave Version > XL): modelo maior e o codificador de 4B.
+    ("diffusion_models", "ACE-Step/acestep_v1.5_xl_turbo_bf16.safetensors", ACE2, "split_files/diffusion_models/acestep_v1.5_xl_turbo_bf16.safetensors", True, "ACE-Step 1.5 XL Turbo"),
+    ("text_encoders", "ACE-Step/qwen_4b_ace15.safetensors", ACE2, "split_files/text_encoders/qwen_4b_ace15.safetensors", True, "ACE-Step XL text encoder 4B"),
     ("diffusion_models", "Minimax/minimax_music3_dit_fp16.safetensors", MM, "diffusion_models/minimax_music3_dit_fp16.safetensors", True, "MiniMax Music 3"),
     ("text_encoders", "Minimax/minimax_music3_text_encoder_pruned_int8_convrot.safetensors", MM, "text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors", True, "MiniMax Music 3 text encoder"),
     ("vae", "minimax/minimax_music3_dav.safetensors", MM, "vae/minimax_music3_dav.safetensors", True, "MiniMax Music 3 VAE"),

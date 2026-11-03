@@ -4,7 +4,7 @@ import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
 import BlocoSeparar from './BlocoSeparar'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, useVersoes, versaoValida, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
@@ -114,7 +114,12 @@ export default function AbaMusica() {
   const comVoz = !!cfg?.letra && vocal
   const durOk = Math.min(duracao, cfg?.maximo ?? duracao)
 
+  // Versao do ACE-Step 1.5 (Turbo ou XL), so as que estao neste PC.
+  const versoes = useVersoes()
+  const [versao, setVersao] = useLembrado('music.ace.versao', 'turbo')
+  const versaoOk = modelo === 'ace-step15' && !naNuvem ? versaoValida(versoes['ace-step15'], versao) : ''
   const pedido = {
+    ...(versaoOk ? { variante: versaoOk } : {}),
     modelo: 'musica', modelo_musica: modelo, prompt: prompt.trim() || 'x', proporcao: '1:1',
     vocal_musica: comVoz, letra_musica: comVoz ? letra : '', duracao_musica: durOk,
     genero_vocal_musica: genero, encerramento_musica: final, margem_musica: 10,
@@ -237,6 +242,10 @@ export default function AbaMusica() {
               <option value="natural">Natural ending</option><option value="fade">Fade out</option><option value="original">Keep as generated</option>
             </select></label>
           </div>
+          {versaoOk && (versoes['ace-step15']?.filter((x) => x.instalada).length ?? 0) > 1 && (
+            <Chips rotulo="Version" valor={versaoOk} aoMudar={setVersao}
+              opcoes={(versoes['ace-step15'] ?? []).map((x) => ({ id: x.id, rotulo: x.rotulo }))} />
+          )}
           {modelo === 'ace-step15' && <>
             <label className="hf-ctrl"><small>Tempo</small><span><input className="hf-campo" type="number" min={BPM_MIN} max={BPM_MAX} value={bpm} style={{ width: 64 }}
               onChange={(e) => setBpm(Number(e.target.value))}

@@ -450,21 +450,25 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         {/* As duas opcoes de filtro juntas, sem caixa, uma em cima da outra. */}
         <div className="mq-filtros">
         {topoLocais}
-        {perfil && !perfil.so_nuvem && pacotes && (
+        </div>
+
+        {/* Os modelos num cartao proprio, com o titulo no mesmo estilo dos outros cartoes. */}
+        {perfil && pacotes && <section className="mq-cartao mq-modelos-cartao">
+        <span className="mq-rotulo">Models</span>
+        {!perfil.so_nuvem && (
           <label className="mq-filtro">
             <input type="checkbox" checked={soQueRodam} onChange={(e) => setSoQueRodam(e.target.checked)} />
             Only show models that run on my computer
             {soQueRodam && <small> ({pacotes.filter((p) => p.nesta_maquina.selo === 'nao_roda' && p.pronto !== true).length} hidden)</small>}
           </label>
         )}
-        </div>
-
-        {perfil && pacotes && GRUPOS.map((gr) => {
+        {GRUPOS.map((gr) => {
           const lista = pacotes.filter((p) => grupoDoPacote(p) === gr.id)
             .filter((p) => !soQueRodam || p.nesta_maquina.selo !== 'nao_roda' || p.pronto === true)
           if (!lista.length) return null
           const instalados = lista.filter((p) => p.pronto === true).length
-          const aberto = instalados > 0 || (!!prog?.ativo && lista.some((p) => p.id === prog.pacote))
+          // Comecam fechados (pedido de 02/11/2026); so abre sozinho o grupo do download em andamento.
+          const aberto = !!prog?.ativo && lista.some((p) => p.id === prog.pacote)
           return (
           <details key={gr.id} className="mq-grupo" open={aberto || undefined}>
             <summary><span>{gr.nome}</span><small>{lista.length} model{lista.length === 1 ? '' : 's'}{instalados ? ` · ${instalados} installed` : ''}</small></summary>
@@ -585,6 +589,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
           </details>
           )
         })}
+        </section>}
         </>}
         </div>
       </div>

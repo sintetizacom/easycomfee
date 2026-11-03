@@ -4,7 +4,7 @@ import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Ref
 import LayoutIdeogram from './LayoutIdeogram'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, BotaoGerar, CartaoTarefa, Chips, SlotImagem, Midia, arquivos, mensagem, useCusto, useTarefas, parteDoHash, teclasRadio, useLembrado, MAX_PROMPT, TituloPagina } from './comum'
+import { AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, BotaoGerar, CartaoTarefa, Chips, SlotImagem, Midia, arquivos, mensagem, useCusto, useTarefas, parteDoHash, teclasRadio, useLembrado, useVersoes, versaoValida, MAX_PROMPT, TituloPagina } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -149,12 +149,17 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   // Flux 3 na placa: o tamanho padrao e ~1 MP (1344x768 no 16:9). "2 MP" usa a escala do servidor
   // (x1,4) e "4K" o modo nativo (~8,3 MP, uns 7,5 min em 16 GB), so sem imagens de referencia.
   const flux3Local = !apiAtual && !naNuvem && modelo === 'flux3'
+  // Versao do FLUX 3 (base ou destilada), so as que estao neste PC.
+  const versoes = useVersoes()
+  const [versao, setVersao] = useLembrado('image.flux3.versao', 'base')
+  const versaoOk = flux3Local ? versaoValida(versoes.flux3, versao) : ''
   const [tamanho, setTamanho] = useState('padrao')
   const [forcaImagem, setForcaImagem] = useState(0.6)
   const tamanhoOk = tamanho === '4k' && comRefs ? 'padrao' : tamanho
   const pedido = {
     modelo: comRefs && usoRefs ? usoRefs.modo : modelo, prompt: prompt || 'x', proporcao,
     ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),
+    ...(versaoOk ? { variante: versaoOk } : {}),
     lote: comRefs && !apiAtual ? 1 : lote, referencias: refsOk.map((r) => r.nome),
     ...(comRefs && IMG2IMG.has(modelo) ? { forca_imagem: forcaImagem } : {}),
     ...(apiAtual ? {} : camposAjustes(ajustes, true)),
@@ -319,6 +324,10 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           </select></label>
           <Chips rotulo="Aspect ratio" opcoes={PROPORCOES.map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           {!(comRefs && !apiAtual) && <Chips rotulo="Images" opcoes={[1, 2, 4].map((n) => ({ id: n, rotulo: `×${n}` }))} valor={lote} aoMudar={setLote} />}
+          {flux3Local && (versoes.flux3?.filter((x) => x.instalada).length ?? 0) > 1 && (
+            <Chips rotulo="Version" valor={versaoOk} aoMudar={setVersao}
+              opcoes={(versoes.flux3 ?? []).map((x) => ({ id: x.id, rotulo: x.rotulo }))} />
+          )}
           {flux3Local && (
             <Chips rotulo="Resolution" valor={tamanhoOk} aoMudar={setTamanho} opcoes={[
               { id: 'padrao', rotulo: '1 MP · fast' }, { id: 'alta', rotulo: '2 MP' },
