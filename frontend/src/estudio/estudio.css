@@ -2865,3 +2865,6 @@ html .mq-aviso-passo { border-color: var(--hf-neon); color: var(--hf-neon); }
 html .mq-scan { align-items: flex-start; }
 html .mq-scan-res { margin-top: 10px; font-size: 13px; }
 html .mq-scan-res ul { margin: 6px 0 0 16px; max-height: 160px; overflow: auto; font-size: 12px; opacity: .8; }
+/* Config Models: o que falta, na linha fechada dos componentes. */
+html .mq-componentes summary .mq-falta { color: #F5A33C; text-transform: none; letter-spacing: 0; font-weight: 600; }
+html .mq-componentes summary .mq-tudo-ok { color: #4ADE80; text-transform: none; letter-spacing: 0; font-weight: 600; }

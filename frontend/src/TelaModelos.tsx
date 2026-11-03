@@ -524,7 +524,16 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
               {/* Mesma linha em todo cartao: componentes a esquerda, acao a direita. */}
               <div className="mq-rodape">
                 <details className="mq-componentes">
-                  <summary>Required components ({p.arquivos.filter((a) => !a.opcional).length + p.nos.length})</summary>
+                  <summary>Required components ({p.arquivos.filter((a) => !a.opcional).length + p.nos.length})
+                    {/* O que falta ja na linha fechada, sem precisar abrir (ideia de um testador, 02/11/2026). */}
+                    {(() => {
+                      const faltam = [...p.arquivos.filter((a) => !a.opcional && a.instalado !== true).map((a) => a.rotulo),
+                        ...p.nos.filter((n) => !n.instalado).map((n) => `${n.nome} (node)`)]
+                      return faltam.length
+                        ? <span className="mq-falta"> · {faltam.length} missing: {faltam.slice(0, 3).join(', ')}{faltam.length > 3 ? `, +${faltam.length - 3} more` : ''}</span>
+                        : <span className="mq-tudo-ok"> · all ready</span>
+                    })()}
+                  </summary>
                   <ul>
                     {p.arquivos.map((a) => (
                       <li key={a.pasta + a.subpasta + a.arquivo} data-ok={a.instalado === true}>
