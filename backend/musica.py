@@ -119,7 +119,10 @@ async def onde_roda() -> dict:
             # O Plenio mora no segundo motor desta maquina; nao existe na nuvem.
             lados[ident] = {"local": (await _catalogo_plenio(ident))["disponivel"], "nuvem": False}
         else:
-            lados[ident] = {"local": bool(local) and resolver(local, ident)["disponivel"],
+            r_local = resolver(local, ident) if local else None
+            lados[ident] = {"local": bool(r_local) and r_local["disponivel"],
+                            # O que falta neste PC (nome de arquivo ou no), para a tela dizer.
+                            "motivo_local": r_local["motivo"] if r_local and not r_local["disponivel"] else "",
                             "nuvem": bool(na_nuvem) and resolver(na_nuvem, ident)["disponivel"]}
     return lados
 

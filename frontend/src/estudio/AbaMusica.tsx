@@ -13,7 +13,7 @@ import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeri
 type ModeloMusica = { id: string; rotulo: string; letra: boolean; maximo: number; disponivel: boolean; motivo: string; plenio?: boolean
   estilos?: string[]; cover?: boolean; ordem?: string[]
   /** Where it exists: this machine (installed) and Comfy Cloud. */
-  local?: boolean; nuvem?: boolean }
+  local?: boolean; nuvem?: boolean; motivo_local?: string }
 
 const DESCRICOES: Record<string, string> = {
   'minimax-music3': 'Full songs with vocals and lyrics, radio quality. Up to 5 min.',
@@ -276,7 +276,7 @@ export default function AbaMusica() {
         )}
         <div className="hf-linha-controles">
           {cfg && !naNuvem && cfg.local === false
-            ? <span className="hf-erro">{cfg.rotulo} is not installed on this computer. Install it in Config Models, or choose Cloud on its card.</span>
+            ? <span className="hf-erro">{cfg.rotulo} is not installed on this computer{cfg.motivo_local ? ` (${cfg.motivo_local.replace('Missing: ', 'missing: ')})` : ''}. Install it in Config Models, or choose Cloud on its card.</span>
             : cfg && !cfg.disponivel && <span className="hf-erro">{cfg.motivo}</span>}
           <span className="hf-espaco" />
           <BotaoGerar rotulo="Generate ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
