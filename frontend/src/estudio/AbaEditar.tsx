@@ -373,7 +373,7 @@ export default function AbaEditar() {
               <div className="hf-edt-cartoes">
                 {FERRAMENTAS.filter((x) => x.grupo === g).map((x) => (
                   <button key={x.id} className="hf-app hf-ferramenta" data-ativo={f?.id === x.id} aria-pressed={f?.id === x.id} onClick={() => abrir(x)}>
-                    <img src={`/editar/${x.id}.gif?v=3`} alt="" loading="lazy"
+                    <img src={`/editar/${x.id}.gif?v=4`} alt="" loading="lazy"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} />
                     <b>{x.nome}{x.api && <small> · API</small>}</b>
                     <span>{x.frase}</span>

@@ -8,6 +8,8 @@ import config
 import asyncio
 import contextlib
 import json
+import sem_janela
+sem_janela.ligar()
 import shutil
 import os
 import pathlib
@@ -613,6 +615,57 @@ class Tarefa:
 
 
 TAREFAS: dict[str, Tarefa] = {}
+# Quantas geracoes concluidas cada aba (cada tipo de pedido) mostra. Antes eram 100 somando
+# TODAS as abas: um dia de testes de video empurrava para fora o Lip Sync de ontem (03/11/2026).
+POR_TIPO, TESTES_MAX = 60, 30
+
+
+def completar_da_galeria() -> None:
+    """Cada aba lista as tarefas da memoria; as antigas saem dela. A galeria guarda todos os
+    arquivos para sempre: o que faltar volta dela como tarefa pronta, ate POR_TIPO por tipo."""
+    ja = {json.loads(s).get("nome") for t in TAREFAS.values() for s in t.imagens}
+    contagem: dict[str, int] = {}
+    for t in TAREFAS.values():
+        if t.estado == "pronto" and not t.pedido.teste:
+            contagem[t.pedido.modelo] = contagem.get(t.pedido.modelo, 0) + 1
+    try:
+        linhas = biblioteca.listar(limite=4000)
+    except Exception:
+        return
+    for l in linhas:  # da mais nova para a mais antiga
+        if l["arquivo"] in ja or contagem.get(l["modelo"], 0) >= POR_TIPO:
+            continue
+        try:
+            pedido = PedidoGeracao.model_validate({**{k: v for k, v in l["parametros"].items()
+                                                      if k in PedidoGeracao.model_fields},
+                                                   "modelo": l["modelo"], "prompt": l["prompt"] or ""})
+        except Exception:
+            continue
+        t = Tarefa(pedido)
+        t.id = f"galeria-{l['id']}"
+        t.estado, t.progresso, t.criada_em = "pronto", 1.0, l["criada_em"]
+        t.prompt_final = l.get("prompt_final") or ""
+        t.largura, t.altura = l.get("largura") or 0, l.get("altura") or 0
+        t.duracao = l.get("duracao") or 0
+        im = {"nome": l["arquivo"], "subpasta": l["subpasta"], "tipo": "output"}
+        if "finalizacao_musica" in l["parametros"]:
+            im["musica"] = l["parametros"]["finalizacao_musica"]
+        t.imagens = [json.dumps(im, ensure_ascii=False)]
+        TAREFAS[t.id] = t
+        ja.add(l["arquivo"])
+        contagem[l["modelo"]] = contagem.get(l["modelo"], 0) + 1
+
+
+def podar_memoria() -> None:
+    """Guarda as ultimas POR_TIPO concluidas de cada tipo (modelo do pedido) e poucas de teste."""
+    vistas: dict[str, int] = {}
+    for t in sorted(TAREFAS.values(), key=lambda t: t.criada_em, reverse=True):
+        if t.estado not in ("pronto", "erro"):
+            continue
+        grupo = "teste" if t.pedido.teste else t.pedido.modelo
+        vistas[grupo] = vistas.get(grupo, 0) + 1
+        if vistas[grupo] > (TESTES_MAX if grupo == "teste" else POR_TIPO):
+            TAREFAS.pop(t.id, None)
 POR_PROMPT_ID: dict[str, Tarefa] = {}
 FILA: asyncio.Queue[Tarefa] = asyncio.Queue()
 OUVINTES: set[WebSocket] = set()
@@ -2139,11 +2192,7 @@ async def operario():
             for pid, item in list(POR_PROMPT_ID.items()):
                 if item is tarefa:
                     POR_PROMPT_ID.pop(pid, None)
-            concluidas = sorted((t for t in TAREFAS.values()
-                                 if t.estado in ("pronto", "erro")),
-                                key=lambda t: t.criada_em, reverse=True)
-            for antiga in concluidas[100:]:
-                TAREFAS.pop(antiga.id, None)
+            podar_memoria()
             biblioteca.podar_tarefas()
             # Esvazia a placa ao fim de CADA geracao, com sucesso ou erro, a
             # pedido do usuario. E uma REDE DE SEGURANCA, nao a causa do
@@ -2622,9 +2671,14 @@ async def iniciar():
     relatorio.ligar_log()
     biblioteca.criar_tabelas()
     biblioteca.podar_tarefas()
-    for dados in biblioteca.carregar_tarefas():
-        tarefa = Tarefa.de_registro(dados)
+    for dados in biblioteca.carregar_tarefas(limite=3000):
+        try:
+            tarefa = Tarefa.de_registro(dados)
+        except Exception:  # registro antigo que nao valida mais: fica so na galeria
+            continue
         TAREFAS[tarefa.id] = tarefa
+    completar_da_galeria()
+    podar_memoria()
     # Assinar novamente a sessão original mantém os eventos de um pedido
     # em execução quando só o servidor do Editor é atualizado/reiniciado.
     try:
@@ -4203,7 +4257,9 @@ async def recorte_avatar(pedido: PedidoRecorteAvatar):
 
 @app.get("/api/tarefas")
 async def tarefas():
-    recentes = sorted(TAREFAS.values(), key=lambda t: t.criada_em, reverse=True)[:50]
+    # Sem corte geral: a memoria ja guarda no maximo POR_TIPO de cada aba (podar_memoria).
+    # Antes eram 50 somando tudo, e uma aba sumia com as geracoes de outra (03/11/2026).
+    recentes = sorted(TAREFAS.values(), key=lambda t: t.criada_em, reverse=True)
     return [t.como_dict() for t in recentes]
 
 

@@ -299,7 +299,7 @@ def carregar_tarefas(limite=100) -> list[dict]:
     return [json.loads(l["registro"]) for l in linhas]
 
 
-def podar_tarefas(limite=500):
+def podar_tarefas(limite=3000):
     with _conectar() as con:
         con.execute("""DELETE FROM tarefas WHERE estado IN ('pronto', 'erro')
             AND id NOT IN (SELECT id FROM tarefas ORDER BY criada_em DESC LIMIT ?)""",
