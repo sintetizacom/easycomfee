@@ -2845,3 +2845,6 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-selo-rascunho { position: absolute; left: 8px; top: 8px; z-index: 3; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 700;
   letter-spacing: .05em; text-transform: uppercase; background: #E5481F; color: #fff; pointer-events: none; }
 .hf-link.hf-link-neon { color: var(--hf-neon); font-weight: 700; }
+/* Tela de desligado: o nome como na logo (Fredoka 600, Easy branco, Comfee neon). */
+.hf-desligado h1 { font-family: "Fredoka", system-ui, sans-serif; font-weight: 600; font-size: 28px; letter-spacing: .01em; }
+.hf-desligado-easy { color: #fff; } .hf-desligado-comfee { color: var(--hf-neon, #F2FF3D); }
