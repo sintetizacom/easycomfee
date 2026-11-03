@@ -111,8 +111,28 @@ def _quer_instalar() -> bool:
     return r in ("", "y", "yes", "s", "sim")
 
 
+class _Tee:
+    """Mostra na tela e grava em logs/install.log (o relatorio de suporte leva esse arquivo)."""
+    def __init__(self, tela, arquivo):
+        self.tela, self.arquivo = tela, arquivo
+    def write(self, t):
+        self.tela.write(t)
+        try:
+            self.arquivo.write(t); self.arquivo.flush()
+        except OSError:
+            pass
+    def flush(self):
+        self.tela.flush()
+
+
 def main() -> int:
+    try:
+        (RAIZ / "logs").mkdir(exist_ok=True)
+        sys.stdout = _Tee(sys.stdout, open(RAIZ / "logs" / "install.log", "a", encoding="utf-8"))
+    except OSError:
+        pass
     achados = candidatos()
+    print("ComfyUI candidates: " + ("; ".join(f"{a['tipo']}: {a['pasta']}" for a in achados) or "none"))
     if "--listar" in sys.argv:
         for a in achados:
             print(f"{a['tipo']}: {a['pasta']} ({a['url']})")
@@ -155,6 +175,12 @@ def main() -> int:
     dados["comfy_url"] = a["url"]
     # So o ComfyUI que o EasyComfee instalou e ligado pelo atalho; os outros sao da pessoa.
     dados["comfy_iniciar"] = bool(a.get("proprio"))
+    # O ComfyUI que o EasyComfee liga grava as geracoes em <EasyComfee>\output
+    # (iniciar_comfy.py passa --output-directory). O da pessoa grava na pasta dele.
+    if a.get("proprio"):
+        dados["comfy_saida"] = (RAIZ / "output").as_posix()
+    else:
+        dados.pop("comfy_saida", None)
     CONFIG.write_text(json.dumps(dados, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Found {a['tipo']} at {a['pasta']}  (saved in config.json)")
     if not a.get("proprio"):

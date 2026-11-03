@@ -14,11 +14,9 @@ const DEMORA_MS = 3 * 60 * 1000
 export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const { naNuvem } = useContext(MotorCtx)
   const [fora, setFora] = useState(false)
-  const [daPessoa, setDaPessoa] = useState(false)
   const [desde, setDesde] = useState<number | null>(null)
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => {
-    fetch('/api/motor').then((r) => r.json()).then((m) => setDaPessoa(!!m?.comfy_da_pessoa)).catch(() => {})
     let vivo = true
     const ler = () => {
       setAgora(Date.now())
@@ -38,11 +36,11 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const ajuda = 'Open ComfyUI (ComfyUI Desktop, or run_nvidia_gpu.bat in the portable folder) and keep its window open. No GPU? Use Comfy Cloud in Config Models.'
   return (
     <div className="hf-aviso-comfy" role="status" title={ajuda}>
-      {daPessoa
-        ? <><b>Waiting for your ComfyUI…</b> The shortcut opens it when it can; if no ComfyUI window appears, open it yourself. This page connects by itself.</>
-        : demorou
-          ? <><b>ComfyUI is taking long to start.</b> Check its window for an error, or close it and open it again. No GPU? Use Comfy Cloud in Config Models.</>
-          : <><b>ComfyUI is starting…</b> about a minute or two after the PC starts. Not coming up? Open ComfyUI, or use Comfy Cloud in Config Models.</>}
+      {/* Uma frase so, que diz o que fazer: "esta ligando" fazia quem ja tinha ComfyUI esperar
+          por nada (02/11/2026: o amigo so conectou quando abriu o ComfyUI dele). */}
+      {demorou
+        ? <><b>ComfyUI is taking long.</b> Check its window for an error, or close it and open it again. No GPU? Use Comfy Cloud in Config Models.</>
+        : <><b>Waiting for ComfyUI.</b> Already had ComfyUI installed? Open it (ComfyUI Desktop, or run_nvidia_gpu.bat in its folder). EasyComfee connects by itself.</>}
     </div>
   )
 }

@@ -127,8 +127,15 @@ def main() -> None:
     pasta = pathlib.Path(cfg["comfy_dir"]).parent          # ...\ComfyUI_windows_portable
     porta = url.rsplit(":", 1)[-1]
     app = f"http://127.0.0.1:{cfg.get('app_porta', 8600)}"
+    # Instalacao nova: as geracoes vao para a pasta "output" do EasyComfee (o instalador grava
+    # comfy_saida). Sem a chave (instalado antes de 02/11/2026) fica a pasta do ComfyUI, onde
+    # esta a galeria antiga.
+    saida = pathlib.Path(cfg["comfy_saida"]) if cfg.get("comfy_saida") else None
+    if saida:
+        saida.mkdir(parents=True, exist_ok=True)
+    opcao_saida = f' --output-directory "{saida}"' if saida else ''
     comando = (f'cd /d "{pasta}" && .\\python_embeded\\python.exe -s ComfyUI\\main.py --windows-standalone-build '
-               f'--listen 127.0.0.1 --port {porta} --disable-auto-launch --enable-cors-header {app}'
+               f'--listen 127.0.0.1 --port {porta} --disable-auto-launch --enable-cors-header {app}{opcao_saida}'
                # Se o ComfyUI cair (ex.: "WinError 126 ... c10.dll" sem o Visual C++), a janela
                # fica aberta com o erro em vez de sumir.
                ' || (echo. & echo ComfyUI stopped with an error: read the message above. '

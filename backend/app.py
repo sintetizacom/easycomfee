@@ -8,6 +8,7 @@ import config
 import asyncio
 import contextlib
 import json
+import shutil
 import os
 import pathlib
 import random
@@ -47,6 +48,8 @@ import prompting
 import workflows
 import voz
 import minhas_vozes
+import relatorio
+import pasta_resultados
 import avatar
 import precos
 import ltx23
@@ -1904,6 +1907,30 @@ async def treinar_voz(tarefa: Tarefa):
     await anunciar(tarefa)
 
 
+def copiar_para_easycomfee(itens) -> None:
+    """O ComfyUI grava na pasta dele; uma copia de cada resultado vai para a pasta de resultados
+    (<EasyComfee>/output ou a escolhida). Nunca derruba a geracao."""
+    # Para todos (pedido de 02/11/2026): por padrao <pasta do EasyComfee>/output, ou a pasta
+    # escolhida no Config Models. Se o ComfyUI ja grava ali, nao copia.
+    destino = pasta_resultados.atual()
+    try:
+        if destino.resolve() == SAIDA_DO_MOTOR.resolve():
+            return  # o ComfyUI ja grava ali
+    except OSError:
+        return
+    for im in itens:
+        try:
+            nome, sub = im["nome"], im.get("subpasta", "")
+            origem = (musica.FINALIZACOES / nome if sub == "finalizacoes_musica"
+                      else SAIDA_DO_MOTOR / sub / nome)
+            if origem.is_file() and pathlib.PurePath(nome).name == nome:
+                alvo = destino / sub / nome
+                alvo.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(origem, alvo)
+        except OSError as e:
+            relatorio.log().warning("copia para output falhou (%s): %s", im.get("nome"), e)
+
+
 async def separar_faixas(tarefa: Tarefa):
     """Separa uma musica em faixas e poe cada faixa na galeria.
 
@@ -1950,6 +1977,7 @@ async def separar_faixas(tarefa: Tarefa):
     if not feitos:
         raise RuntimeError("O separador não devolveu nenhuma faixa.")
 
+    await asyncio.to_thread(copiar_para_easycomfee, [{"nome": n, "subpasta": "faixas"} for n, _ in feitos])
     # As faixas entram na galeria como musica: o cartao, o player e o filtro
     # de audio ja sabem trata-las. O nome da faixa vai no rotulo.
     tarefa.imagens = [json.dumps({"nome": nome, "subpasta": "faixas", "tipo": "output",
@@ -2051,6 +2079,7 @@ async def operario():
             # Algumas excecoes de transporte (notadamente ReadTimeout) tem
             # str(e) vazio. A interface precisa de algo diagnosticavel.
             tarefa.erro = str(e).strip() or repr(e)
+            relatorio.log().error("geracao %s (%s) falhou: %s", tarefa.id[:8], tarefa.pedido.modelo, tarefa.erro[:2000])
             await anunciar(tarefa)
         finally:
             ATUAL = None
@@ -2250,6 +2279,7 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
                     for s_ in saidas:
                         s_["musica"] = dict(s_.get("musica") or {}, capa=capa)
             nomes = [json.dumps(im, ensure_ascii=False) for im in saidas]
+            await asyncio.to_thread(copiar_para_easycomfee, saidas)
             try:
                 grafos.salvar(getattr(tarefa, "_grafo", None), saidas)
             except OSError:
@@ -2531,6 +2561,7 @@ async def operar_apos_recuperar():
 
 @app.on_event("startup")
 async def iniciar():
+    relatorio.ligar_log()
     biblioteca.criar_tabelas()
     biblioteca.podar_tarefas()
     for dados in biblioteca.carregar_tarefas():
@@ -2835,6 +2866,27 @@ async def aplicar_atualizacao():
     return {"ok": True}
 
 
+@app.get("/api/relatorio")
+async def relatorio_suporte():
+    """O .zip para suporte: logs, resumo do PC e as ultimas geracoes com erro (sem chaves)."""
+    stats = None
+    try:
+        async with comfy._cliente(5) as c:
+            r = await c.get(f"{comfy.BASE_PRINCIPAL}/system_stats")
+            stats = r.json() if r.status_code == 200 else None
+    except Exception:
+        pass
+    erros = [{"quando": time.strftime("%Y-%m-%d %H:%M", time.localtime(getattr(t, "criada_em", 0) or 0)),
+              "modelo": t.pedido.modelo, "detalhe": t.detalhe, "erro": t.erro[:3000]}
+             for t in sorted(TAREFAS.values(), key=lambda t: getattr(t, "criada_em", 0) or 0, reverse=True)
+             if t.estado == "erro"][:20]
+    dados = await asyncio.to_thread(relatorio.montar_zip,
+                                    {"modo": comfy.MODO["motor"], "respondendo": stats is not None}, stats, erros)
+    nome = f"easycomfee-report-{time.strftime('%Y%m%d-%H%M')}.zip"
+    return Response(dados, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{nome}"'})
+
+
 @app.get("/api/motor")
 async def motor_atual():
     return {"modo": comfy.MODO["motor"], "chave_nuvem": chaves.chave() is not None,
@@ -2957,6 +3009,39 @@ async def trocar_motor(pedido: PedidoMotor):
 
 class PedidoInicializacao(Pedido):
     ativo: bool
+
+
+class PastaResultados(BaseModel):
+    pasta: str = Field("", max_length=400)
+
+
+@app.get("/api/pasta-resultados")
+async def pasta_resultados_ver():
+    return {"pasta": str(pasta_resultados.atual()), "comfy": str(SAIDA_DO_MOTOR)}
+
+
+@app.post("/api/pasta-resultados")
+async def pasta_resultados_mudar(c: PastaResultados):
+    """Sem pasta: abre a janela do Windows para escolher. Com pasta: grava essa."""
+    pasta = c.pasta.strip()
+    if not pasta:
+        try:
+            pasta = await asyncio.to_thread(pasta_resultados.escolher)
+        except Exception as e:
+            raise HTTPException(500, f"Could not open the folder picker ({type(e).__name__}). Type the folder path instead.")
+        if not pasta:
+            return {"pasta": str(pasta_resultados.atual()), "cancelado": True}
+    try:
+        p = await asyncio.to_thread(pasta_resultados.salvar, pasta)
+    except (OSError, ValueError) as e:
+        raise HTTPException(400, str(e) or "Could not use that folder.")
+    return {"pasta": str(p)}
+
+
+@app.post("/api/pasta-resultados/abrir")
+async def pasta_resultados_abrir():
+    await asyncio.to_thread(pasta_resultados.abrir)
+    return {"ok": True}
 
 
 @app.get("/api/inicializacao")

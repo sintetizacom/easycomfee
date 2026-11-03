@@ -94,6 +94,55 @@ function InicioComWindows() {
   )
 }
 
+/** Onde os resultados sao salvos: o EasyComfee copia cada um para esta pasta (pasta_resultados.py). */
+function PastaResultados() {
+  const [pasta, setPasta] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  useEffect(() => { fetch('/api/pasta-resultados').then((r) => r.json()).then((d) => setPasta(d.pasta)).catch(() => {}) }, [])
+  const mudar = async (digitada = '') => {
+    setOcupado(true); setErro(null)
+    try {
+      const r = await fetch('/api/pasta-resultados', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pasta: digitada }) })
+      const d = await r.json()
+      if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Could not use that folder.')
+      setPasta(d.pasta)
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)) } finally { setOcupado(false) }
+  }
+  if (pasta === null) return null
+  return (
+    <section className="mq-cartao mq-interruptor">
+      <div>
+        <span className="mq-rotulo">Where results are saved</span>
+        <p className="mq-sub">Every image, video and song you make is also saved here:</p>
+        <code className="mq-pasta">{pasta}</code>
+        {erro && <p className="mq-aviso erro">{erro}{' '}
+          <button type="button" className="hf-link" onClick={() => { const t = window.prompt('Folder path:', pasta); if (t) void mudar(t) }}>Type the path</button></p>}
+      </div>
+      <div className="mq-pasta-botoes">
+        <button type="button" className="mq-botao-relatorio" disabled={ocupado} onClick={() => void mudar()}>{ocupado ? 'Choosing…' : 'Choose folder…'}</button>
+        <button type="button" className="mq-botao-relatorio" onClick={() => { fetch('/api/pasta-resultados/abrir', { method: 'POST' }).catch(() => {}) }}>Open folder</button>
+      </div>
+    </section>
+  )
+}
+
+/** Relatorio para suporte: um .zip com os logs, o resumo do PC e os ultimos erros (sem chaves). */
+function Relatorio() {
+  return (
+    <section className="mq-cartao mq-interruptor">
+      <div>
+        <span className="mq-rotulo">Something not working?</span>
+        <p className="mq-sub">Download a report (setup and app logs, a summary of this PC and the last errors, with no keys
+          or passwords) and attach it to a new issue on{' '}
+          <a href="https://github.com/sintetizacom/easycomfee/issues/new" target="_blank" rel="noreferrer">GitHub</a>.</p>
+      </div>
+      <a className="mq-botao-relatorio" href="/api/relatorio" download>Download report</a>
+    </section>
+  )
+}
+
 function Maquina({ aoSalvar }: { aoSalvar: (p: PerfilMaquina) => void }) {
   const [det, setDet] = useState<Detectado | null>(null)
   const [salvo, setSalvo] = useState<PerfilMaquina | null>(null)
@@ -316,6 +365,8 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         {aba === 'api' ? conta : <>
         <InicioComWindows />
         <ModoSeguro />
+        <PastaResultados />
+        <Relatorio />
 
         <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
 
