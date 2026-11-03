@@ -20,7 +20,10 @@ MODELOS = {
         "pesos": {"checkpoint": ("CheckpointLoaderSimple", "ckpt_name", "stable_audio_3_medium_base.safetensors"), "clip": ("CLIPLoader", "clip_name", "t5gemma_b_b_ul2.safetensors")}},
     "ace-step15": {"rotulo": "ACE-Step 1.5 Turbo", "letra": True, "maximo": 600,
         "nos": ["UNETLoader", "DualCLIPLoader", "VAELoader", "TextEncodeAceStepAudio1.5", "EmptyAceStep1.5LatentAudio", "ModelSamplingAuraFlow", "ConditioningZeroOut"],
-        "pesos": {"unet": ("UNETLoader", "unet_name", "acestep_v1.5_turbo.safetensors"), "clip1": ("DualCLIPLoader", "clip_name1", "qwen_0.6b_ace15.safetensors"), "clip2": ("DualCLIPLoader", "clip_name2", "qwen_1.7b_ace15.safetensors"), "vae": ("VAELoader", "vae_name", "ace_1.5_vae.safetensors")}},
+        "pesos": {"unet": ("UNETLoader", "unet_name", "acestep_v1.5_turbo.safetensors"), "clip1": ("DualCLIPLoader", "clip_name1", "qwen_0.6b_ace15.safetensors"), "clip2": ("DualCLIPLoader", "clip_name2", "qwen_1.7b_ace15.safetensors"), "vae": ("VAELoader", "vae_name", "ace_1.5_vae.safetensors")},
+        # O 1.5 XL Turbo (template oficial audio_ace_step1_5_xl_turbo): mesmos passos e sampler,
+        # outro modelo e o codificador de 4B. Quem tem so o XL tambem gera (02/11/2026).
+        "alternativas": [{"unet": "acestep_v1.5_xl_turbo_bf16.safetensors", "clip2": "qwen_4b_ace15.safetensors"}]},
     # YuE2 pelo modelo pronto "1 . YuE2 . Song" do Plenio (v1.0.2), no SEGUNDO
     # motor (v0.41, onde o Plenio esta instalado): o Gemma 4 escreve titulo,
     # estilo e letra, o YuE2 planeja a partitura e canta, o Plenio masteriza a
@@ -66,16 +69,30 @@ GENEROS_VOCAIS = {"feminino": "Female lead vocal.", "masculino": "Male lead voca
 def nome_musica(p):
     return nome_audio((p.projeto_musica, p.titulo_musica), 'musica_' + p.modelo_musica)
 
-def resolver(info, ident):
-    cfg = MODELOS[ident]
-    faltam = [n for n in cfg["nos"] + ["KSampler", "VAEDecodeAudio", "SaveAudio"] if n not in info]
-    pesos = {}
-    for chave, (no, campo, arquivo) in cfg["pesos"].items():
+def _achar_pesos(info, pesos_cfg):
+    """{chave: nome no ComfyUI} e a lista do que faltou, para um conjunto de arquivos."""
+    pesos, faltam = {}, []
+    for chave, (no, campo, arquivo) in pesos_cfg.items():
         entrada = info.get(no, {}).get("input", {}).get("required", {}).get(campo, [[]])
         nomes = entrada[0] if isinstance(entrada[0], list) else entrada[1].get("options", [])
         encontrado = next((n for n in nomes if n.replace("\\", "/").split("/")[-1] == arquivo), None)
         if encontrado: pesos[chave] = encontrado
         else: faltam.append(arquivo)
+    return pesos, faltam
+
+
+def resolver(info, ident):
+    cfg = MODELOS[ident]
+    faltam = [n for n in cfg["nos"] + ["KSampler", "VAEDecodeAudio", "SaveAudio"] if n not in info]
+    pesos, faltam_pesos = _achar_pesos(info, cfg["pesos"])
+    # Variantes do mesmo modelo (ex.: ACE-Step 1.5 XL): vale a primeira que estiver completa.
+    for alt in cfg.get("alternativas", []) if faltam_pesos else []:
+        conjunto = {k: (v[0], v[1], alt.get(k, v[2])) for k, v in cfg["pesos"].items()}
+        p_alt, f_alt = _achar_pesos(info, conjunto)
+        if not f_alt:
+            pesos, faltam_pesos = p_alt, []
+            break
+    faltam += faltam_pesos
     return {"id": ident, "rotulo": cfg["rotulo"], "letra": cfg["letra"], "maximo": cfg["maximo"],
             "disponivel": not faltam, "motivo": "Missing: " + ", ".join(faltam) if faltam else "", "pesos": pesos}
 
