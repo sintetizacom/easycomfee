@@ -544,7 +544,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
                         <span className="mq-marca">{a.instalado === true ? '✓' : '○'}</span>
                         <span className="mq-nome">{a.rotulo}{a.opcional ? ' · optional' : ''}</span>
                         <span className="mq-estado">
-                          {a.encontrado ? <span title={`${a.pasta}/${a.encontrado}`}>Found in your ComfyUI: {a.pasta}/{a.encontrado}</span>
+                          {a.encontrado ? <span className="mq-achado" title={`${a.pasta}/${a.encontrado}`}>Found in your ComfyUI ⓘ</span>
                             : a.instalado === true ? 'Ready'
                             : a.sem_origem ? `manual: ${a.pasta}/${a.subpasta ? a.subpasta + '/' : ''}${a.arquivo}`
                             : <>{gb(a.tamanho)}{a.requer_aceite && <> · <a href={`https://huggingface.co/${a.repo}`} target="_blank" rel="noreferrer">accept license</a></>}</>}
