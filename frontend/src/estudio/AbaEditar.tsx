@@ -2,7 +2,7 @@ import type React from 'react'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { MotorCtx, AvisoInstalar, useFaltaInstalar, trocarMotor } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
-import { pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, MAX_PROMPT, TituloPagina } from './comum'
+import { pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, Midia, SlotImagem, mensagem, useCusto, useTarefas, MAX_PROMPT, TituloPagina } from './comum'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 
 // Edit Studio: as ferramentas de edicao herdadas do Editor de Imagens. Cada cartao e
@@ -640,10 +640,10 @@ export default function AbaEditar() {
         <div className="hf-img-faixa">
           {emCurso.map((t) => <div key={t.id} className="hf-img-faixa-item hf-img-faixa-curso"><CartaoTarefa t={t} /></div>)}
           {recentes.map((a) => (
-            <button key={a.subpasta + a.nome} type="button" className="hf-img-faixa-item" data-ativo={depois?.nome === a.nome}
-              onClick={() => setVerResultado(a)} title="Show it in the big view">
-              <img src={urlImagem(a)} alt="" loading="lazy" />
-            </button>
+            // O mesmo cartao da aba Image: botoes e menu; clique mostra no grande, duplo abre o visualizador.
+            <div key={a.subpasta + a.nome} className="hf-img-faixa-item hf-faixa-midia" data-ativo={depois?.nome === a.nome} title="Show it in the big view">
+              <Midia nome={a.nome} subpasta={a.subpasta} aoClicar={() => setVerResultado(a)} />
+            </div>
           ))}
           {!recentes.length && !emCurso.length && <p className="hf-vazio">Your edits will appear here.</p>}
         </div>
