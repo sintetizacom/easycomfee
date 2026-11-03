@@ -94,18 +94,21 @@ const RESOLUCOES_ORBITA: Record<string, string[]> = {
  *  edicao giram por palavras, em degraus: leve, 3/4, perfil, 3/4 de costas, costas.
  *  Testado em 31/10/2026: com esta forma o Flux 3 e o Nano Banana giram e mantem pessoa e cenario. */
 function fraseOrbita(giro: number, altura: string, extra = '') {
-  // O lado da frase e o oposto do sinal: com giro positivo o boneco mostra a pessoa de frente
-  // para a esquerda, e "left side" e o que faz o Flux igualar o boneco (teste de 31/10/2026).
-  const g = Math.abs(giro), lado = giro >= 0 ? 'left' : 'right'
+  // A camera vai para o lado do seletor (giro > 0 = direita) e mostra mais o lado OPOSTO da
+  // pessoa: "left side" com giro positivo e o que faz o Flux igualar o boneco (teste de
+  // 31/10/2026). Antes a frase dizia "camera ... to the left" com o seletor em "right", e
+  // sem dizer que a pessoa fica parada o Flux girava a pessoa (02/11/2026).
+  const g = Math.abs(giro), camera = giro >= 0 ? 'right' : 'left', lado = giro >= 0 ? 'left' : 'right'
   const vista = g < 8 ? 'from the same angle as the photo'
-    : g < 30 ? `with the camera moved about ${g} degrees to the ${lado} around the person, a slight turn`
-    : g < 68 ? `seen from a three-quarter view, the camera ${g} degrees to the ${lado} around the person`
+    : g < 30 ? `with the camera orbited about ${g} degrees to the ${camera} around the person, so a little more of their ${lado} side shows`
+    : g < 68 ? `seen from a three-quarter view: the camera orbited ${g} degrees to the ${camera} around the person, showing their ${lado} side`
     : g < 113 ? `seen from the ${lado} side, in profile`
     : g < 158 ? `seen from behind and to the ${lado}, a three-quarter back view`
     : 'seen from behind'
   const alto = altura === 'baixo' ? ', from a low camera looking up' : altura === 'alto' ? ', from a high camera looking down' : ''
-  const frase = `Show the same person from @image1, in the same place, ${vista}${alto}. `
-    + 'Keep the face, hair, body, clothes, the background and the light exactly the same. Only the camera angle changes.'
+  const parada = g < 8 ? '' : ' The person does not turn: they keep the same pose and face the same direction in the scene; only the camera moves, so the background shifts with it.'
+  const frase = `Show the same person from @image1, in the same place, ${vista}${alto}.${parada} `
+    + 'Keep the face, hair, body, clothes, the background and the light exactly the same.'
   return extra.trim() ? `${frase} ${extra.trim()}` : frase
 }
 
