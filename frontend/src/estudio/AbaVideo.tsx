@@ -57,15 +57,25 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   // Modelo leve so local (nuvem: false) com o motor na Comfy Cloud: nao esta no menu ali.
   const soLocal = naNuvem && LEVES[escolhido]?.nuvem === false
   const motor = apiGeradores.some((g) => g.id === escolhido) || (!!LEVES[escolhido] && !soLocal)
-    || escolhido === 'ltx' || escolhido === 'minimax' ? escolhido : 'ltx'
+    || escolhido === 'ltx' || escolhido === 'minimax' ? escolhido
+    // Item proprio no menu (pedido de 03/11/2026): o MiniMax H3 ja no estilo Pika Flex, so na placa.
+    : escolhido === 'minimax-pika' ? 'minimax' : 'ltx'
+  const ehPika = escolhido === 'minimax-pika' && !naNuvem
+  // H3 na placa: 10 s (medido em 16 GB); com 24 GB ou mais, 15 s (a memoria confirmada em Config Models).
+  const [vramGb, setVramGb] = useState<number | null>(null)
+  useEffect(() => {
+    fetch('/api/maquina').then((r) => r.json()).then((m) => setVramGb(m?.salvo?.vram_gb ?? null)).catch(() => {})
+  }, [])
   const apiOculta = pronto && motor !== escolhido ? apiOcultos.find((g) => g.id === escolhido) : undefined
   const indisponivel = pronto && motor !== escolhido && !apiOculta
   const escolher = useEscolha(setMotor)
   const faltaInstalar = useFaltaInstalar()
-  const valorSelect = useValor(motor, apiGeradores.some((g) => g.id === motor))
+  const valorSelect = useValor(ehPika ? 'minimax-pika' : motor, apiGeradores.some((g) => g.id === motor))
   const [turbo, setTurbo] = useState(true)
   // MiniMax H3 local: Cinematic (turbo 8 passos), Pika Flex (6 passos) ou Quality (40 passos).
   const [estiloH3, setEstiloH3] = useState<'cinema' | 'pika' | 'singularity' | 'qualidade'>('cinema')
+  // O item "MiniMax H3 · Pika Flex" do menu e o H3 com o estilo Pika ja escolhido.
+  useEffect(() => { if (escolhido === 'minimax-pika') setEstiloH3('pika'); else if (escolhido === 'minimax') setEstiloH3((e) => (e === 'pika' ? 'cinema' : e)) }, [escolhido])
   const [modo, setModo] = useState<Modo>(() => {
     const destino = parteDoHash(1)
     return MODOS.some((item) => item.id === destino) ? destino as Modo : 'texto'
@@ -118,7 +128,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
   const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]
-  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? (h3Local ? 10 : 15)
+  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? (h3Local ? ((vramGb ?? 0) >= 24 ? 15 : 10) : 15)
   const duracaoOk = Math.max(dMin, Math.min(dMax, duracao))
 
   const refsOk = refs.slice(0, maxRefs)
@@ -238,10 +248,11 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           <div className="hf-img-controles">
           <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' },
+              { id: 'minimax-pika', rotulo: 'MiniMax H3 · Pika Flex', soLocal: true },
               ...Object.entries(LEVES).map(([id, l]) => ({ id, rotulo: l.rotulo, soLocal: !l.nuvem }))]} api={apiGeradores} />
           </select></label>
           {motor === 'minimax' && (h3Local ? (
-            <Chips rotulo="Style" valor={estiloOk} aoMudar={(v) => { setEstiloH3(v); setTurbo(v !== 'qualidade') }}
+            <Chips rotulo="Style" valor={estiloOk} aoMudar={(v) => { setEstiloH3(v); setTurbo(v !== 'qualidade'); setMotor(v === 'pika' ? 'minimax-pika' : 'minimax') }}
               opcoes={[{ id: 'cinema', rotulo: 'Cinematic', dica: 'Turbo, 8 steps: darker, filmic, soft background' },
                 { id: 'pika', rotulo: 'Pika Flex', dica: 'Pika Labs adapter, 6 steps: brighter and more colorful, a bit faster' },
                 ...(modoOk === 'referencia' ? [{ id: 'singularity' as const, rotulo: 'Singularity V2', dica: 'References only, 4 steps: closer camera, more expressive faces' }] : []),

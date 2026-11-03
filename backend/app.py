@@ -1070,6 +1070,8 @@ async def _montar(tarefa: Tarefa):
         # mesmos nomes de arquivo (ver presets.VIDEO_MINIMAX).
         cfg = presets.VIDEO_MINIMAX
         local = not comfy.na_nuvem()
+        vram = variantes.vram() or 0
+        dur_local = cfg["local_duracao_max_grande"] if vram >= cfg["local_vram_grande"] else cfg["local_duracao_max"]
         resolucao = p.resolucao_video
         if local and resolucao not in cfg["local_resolucoes"]:
             resolucao = cfg["local_resolucoes"][0]  # na placa local, so o que foi medido
@@ -1085,11 +1087,11 @@ async def _montar(tarefa: Tarefa):
             if not local:
                 raise ValueError("Referências com o MiniMax H3 aberto só rodam na placa; na nuvem use o MiniMax H3 MultiRef.")
             return workflows.gerar_video_minimax_ref(
-                p.prompt, seed, larg, alt, max(cfg["duracao_min"], min(cfg["local_duracao_max"], p.duracao_video)),
+                p.prompt, seed, larg, alt, max(cfg["duracao_min"], min(dur_local, p.duracao_video)),
                 refs, turbo=p.turbo, estilo=p.estilo_h3, com_audio=p.com_audio, prefixo=prefixo)
         return workflows.gerar_video_minimax(
             p.prompt, seed, larg, alt,
-            max(cfg["duracao_min"], min(cfg["local_duracao_max"] if local else cfg["duracao_max"], p.duracao_video)),
+            max(cfg["duracao_min"], min(dur_local if local else cfg["duracao_max"], p.duracao_video)),
             imagem=refs[0] if p.modo_video != "texto" and refs else None,
             imagem_final=refs[1] if p.modo_video == "primeiro_ultimo" else None,
             turbo=p.turbo, com_audio=p.com_audio, prefixo=prefixo,

@@ -2254,6 +2254,9 @@ VIDEO_MINIMAX = {
     # base a 480p/5 s, cresce com (segundos/5)^1.57 e x2,7 em 720p.
     "local_resolucoes": ["480p", "720p"],
     "local_duracao_max": 10,
+    # Placas de 24 GB ou mais: ate 15 s, o maximo do H3 (pedido de 03/11/2026; nao medido aqui).
+    "local_duracao_max_grande": 15,
+    "local_vram_grande": 24,
     "segundos_estimados": {"cinema": 87, "pika": 63, "singularity": 57, "qualidade": 400},
     "expoente_duracao": 1.57,
     "fator_resolucao": {"480p": 1.0, "720p": 2.7},
