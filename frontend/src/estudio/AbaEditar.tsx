@@ -628,7 +628,7 @@ export default function AbaEditar() {
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
             {soLocal && <span className="hf-dica">This tool runs on your GPU.{' '}
               {/* A aba Edit nao tem menu de modelo: o botao troca o motor aqui mesmo. */}
-              <button type="button" className="hf-link" onClick={() => { trocarMotor('local').catch((e) => setErro(mensagem(e))) }}>Switch to Local</button></span>}
+              <button type="button" className="hf-link hf-link-neon" onClick={() => { trocarMotor('local').catch((e) => setErro(mensagem(e))) }}>Switch to Local</button></span>}
             {naoInstalado && <AvisoInstalar rotulo={pacoteAtual!} semMenu />}
             {erro && <p className="hf-erro">{erro}</p>}
           </>) : <p className="hf-dica">Pick a tool on the left.</p>}

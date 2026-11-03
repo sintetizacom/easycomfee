@@ -2844,3 +2844,4 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-vid-item { position: relative; }
 .hf-selo-rascunho { position: absolute; left: 8px; top: 8px; z-index: 3; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 700;
   letter-spacing: .05em; text-transform: uppercase; background: #E5481F; color: #fff; pointer-events: none; }
+.hf-link.hf-link-neon { color: var(--hf-neon); font-weight: 700; }
