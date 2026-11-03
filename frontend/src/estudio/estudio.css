@@ -2861,3 +2861,4 @@ html .mq-pasta { display: block; margin-top: 6px; padding: 6px 10px; border-radi
 html .mq-pasta-botoes { display: flex; flex-direction: column; gap: 8px; flex: none; }
 html button.mq-botao-relatorio { background: none; font: inherit; cursor: pointer; }
 html button.mq-botao-relatorio:hover { background: var(--hf-neon); color: #191220; }
+html .mq-aviso-passo { border-color: var(--hf-neon); color: var(--hf-neon); }

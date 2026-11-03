@@ -369,6 +369,8 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         <Relatorio />
 
         <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
+        {/* Os pacotes so aparecem depois de confirmar a maquina; antes nada dizia isso (02/11/2026). */}
+        {!perfil && <p className="mq-aviso mq-aviso-passo" role="status">↑ Press <b>Confirm</b> in “Your machine” to see the model packages you can download with one click.</p>}
 
         {!motor && <p className="mq-aviso">ComfyUI is not responding, so installed files can't be checked.</p>}
         {erro && <p className="mq-aviso erro">{erro}</p>}
