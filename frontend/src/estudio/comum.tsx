@@ -516,7 +516,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
         const entrega = entregaDoArraste(e.dataTransfer)
         if (entrega) void receber(entrega)
       }}>
-      {valor ? <img src={valor.url} alt="" /> : <span>{enviando ? 'Uploading…' : `+ ${rotulo}`}</span>}
+      {valor ? <img src={valor.url} alt="" /> : <span>{enviando ? 'Uploading…' : `+ ${rotulo}`}{!enviando && <small className="hf-slot-limite">up to 40 MB</small>}</span>}
       {valor && <button type="button" className="hf-slot-x" aria-label="Remove image" onClick={(e) => { e.preventDefault(); aoMudar(null) }}><IconeX tamanho={10} /></button>}
       <input type="file" accept="image/*" className="hf-arquivo" onChange={async (e) => {
         const f = e.target.files?.[0]

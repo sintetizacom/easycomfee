@@ -2876,3 +2876,11 @@ html .mq-achado { cursor: help; white-space: nowrap; }
 .hf-topo.hf-topo-direita button.hf-atualizar { background: var(--hf-neon); color: #1E1724; border-color: transparent; }
 .hf-topo.hf-topo-direita button.hf-atualizar:hover { filter: brightness(1.08); }
 .hf-topo.hf-topo-direita .hf-atualizar[data-fase='atualizando'] { background: #34331F; color: var(--hf-neon); }
+
+/* Prompt do Video: cresce com o texto (ate meia tela) e da para puxar pelo canto. */
+.hf-vid .hf-vid-dir textarea.hf-vid-prompt { flex: 0 0 auto; height: auto; field-sizing: content; min-height: 110px; max-height: 50vh; resize: vertical; overflow-y: auto; }
+
+/* Limites visiveis: caracteres do prompt e tamanho da imagem enviada. */
+.hf-contador { align-self: flex-end; margin-top: -4px; font-size: 11px; color: #8C8197; }
+.hf-contador-perto { color: var(--hf-neon); }
+.hf-slot-limite { display: block; margin-top: 4px; font-size: 10px; color: #8C8197; font-weight: 400; }

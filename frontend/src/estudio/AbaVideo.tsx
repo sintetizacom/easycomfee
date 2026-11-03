@@ -314,8 +314,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           </div>
         )}
         <span className="hf-vid-rotulo">Prompt</span>
-        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea className="hf-vid-prompt" aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
+        <small className={`hf-contador${prompt.length > MAX_PROMPT * 0.9 ? ' hf-contador-perto' : ''}`}>{prompt.length.toLocaleString('en-US')} / {MAX_PROMPT.toLocaleString('en-US')} characters</small>
           {comRascunho && (
             <Chips rotulo="Quality" opcoes={[{ id: 1, rotulo: 'Draft · 480p (fast, cheaper)' }, { id: 0, rotulo: 'Final' }]}
               valor={rascunhoLigado ? 1 : 0} aoMudar={(v) => setRascunhoLigado(v === 1)} />
