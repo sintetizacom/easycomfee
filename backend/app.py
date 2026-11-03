@@ -2208,8 +2208,11 @@ async def operario():
                 # O segundo motor (LTX, YuE2, Flux 3) tambem: sem o --cache-none no
                 # lancador dele (02/11/2026, para o YuE2 Cover nao refazer a mesma
                 # transcricao a cada no que a pede), e esta chamada que devolve a placa.
-                if (comfy.BASE_FLUX3 != comfy.BASE_PRINCIPAL and not comfy.na_nuvem()
-                        and presets.usa_motor_flux3(tarefa.pedido)):
+                # Sempre, nao so quando a geracao usou ele: depois do MiniMax H3 (40-58 GB) o
+                # segundo motor ficava segurando a memoria do PC, e a geracao seguinte no
+                # primeiro (um Relight, 03/11/2026) passou a ler o modelo do disco: 265 s por
+                # passo em vez de 6. Motor fora do ar: liberar_memoria nao levanta.
+                if comfy.BASE_FLUX3 != comfy.BASE_PRINCIPAL and not comfy.na_nuvem():
                     token = comfy.MOTOR.set(comfy.BASE_FLUX3)
                     try:
                         await comfy.liberar_memoria()
