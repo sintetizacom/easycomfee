@@ -191,7 +191,7 @@ export default function AbaEditar() {
   // Motor do Orbit: um modelo de edicao que gira por FRASE (Flux 3 local ou API), montada
   // sozinha a partir do giro; ou o Krea Anygles, que segue o boneco 3D.
   const [motorOrbita, setMotorOrbita] = useState('orbita3d')
-  const [giro, setGiro] = useState(45)            // graus a partir da pose da foto
+  const [giro, setGiro] = useState(0)             // graus a partir da pose da foto; comeca sem giro (45 confundia)
   const [alturaFrase, setAlturaFrase] = useState('olho')
   const [formato, setFormato] = useState('16:9')  // proporcao da foto, para a imagem nova sair igual
   const [resolucao, setResolucao] = useState('1K')
@@ -337,7 +337,8 @@ export default function AbaEditar() {
   const ids = new Set(FERRAMENTAS.map((x) => x.id))
   // O Orbit tambem gera por Flux 3 e por APIs (outro "modelo" na tarefa): reconhece pela frase dele.
   const doOrbit = (p: string) => p.startsWith('Show the same person from')
-  const minhas = tarefas.filter((t) => (ids.has(t.modelo) || t.modelo === 'qwen21edit' || doOrbit(t.prompt)) && !t.teste)
+  // O Orbit com modelo 3D sai como tarefa 'orbita3d' (as previas sao testes e ficam de fora).
+  const minhas = tarefas.filter((t) => (ids.has(t.modelo) || t.modelo === 'qwen21edit' || t.modelo === 'orbita3d' || doOrbit(t.prompt)) && !t.teste)
   const grupos = [...new Set(FERRAMENTAS.map((x) => x.grupo))]
 
   // Layout de 31/10/2026: ferramentas a esquerda, a foto no centro (antes e depois com
@@ -393,6 +394,13 @@ export default function AbaEditar() {
                   : <span className="hf-orbita-vazio">{nomes[0] ? (com3d ? 'Building the 3D model… (about 40 s the first time)' : 'Preparing the preview…') : 'Add a photo to see the new angle here'}</span>}
                 {previando && <span className="hf-orbita-selo">Updating…</span>}
               </div>
+              {/* O resultado do Apply (antes nao aparecia aqui: so em Recent edits, e o 3D nem la). */}
+              {depois && (
+                <div className="hf-orbita-caixa hf-orbita-resultado">
+                  <span className="hf-orbita-caixa-nome">Result</span>
+                  <img src={urlImagem(depois)} alt="Result" onClick={() => abrirVisualizador(depois)} title="Open full screen" />
+                </div>
+              )}
             </div>
           ) : (
             <div className="hf-edt-palco">
@@ -500,9 +508,9 @@ export default function AbaEditar() {
                   })()}
                 </svg>
                 <div className="hf-orbita-controles">
-                  <div className="hf-campo"><span>Turn</span>
+                  <div className="hf-campo"><span>Camera position</span>
                     <label className="hf-duracao"><span className="hf-valor">{giro > 0 ? `${giro}° right` : giro < 0 ? `${-giro}° left` : 'no turn'}</span>
-                      <input type="range" min={-180} max={180} step={5} value={giro} onChange={(e) => setGiro(Number(e.target.value))} aria-label="Turn" /></label>
+                      <input type="range" min={-180} max={180} step={5} value={giro} onChange={(e) => setGiro(Number(e.target.value))} aria-label="Camera position" /></label>
                   </div>
                   <Chips rotulo="Height" opcoes={[{ id: 'baixo', rotulo: 'Low' }, { id: 'olho', rotulo: 'Eye level' }, { id: 'alto', rotulo: 'High' }]}
                     valor={alturaFrase} aoMudar={setAlturaFrase} />
@@ -530,9 +538,9 @@ export default function AbaEditar() {
                 })()}
               </svg>
               <div className="hf-orbita-controles">
-                <div className="hf-campo"><span>Turn</span>
+                <div className="hf-campo"><span>Camera position</span>
                   <label className="hf-duracao"><span className="hf-valor">{yaw > 0 ? `${yaw}° right` : yaw < 0 ? `${-yaw}° left` : 'front'}</span>
-                    <input type="range" min={-12} max={12} step={1} value={Math.round((yaw - base) / 15)} onChange={(e) => setYaw(Math.max(-180, Math.min(180, base + Number(e.target.value) * 15)))} aria-label="Turn" /></label>
+                    <input type="range" min={-12} max={12} step={1} value={Math.round((yaw - base) / 15)} onChange={(e) => setYaw(Math.max(-180, Math.min(180, base + Number(e.target.value) * 15)))} aria-label="Camera position" /></label>
                 </div>
                 {<>
                 <div className="hf-campo"><span>Camera height</span>

@@ -2848,3 +2848,8 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 /* Tela de desligado: o nome como na logo (Fredoka 600, Easy branco, Comfee neon). */
 .hf-desligado h1 { font-family: "Fredoka", system-ui, sans-serif; font-weight: 600; font-size: 28px; letter-spacing: .01em; }
 .hf-desligado-easy { color: #fff; } .hf-desligado-comfee { color: var(--hf-neon, #F2FF3D); }
+/* Orbit: com o resultado, tres quadros (foto, previa, resultado). */
+.hf-orbita-par:has(> .hf-orbita-resultado) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hf-orbita-resultado { border-color: var(--hf-neon); }
+.hf-orbita-resultado img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; display: block; }
+@media (max-width: 700px) { .hf-orbita-par:has(> .hf-orbita-resultado) { grid-template-columns: 1fr; } }

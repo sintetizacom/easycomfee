@@ -738,7 +738,8 @@ EDICAO = {
         "vae": "Qwen/qwen_image_vae.safetensors",
         "gatilho": ("Convert the character in the image to a Character Sheet "
                     "showing a face close-up, front full body, side full body "
-                    "and back full body views"),
+                    "and back full body views, on a plain neutral mid-gray studio background"),
+        # Fundo cinza em vez de branco (pedido de 02/11/2026).
         # A foto entra em pe (a pessoa ocupa a altura) e a folha sai deitada
         # (as quatro vistas ocupam a largura). Nao e o mesmo numero trocado de
         # lugar: sao duas telas diferentes, e o grafo usa as duas.
