@@ -54,6 +54,13 @@ export function GruposAbertos({ itens, api = [] }: { itens: Item[]; api?: { id: 
   // Not installed: greyed out with a hint, or hidden if the user asked for that.
   const local = itens.filter((m) => !m.soNuvem && (instalado(m) || !ocultarNaoInstalados))
   const nuvem = itens.filter((m) => !m.soLocal && m.nuvem !== false)
+  // Ordem alfabetica (pedido de 03/11/2026); no Local, os instalados vem antes dos que faltam.
+  const abc = (a: string, b: string) => a.localeCompare(b, 'en', { sensitivity: 'base', numeric: true })
+  local.sort((a, b) => Number(!instalado(a)) - Number(!instalado(b)) || abc(a.rotulo, b.rotulo))
+  const daNuvem = [
+    ...(temChave ? nuvem.map((m) => ({ chave: 'n' + m.id, valor: `nuvem:${m.id}`, rotulo: m.rotulo, desligado: m.desligado })) : []),
+    ...api.map((m) => ({ chave: m.id, valor: m.id, rotulo: `${m.rotulo.replace(/ \((API|nuvem)\)$/, '')} (API)`, desligado: false })),
+  ].sort((a, b) => abc(a.rotulo, b.rotulo))
   return (
     <>
       {local.length > 0 && (
@@ -67,8 +74,7 @@ export function GruposAbertos({ itens, api = [] }: { itens: Item[]; api?: { id: 
       )}
       {(temChave || api.length > 0) && (
         <optgroup label="Comfy Cloud · credits">
-          {temChave && nuvem.map((m) => <option key={'n' + m.id} value={`nuvem:${m.id}`} disabled={m.desligado}>{m.rotulo}</option>)}
-          {api.map((m) => <option key={m.id} value={m.id}>{m.rotulo.replace(/ \((API|nuvem)\)$/, '')} (API)</option>)}
+          {daNuvem.map((m) => <option key={m.chave} value={m.valor} disabled={m.desligado}>{m.rotulo}</option>)}
         </optgroup>
       )}
     </>

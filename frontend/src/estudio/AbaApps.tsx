@@ -1037,10 +1037,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                       <select className="hf-select" value={modeloQuadro} aria-label="Image model"
                         onChange={(e) => setModeloQuadro(e.target.value as ModeloQuadro)}>
                         <optgroup label="Local · your GPU">
-                          {MODELOS_QUADRO.filter((m) => !MODELOS_QUADRO_API.has(m.id)).map((m) => <option key={m.id} value={m.id}>{m.rotulo}</option>)}
+                          {MODELOS_QUADRO.filter((m) => !MODELOS_QUADRO_API.has(m.id)).sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'en', { numeric: true })).map((m) => <option key={m.id} value={m.id}>{m.rotulo}</option>)}
                         </optgroup>
                         <optgroup label="Comfy Cloud · credits">
-                          {MODELOS_QUADRO.filter((m) => MODELOS_QUADRO_API.has(m.id)).map((m) => (
+                          {MODELOS_QUADRO.filter((m) => MODELOS_QUADRO_API.has(m.id)).sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'en', { numeric: true })).map((m) => (
                             <option key={m.id} value={m.id} disabled={!pagosOk}>{m.rotulo}{pagosOk ? '' : temChave
                               ? ' (turn on Paid API models in Config Models)' : ' (add your Comfy key in Config Models)'}</option>
                           ))}
