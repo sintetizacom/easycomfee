@@ -304,6 +304,8 @@ class PedidoGeracao(Pedido):
     # So o MiniMax H3 Character Swap: quem sai do video (texto para o SAM 3),
     # se o Gemini escreve o prompt (pago, centavos) e o atalho Turbo.
     alvo_genjutsu: str = Field("person", max_length=120)
+    # Resolucao final escolhida na tela (genjutsu.RESOLUCOES); vazio = padrao do modelo.
+    resolucao_genjutsu: str = Field("", pattern="^(|480p|720p|1080p)$")
     gemini_genjutsu: bool = True
     turbo_genjutsu: bool = False
     velocidade_voz: float = Field(1.0, ge=0.5, le=2.0)
@@ -387,6 +389,9 @@ class PedidoGeracao(Pedido):
     # resolucao, nao pixels.
     proporcao_video: str = "16:9"
     resolucao_video: str = "480p"
+    # Seedance 2.5: rascunho (480p, devolve o id) e o final em 1080p a partir dele.
+    rascunho_video: bool = False
+    rascunho_id: str = Field("", pattern=r"^[\w.:-]{0,160}$")
     # So o Wan 3.0: variante do modelo e se o servico enriquece o prompt.
     variante_video: str = "wan3.0-video"
     melhorar_prompt: bool = True
@@ -759,7 +764,7 @@ async def montar(tarefa: Tarefa):
             # para 16:9 perdia a cabeca (teste de 23/10/2026).
             from PIL import Image
             with Image.open(_caminho_de_entrada(refs[0])) as im:
-                larg, alt = genjutsu.tamanho_wan(*im.size)
+                larg, alt = genjutsu.tamanho_wan(*im.size, genjutsu.resolucao("wan_animate2", p.resolucao_genjutsu))
             tarefa.largura, tarefa.altura = larg, alt
             entrada = await comfy.enviar_imagem(f"genjutsu_{uuid.uuid4().hex[:12]}.mp4", dados)
             return genjutsu.grafo_wan_animate2(entrada, refs[0], p.prompt, genjutsu.quadros_wan(dados),
@@ -770,7 +775,8 @@ async def montar(tarefa: Tarefa):
             dados = await asyncio.to_thread(genjutsu.video_wan, caminho)
             d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
             # Aqui o personagem entra NO video: o enquadramento e o do video.
-            larg, alt = genjutsu.tamanho_wan(d["largura"] or 16, d["altura"] or 9)
+            larg, alt = genjutsu.tamanho_wan(d["largura"] or 16, d["altura"] or 9,
+                                             genjutsu.resolucao("wan22_replace", p.resolucao_genjutsu))
             tarefa.largura, tarefa.altura = larg, alt
             entrada = await comfy.enviar_imagem(f"genjutsu_{uuid.uuid4().hex[:12]}.mp4", dados)
             g = genjutsu.grafo_wan22_replace(entrada, refs[0], p.prompt, genjutsu.quadros_wan(dados),
@@ -783,7 +789,9 @@ async def montar(tarefa: Tarefa):
                 raise ValueError("envie a foto do personagem")
             dados, quadros = await asyncio.to_thread(genjutsu.video_h3, caminho)
             d = await asyncio.to_thread(miniaturas.dados_do_video, dados)
-            larg, alt = genjutsu.tamanho_h3(d["largura"] or 16, d["altura"] or 9)
+            # 480p: 0,5 megapixel (o padrao testado); 720p: 0,92 (1280x720 num video deitado).
+            mp = 0.92 if genjutsu.resolucao("h3_swap", p.resolucao_genjutsu) == "720p" else 0.5
+            larg, alt = genjutsu.tamanho_h3(d["largura"] or 16, d["altura"] or 9, mp)
             tarefa.largura, tarefa.altura = larg, alt
             com_som = bool(await asyncio.to_thread(miniaturas.tem_audio, caminho))
             entrada = await comfy.enviar_imagem(f"genjutsu_{uuid.uuid4().hex[:12]}.mp4", dados)
@@ -801,7 +809,7 @@ async def montar(tarefa: Tarefa):
         larg, alt = d["largura"] or 16, d["altura"] or 9
         proporcao = "16:9" if larg / alt > 1.2 else "9:16" if larg / alt < 0.83 else "1:1"
         return genjutsu.grafo_api(p.modelo_genjutsu, entrada, refs, p.prompt, seed,
-                                  d["duracao"] or 5, proporcao, prefixo)
+                                  d["duracao"] or 5, proporcao, prefixo, p.resolucao_genjutsu)
 
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0
@@ -937,6 +945,8 @@ async def montar(tarefa: Tarefa):
             raise ValueError(f'{cfg["rotulo"]} não faz este modo')
         refs = p.referencias or []
         tarefa.prompt_final = p.prompt
+        if p.modelo_video == "seedance" and p.rascunho_id:
+            return workflows.seedance_final(p.rascunho_id, prefixo=prefixo)
         if cfg.get("familia") == "generico":
             return workflows.gerar_video_generico(
                 cfg, p.modo_video, p.prompt, seed,
@@ -952,7 +962,8 @@ async def montar(tarefa: Tarefa):
             max(cfg["duracao_min"], min(cfg["duracao_max"], p.duracao_video)),
             imagem=refs[0] if refs else None, imagem_final=refs[1] if len(refs) > 1 else None,
             com_audio=p.com_audio and not cfg.get("sem_audio"), prefixo=prefixo,
-            referencias=refs if p.modo_video == "referencia" else ())
+            referencias=refs if p.modo_video == "referencia" else (),
+            rascunho=p.rascunho_video)
 
     if p.modelo == "video" and p.modelo_video == "wan3":
         cfg = presets.VIDEO_WAN3
@@ -2212,6 +2223,11 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
             if tarefa.pedido.modelo == "voz":
                 voz.conferir_resultado(h["outputs"])
             saidas = comfy.imagens_salvas(h["outputs"])
+            if getattr(tarefa.pedido, "rascunho_video", False) and "rascunho" in h["outputs"]:
+                # Seedance 2.5 Draft: o id do rascunho vai junto do video (o "Render final" usa).
+                rid = (await comfy.texto_de({"r": h["outputs"]["rascunho"]})).strip()
+                if rid:
+                    saidas = [dict(s_, rascunho={"id": rid}) for s_ in saidas]
             capa = None
             if tarefa.pedido.modelo == "musica":
                 # A capa (Plenio + Z-Image) nao e um resultado: vai junto da musica.
@@ -2768,6 +2784,9 @@ async def estimar(p: PedidoGeracao):
         seg = avatar.MODELOS["ltx23"]["segundos_por_segundo"] * max(fala, 3.0)
     elif p.modelo == "genjutsu":
         seg = genjutsu.MODELOS.get(p.modelo_genjutsu, {}).get("segundos_gpu") or genjutsu.MODELOS["wan_animate2"]["segundos_gpu"]
+        if genjutsu.resolucao(p.modelo_genjutsu, p.resolucao_genjutsu) == "720p":
+            # Cerca de 2,3x mais pixels que o 480p (Wan 832x480 -> 1280x720; H3 0,5 -> 0,92 MP).
+            seg *= 2.3 if p.modelo_genjutsu.startswith("wan") else 1.84
     elif p.modelo == "voz":
         seg = 20 + len(p.prompt) / 15  # ~15 caracteres por segundo de fala, gerados em tempo real
     elif p.modelo == "musica":

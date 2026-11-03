@@ -78,6 +78,8 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const [resolucao, setResolucao] = useState('720p')
   const [duracao, setDuracao] = useState(5)
   const [audio, setAudio] = useState(true)
+  // Seedance 2.5: comeca no Draft (480p), como no site; o final sai do rascunho.
+  const [rascunhoLigado, setRascunhoLigado] = useState(true)
   const [inicio, setInicio] = useState<Referencia | null>(null)
   const [fim, setFim] = useState<Referencia | null>(null)
   const [refs, setRefs] = useState<Referencia[]>([])
@@ -137,8 +139,12 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
     : [inicio, fim].filter((r): r is Referencia => !!r && modoOk !== 'texto').map((r) => r.nome)
       .slice(0, modoOk === 'primeiro_ultimo' ? 2 : 1)
 
+  // Seedance 2.5 Draft: previa em 480p, rapida e mais barata; o "Refine to 1080p" no
+  // video gerado renderiza o final a partir do mesmo rascunho (vale 7 dias).
+  const comRascunho = motorPedido === 'seedance'
+  const rascunho = comRascunho && rascunhoLigado
   // Para o preco, imagem que ainda falta vira um nome qualquer: so os campos contam.
-  const custo = useCusto({
+  const custo = useCusto({ rascunho_video: rascunho,
     modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt: prompt || 'x', proporcao: '1:1',
     proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
     referencias: modoOk === 'texto' ? [] : ehRef ? (nomesRefs.length ? nomesRefs : ['a.png']) : [inicio?.nome ?? 'a.png', fim?.nome ?? 'b.png'],
@@ -147,7 +153,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_VAZIOS)
   const [selecionado, setSelecionado] = useState<{ nome: string; subpasta: string } | null>(null)
   const [tamanhoVideo, setTamanhoVideo] = useState<[number, number] | null>(null)
-  const [salvos, setSalvos] = useState<{ nome: string; subpasta: string }[]>([])
+  const [salvos, setSalvos] = useState<{ nome: string; subpasta: string; rascunho?: { id: string } }[]>([])
   useEffect(() => {
     const tirar = (e: Event) => { const d = (e as CustomEvent<{ nome: string; subpasta: string }>).detail
       setSalvos((l) => l.filter((a) => !(a.nome === d.nome && a.subpasta === d.subpasta))); setSelecionado(null) }
@@ -156,12 +162,21 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   }, [])
   useEffect(() => {
     api.galeria(400).then((itens) => setSalvos(itens.filter((i) => !!i.duracao_video && /\.(mp4|webm|mov)$/i.test(i.arquivo))
-      .slice(0, 30).map((i) => ({ nome: i.arquivo, subpasta: i.subpasta })))).catch(() => {})
+      .slice(0, 30).map((i) => ({ nome: i.arquivo, subpasta: i.subpasta,
+        rascunho: (i.parametros as { rascunho?: { id: string } } | undefined)?.rascunho })))).catch(() => {})
   }, [])
+  /** O final em 1080p do rascunho do Seedance (mesmo video, sem sortear de novo). */
+  const refinar = async (id: string) => {
+    setErro(null); setSelecionado(null)
+    try {
+      await api.gerar({ modelo: 'video', modelo_video: 'seedance', modo_video: 'texto', prompt: 'Refine draft to 1080p',
+        proporcao: '1:1', rascunho_id: id } as Parameters<typeof api.gerar>[0])
+    } catch (e) { setErro(mensagem(e)) }
+  }
   const gerar = async () => {
     setErro(null); setSelecionado(null)  // o video novo vai para o player quando sair
     try {
-      await api.gerar({
+      await api.gerar({ rascunho_video: rascunho,
         modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt, proporcao: '1:1',
         proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
         referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
@@ -197,6 +212,11 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
             <div className="hf-vid-selo">{tamanhoVideo ? `${proporcaoDe(tamanhoVideo)}  ${tamanhoVideo[0]}×${tamanhoVideo[1]}` : ''}</div>
             {/* O mesmo Midia das imagens: Open, Download, Use, Remove... no canto do video. */}
             <Midia key={palco.subpasta + palco.nome} nome={palco.nome} subpasta={palco.subpasta} />
+            {palco.rascunho && (
+              <button type="button" className="hf-refinar" onClick={() => void refinar(palco.rascunho!.id)}
+                title="Renders this same draft as the final 1080p video (drafts last 7 days).">
+                ▣ Refine to 1080p</button>
+            )}
             <video src={urlImagem(palco)} preload="metadata" hidden
               onLoadedMetadata={(e) => setTamanhoVideo([e.currentTarget.videoWidth, e.currentTarget.videoHeight])} />
           </>) : emCurso[0] ? <CartaoTarefa t={emCurso[0]} />
@@ -277,9 +297,15 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         <span className="hf-vid-rotulo">Prompt</span>
         <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
+          {comRascunho && (
+            <Chips rotulo="Quality" opcoes={[{ id: 1, rotulo: 'Draft · 480p (fast, cheaper)' }, { id: 0, rotulo: 'Final' }]}
+              valor={rascunhoLigado ? 1 : 0} aoMudar={(v) => setRascunhoLigado(v === 1)} />
+          )}
           <div className="hf-vid-par">
           <Chips rotulo="Aspect ratio" opcoes={proporcoes.map((p) => ({ id: p, rotulo: p }))} valor={proporcaoOk} aoMudar={setProporcao} />
-          <Chips rotulo="Resolution" opcoes={resolucoes.map((r) => ({ id: r, rotulo: r }))} valor={resolucaoOk} aoMudar={setResolucao} />
+          {rascunho
+            ? <div className="hf-campo"><span>Resolution</span><small className="hf-dica">480p draft · then Refine to 1080p</small></div>
+            : <Chips rotulo="Resolution" opcoes={resolucoes.map((r) => ({ id: r, rotulo: r }))} valor={resolucaoOk} aoMudar={setResolucao} />}
           </div>
           <div className="hf-vid-par hf-vid-par-duracao">
           <div className="hf-campo"><span>Length</span>
@@ -317,6 +343,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
             // clique mostra no player grande.
             <div key={a.subpasta + a.nome} className="hf-img-faixa-item hf-faixa-midia hf-vid-item" data-ativo={palco?.nome === a.nome} title="Play it in the big player">
               <Midia nome={a.nome} subpasta={a.subpasta} aoClicar={() => setSelecionado(a)} />
+              {a.rascunho && <span className="hf-selo-rascunho" title="Draft (480p): open it and press Refine to 1080p">Draft</span>}
             </div>
           ))}
           {!recentes.length && !emCurso.length && <p className="hf-vazio">Your videos will appear here.</p>}

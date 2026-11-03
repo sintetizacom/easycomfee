@@ -85,9 +85,25 @@ def video_minimo(caminho: str, largura: int, altura: int, minimo: int = KLING_MI
         return saida.read_bytes()
 
 
-def tamanho_wan(largura: int, altura: int) -> tuple[int, int]:
-    """832x480 deitado, 480x832 em pe, 640x640 quadrado (multiplos de 16)."""
+# Resolucao que a pessoa escolhe na tela (Genjutsu); "" = o padrao de cada modelo.
+# Os de API aceitam estas (object_info da Comfy Cloud, 02/11/2026); o Aleph2 nao tem opcao.
+RESOLUCOES = {"wan_animate2": ["480p", "720p"], "wan22_replace": ["480p", "720p"],
+              "h3_swap": ["480p", "720p"], "higgsfield": ["480p", "720p", "1080p"],
+              "kling_omni": ["720p", "1080p"]}
+PADRAO_RESOLUCAO = {"wan_animate2": "480p", "wan22_replace": "480p", "h3_swap": "480p",
+                    "higgsfield": "720p", "kling_omni": "720p"}
+
+
+def resolucao(modelo: str, pedida: str) -> str:
+    return pedida if pedida in RESOLUCOES.get(modelo, []) else PADRAO_RESOLUCAO.get(modelo, "")
+
+
+def tamanho_wan(largura: int, altura: int, resolucao: str = "480p") -> tuple[int, int]:
+    """480p: 832x480 deitado, 480x832 em pe, 640x640 quadrado. 720p: 1280x720, 720x1280,
+    960x960 (multiplos de 16)."""
     r = largura / max(1, altura)
+    if resolucao == "720p":
+        return (1280, 720) if r > 1.2 else (720, 1280) if r < 0.83 else (960, 960)
     return (832, 480) if r > 1.2 else (480, 832) if r < 0.83 else (640, 640)
 
 
@@ -142,7 +158,7 @@ def grafo_wan_animate2(video, foto, texto, quadros, largura, altura, seed, prefi
     return g
 
 
-def grafo_api(modelo, video, refs, prompt, seed, duracao, proporcao, prefixo):
+def grafo_api(modelo, video, refs, prompt, seed, duracao, proporcao, prefixo, resolucao_pedida=""):
     def no(tipo, **e): return {"class_type": tipo, "inputs": e}
     g = {"carga": no("LoadVideo", file=video)}
     for i, r in enumerate(refs):
@@ -151,14 +167,14 @@ def grafo_api(modelo, video, refs, prompt, seed, duracao, proporcao, prefixo):
         if not refs:
             raise ValueError("envie ao menos uma imagem de referência")
         ent = {"model": "genjutsu-v1.0", "model.video": ["carga", 0], "model.prompt": prompt,
-               "model.resolution": "720p", "model.seed": seed % 2147483647}
+               "model.resolution": resolucao(modelo, resolucao_pedida), "model.seed": seed % 2147483647}
         for i in range(len(refs)):
             ent[f"model.reference_images.image_{i + 1}"] = [f"ref{i}", 0]
         g["gera"] = no("HiggsfieldMotionTransferNode", **ent)
     elif modelo == "kling_omni":
         ent = {"model_name": "kling-v3-omni", "prompt": prompt, "aspect_ratio": proporcao,
                "duration": max(3, min(10, round(duracao))), "reference_video": ["carga", 0],
-               "keep_original_sound": True, "resolution": "720p", "seed": seed % 2147483647}
+               "keep_original_sound": True, "resolution": resolucao(modelo, resolucao_pedida), "seed": seed % 2147483647}
         if refs:
             g["lote"] = no("BatchImagesNode", **{f"images.image{i}": [f"ref{i}", 0] for i in range(len(refs))})
             ent["reference_images"] = ["lote", 0]

@@ -35,6 +35,11 @@ const MODELOS: Modelo[] = [
 
 // Etiquetas dos cartoes: o essencial de cada modelo num relance.
 // Foto de cada cartao de modelo (geradas para o app, em public/studios/cartoes).
+// Resolucoes oferecidas por modelo (as mesmas de genjutsu.RESOLUCOES no servidor).
+const RESOLUCOES: Record<string, string[]> = {
+  wan_animate2: ['480p', '720p'], wan22_replace: ['480p', '720p'], h3_swap: ['480p', '720p'],
+  higgsfield: ['480p', '720p', '1080p'], kling_omni: ['720p', '1080p'],
+}
 const FOTOS: Record<string, string> = { recast: 'gj_recast', wan_animate2: 'gj_wan_animate', wan22_replace: 'gj_wan_replace',
   h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway' }
 
@@ -66,6 +71,8 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   const [alvo, setAlvo] = useState('person')
   const [gemini, setGemini] = useState(true)
   const [turbo, setTurbo] = useState(false)
+  // Resolucao final (so na nuvem ou por API; o mesmo quadro de genjutsu.RESOLUCOES).
+  const [resolucao, setResolucao] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   // "Send to Genjutsu" num video da galeria: vira o video de entrada.
@@ -81,6 +88,8 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   const anotar = (id: string) => setMeus((m) => [id, ...m])
 
   const cfg = MODELOS.find((m) => m.id === modelo)!
+  const opcoesRes = RESOLUCOES[modelo] && (!cfg.aberto || naNuvem) ? RESOLUCOES[modelo] : null
+  const resEscolhida = opcoesRes ? (opcoesRes.includes(resolucao) ? resolucao : modelo === 'higgsfield' ? '720p' : opcoesRes[0]) : ''
   // Cartao: modelo aberto no motor atual (Wan Animate 2 so existe na nuvem); de API, pelo id.
   const escolherModelo = (m: Modelo) => {
     if (!m.aberto) { escolher(m.id); return }
@@ -106,7 +115,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
   const custoVideo = useCusto(!video ? null : modelo === 'recast'
     ? { modelo: 'transformar_video', efeito_video: 'trocar', prompt: 'x', proporcao: '1:1', referencias: [`entrada:${video.nome}`] }
     : { modelo: 'genjutsu', modelo_genjutsu: modelo, prompt: 'x', proporcao: '1:1',
-        referencias: [`entrada:${video.nome}`, ...imagens.map((r) => r.nome)],
+        referencias: [`entrada:${video.nome}`, ...imagens.map((r) => r.nome)], resolucao_genjutsu: resEscolhida,
         ...(modelo === 'h3_swap' ? { alvo_genjutsu: alvo, gemini_genjutsu: gemini, turbo_genjutsu: turbo } : modelo === 'wan22_replace' ? { alvo_genjutsu: alvo } : {}) })
   const custo = modelo === 'recast' ? ROTULO_CUSTO(custoQuadro, custoVideo) : custoVideo
 
@@ -163,7 +172,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
         const frase = texto.trim() || (modelo === 'h3_swap'
           ? 'Replace the performer in the video with the character in the image, copying the motion, timing and camera movement exactly.'
           : modelo === 'wan22_replace' ? 'The person moves naturally' : 'The person from the photo, moving naturally')
-        anotar((await api.gerar({ modelo: 'genjutsu', modelo_genjutsu: modelo, prompt: frase, proporcao: '1:1',
+        anotar((await api.gerar({ modelo: 'genjutsu', modelo_genjutsu: modelo, prompt: frase, proporcao: '1:1', resolucao_genjutsu: resEscolhida,
           referencias: [`entrada:${video.nome}`, ...imagens.map((i) => i.nome)],
           ...(modelo === 'h3_swap' ? { alvo_genjutsu: alvo, gemini_genjutsu: gemini, turbo_genjutsu: turbo } : modelo === 'wan22_replace' ? { alvo_genjutsu: alvo } : {}),
         } as unknown as Parameters<typeof api.gerar>[0])).id)
@@ -241,6 +250,13 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
               <Chips rotulo="Speed" opcoes={[{ id: 'n', rotulo: 'Quality · 20 steps' }, { id: 't', rotulo: 'Turbo · 8 steps' }]}
                 valor={turbo ? 't' : 'n'} aoMudar={(v) => setTurbo(v === 't')} />
             </>}
+            {opcoesRes && (
+              <label className="hf-ctrl hf-gj-res" title="The final size of the video. Higher costs more credits and takes longer.">
+                <small>Resolution</small>
+                <Chips rotulo="Resolution" opcoes={opcoesRes.map((r) => ({ id: r, rotulo: r === '480p' ? '480p · faster' : r }))}
+                  valor={resEscolhida} aoMudar={setResolucao} />
+              </label>
+            )}
             <div className="hf-gj-gerar">
               {etapa && <span className="hf-dica">{etapa}</span>}
               {cfg.aberto && !naNuvem && !instalado(modelo) && (

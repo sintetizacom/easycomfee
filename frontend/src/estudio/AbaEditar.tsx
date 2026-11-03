@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { MotorCtx, AvisoInstalar, useFaltaInstalar } from './motor'
+import { MotorCtx, AvisoInstalar, useFaltaInstalar, trocarMotor } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
 import { pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, MAX_PROMPT, TituloPagina } from './comum'
 import { ThenNow, abrirVisualizador } from './Visualizador'
@@ -626,7 +626,9 @@ export default function AbaEditar() {
             placeholder={luzApi ? 'Describe the light, e.g. "warm sunset light from the left, soft shadows"' : f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'An extra touch, e.g. "keep the background dark"'} /></div>}
             <BotaoGerar rotulo="✦ Apply" est={custo} desligado={faltaImagem || faltaTexto || naoInstalado || soLocal} aoClicar={gerar} />
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
-            {soLocal && <span className="hf-dica">This tool runs on your GPU. Switch to Local to use it.</span>}
+            {soLocal && <span className="hf-dica">This tool runs on your GPU.{' '}
+              {/* A aba Edit nao tem menu de modelo: o botao troca o motor aqui mesmo. */}
+              <button type="button" className="hf-link" onClick={() => { trocarMotor('local').catch((e) => setErro(mensagem(e))) }}>Switch to Local</button></span>}
             {naoInstalado && <AvisoInstalar rotulo={pacoteAtual!} semMenu />}
             {erro && <p className="hf-erro">{erro}</p>}
           </>) : <p className="hf-dica">Pick a tool on the left.</p>}

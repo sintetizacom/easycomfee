@@ -98,7 +98,7 @@ export function useTarefas(comTestes = false) {
   return comTestes ? tarefas : tarefas.filter((t) => !t.teste)
 }
 
-export function arquivos(t: Tarefa): { nome: string; subpasta: string; musica?: { capa?: { nome: string; subpasta: string } } }[] {
+export function arquivos(t: Tarefa): { nome: string; subpasta: string; musica?: { capa?: { nome: string; subpasta: string } }; rascunho?: { id: string } }[] {
   return t.imagens.map((s) => JSON.parse(s))
 }
 

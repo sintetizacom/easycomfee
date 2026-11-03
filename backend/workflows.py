@@ -3721,11 +3721,17 @@ def gerar_video_minimax(prompt, seed, largura, altura, duracao, imagem=None,
 
 def gerar_video_api(provedor, prompt, seed, modo, proporcao, resolucao, duracao,
                     imagem=None, imagem_final=None, com_audio=True, prefixo="video",
-                    referencias=()):
+                    referencias=(), rascunho=False):
     """Video por no de API (Kling, Veo, Seedance, Runway, Luma): um no por modo,
     com o quadro inicial/final quando houver. Ver presets.VIDEO_API."""
     from presets import VIDEO_API
     cfg = VIDEO_API[provedor]
+    # Seedance 2.5 Draft: previa rapida em 480p que devolve um draft_task_id; o final em
+    # 1080p sai do mesmo rascunho (seedance_final), sem sortear de novo.
+    rascunho = rascunho and provedor == "seedance"
+    if rascunho:
+        cfg = dict(cfg, ramo="Seedance 2.5 Draft")
+        resolucao = "480p"
     # Kling e Seedance aceitam seed ate 2^31-1, Veo e Runway ate 2^32-1; a do app
     # vai ate 2^52 e a Comfy Cloud recusava o pedido (value_bigger_than_max).
     seed = seed % 2147483646
@@ -3833,7 +3839,17 @@ def gerar_video_api(provedor, prompt, seed, modo, proporcao, resolucao, duracao,
     g["gera"] = {"class_type": no, "inputs": ent}
     g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
                                                         "format": "auto", "codec": "auto"}}
+    if rascunho:
+        g["rascunho"] = {"class_type": "PreviewAny", "inputs": {"source": ["gera", 1]}}
     return g
+
+
+def seedance_final(rascunho_id, prefixo="video"):
+    """O final em 1080p de um rascunho do Seedance 2.5 Draft (vale 7 dias)."""
+    return {"gera": {"class_type": "ByteDance2DraftToFinalVideoNode",
+                     "inputs": {"draft_task_id": rascunho_id, "watermark": False}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
 
 
 # Base do LTX 2.3 (checkpoint destilado, com o VAE dentro) para os IC-LoRAs na

@@ -149,7 +149,10 @@ def registrar(tarefa, tamanhos=None, teste=False, rotulo=None):
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (agora, p.modelo, p.prompt, tarefa.prompt_final,
                  im["nome"], im.get("subpasta", ""),
-                 json.dumps(guardado | {"finalizacao_musica": im["musica"]}, ensure_ascii=False) if "musica" in im else parametros, caption,
+                 json.dumps(guardado | {"finalizacao_musica": im["musica"]}, ensure_ascii=False) if "musica" in im
+                 # Seedance 2.5 Draft: o id do rascunho fica com o video (o "Refine to 1080p" o usa).
+                 else json.dumps(guardado | {"rascunho": im["rascunho"]}, ensure_ascii=False) if "rascunho" in im
+                 else parametros, caption,
                  tarefa.largura, tarefa.altura, tarefa.duracao,
                  tamanhos.get(im["nome"], 0), 1 if teste else 0,
                  f"{rotulo or 'Música'} · {im['musica']['versao']}" if "musica" in im else rotulo,

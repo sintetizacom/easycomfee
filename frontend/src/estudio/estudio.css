@@ -2832,3 +2832,15 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-gj .hf-gj-video { height: 240px; background: #0E0E12; }
 .hf-gj .hf-gj-video video { object-fit: contain; }
 .hf-gj .hf-ls-cartao .hf-slot[data-imagem] img { object-fit: contain; background: #0E0E12; }
+/* Proporcao e resolucao do video: quando nao cabem lado a lado (6 proporcoes no FLUX 3),
+   a resolucao desce para a linha de baixo em vez de sair do cartao. */
+.hf-vid-dir .hf-vid-par:not(.hf-vid-par-duracao) { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+.hf-vid-dir .hf-vid-par .hf-chips { flex-wrap: wrap; }
+/* Seedance 2.5 Draft: botao de refinar no player e selo nos recentes. */
+.hf-vid-palco { position: relative; }
+.hf-refinar { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; padding: 9px 18px; border: 0; border-radius: 10px;
+  background: #E5481F; color: #fff; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); }
+.hf-refinar:hover { background: #F25A2E; }
+.hf-vid-item { position: relative; }
+.hf-selo-rascunho { position: absolute; left: 8px; top: 8px; z-index: 3; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; background: #E5481F; color: #fff; pointer-events: none; }
