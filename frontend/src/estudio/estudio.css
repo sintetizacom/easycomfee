@@ -2871,3 +2871,8 @@ html .mq-componentes summary .mq-tudo-ok { color: #4ADE80; text-transform: none;
 html .mq-modelos-cartao { display: flex; flex-direction: column; gap: 10px; }
 html .mq-modelos-cartao > .mq-grupo { margin: 0; }
 html .mq-achado { cursor: help; white-space: nowrap; }
+/* Update no topo: a regra geral dos botoes do topo (fundo escuro) ganhava desta e o texto escuro
+   sumia no fundo escuro (03/11/2026). Aqui ele volta a ser neon. */
+.hf-topo.hf-topo-direita button.hf-atualizar { background: var(--hf-neon); color: #1E1724; border-color: transparent; }
+.hf-topo.hf-topo-direita button.hf-atualizar:hover { filter: brightness(1.08); }
+.hf-topo.hf-topo-direita .hf-atualizar[data-fase='atualizando'] { background: #34331F; color: var(--hf-neon); }
