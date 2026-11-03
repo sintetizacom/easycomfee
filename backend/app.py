@@ -50,6 +50,7 @@ import voz
 import minhas_vozes
 import relatorio
 import pasta_resultados
+import scan_modelos
 import avatar
 import precos
 import ltx23
@@ -3036,6 +3037,26 @@ async def pasta_resultados_mudar(c: PastaResultados):
     except (OSError, ValueError) as e:
         raise HTTPException(400, str(e) or "Could not use that folder.")
     return {"pasta": str(p)}
+
+
+@app.post("/api/modelos/escanear")
+async def modelos_escanear(c: PastaResultados):
+    """Acha modelos que a pessoa ja tem numa pasta e os vincula com o nome esperado."""
+    pasta = c.pasta.strip()
+    if not pasta:
+        try:
+            pasta = await asyncio.to_thread(pasta_resultados.escolher, "Where are your model files?",
+                                            str(config.MODELOS_DIR))
+        except Exception as e:
+            raise HTTPException(500, f"Could not open the folder picker ({type(e).__name__}). Type the folder path instead.")
+        if not pasta:
+            return {"cancelado": True}
+    try:
+        r = await asyncio.to_thread(scan_modelos.escanear, pasta)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    relatorio.log().warning("scan de modelos em %s: %d vinculados, %d falhas", pasta, len(r["vinculados"]), len(r["falhas"]))
+    return r | {"pasta": pasta}
 
 
 @app.post("/api/pasta-resultados/abrir")

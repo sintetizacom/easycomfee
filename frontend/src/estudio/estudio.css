@@ -2862,3 +2862,6 @@ html .mq-pasta-botoes { display: flex; flex-direction: column; gap: 8px; flex: n
 html button.mq-botao-relatorio { background: none; font: inherit; cursor: pointer; }
 html button.mq-botao-relatorio:hover { background: var(--hf-neon); color: #191220; }
 html .mq-aviso-passo { border-color: var(--hf-neon); color: var(--hf-neon); }
+html .mq-scan { align-items: flex-start; }
+html .mq-scan-res { margin-top: 10px; font-size: 13px; }
+html .mq-scan-res ul { margin: 6px 0 0 16px; max-height: 160px; overflow: auto; font-size: 12px; opacity: .8; }

@@ -94,6 +94,50 @@ function InicioComWindows() {
   )
 }
 
+type Escaneado = { arquivo: string; pacote: string; de: string; modo?: string; motivo?: string }
+type Varredura = { pasta: string; vinculados: Escaneado[]; ja_tinha: Escaneado[]; falhas: Escaneado[]
+  nao_reconhecidos: { arquivo: string; gb: number }[] }
+
+/** Modelos que a pessoa ja tem em outra pasta ou com outro nome: o app acha pelo tamanho e os
+ *  vincula com o nome esperado (scan_modelos.py), sem baixar de novo. */
+function EscanearModelos({ aoTerminar }: { aoTerminar: () => void }) {
+  const [ocupado, setOcupado] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [res, setRes] = useState<Varredura | null>(null)
+  const escanear = async (digitada = '') => {
+    setOcupado(true); setErro(null)
+    try {
+      const r = await fetch('/api/modelos/escanear', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pasta: digitada }) })
+      const d = await r.json()
+      if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Could not scan that folder.')
+      if (!d.cancelado) { setRes(d); aoTerminar() }
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)) } finally { setOcupado(false) }
+  }
+  const nomes = (l: Escaneado[]) => [...new Set(l.map((x) => x.pacote))].join(', ')
+  return (
+    <section className="mq-cartao mq-interruptor mq-scan">
+      <div>
+        <span className="mq-rotulo">Already have models?</span>
+        <p className="mq-sub">Pick the folder where you keep your model files (for example your ComfyUI <b>models</b> folder or another drive).
+          EasyComfee finds the ones it uses, even renamed, and links them so nothing is downloaded again.</p>
+        {erro && <p className="mq-aviso erro">{erro}{' '}
+          <button type="button" className="hf-link" onClick={() => { const t = window.prompt('Folder path:'); if (t) void escanear(t) }}>Type the path</button></p>}
+        {res && <div className="mq-scan-res" role="status">
+          <p><b>{res.vinculados.length ? `Found ${res.vinculados.length} file(s) you already have` : 'No new files to link'}</b>
+            {res.vinculados.length > 0 && <> ({nomes(res.vinculados)}). They now show as installed; if a model still looks missing, restart ComfyUI.</>}</p>
+          {res.ja_tinha.length > 0 && <p className="mq-sub">Already in place: {nomes(res.ja_tinha)}.</p>}
+          {res.falhas.length > 0 && <p className="mq-aviso erro">Could not link {res.falhas.length}: {res.falhas[0].motivo}</p>}
+          {res.nao_reconhecidos.length > 0 && <details><summary>{res.nao_reconhecidos.length} model file(s) not recognized (another version or a model EasyComfee does not use)</summary>
+            <ul>{res.nao_reconhecidos.map((n) => <li key={n.arquivo}>{n.arquivo} · {n.gb} GB</li>)}</ul></details>}
+        </div>}
+      </div>
+      <button type="button" className="mq-botao-relatorio" disabled={ocupado} onClick={() => void escanear()}>
+        {ocupado ? 'Scanning…' : 'Scan a folder…'}</button>
+    </section>
+  )
+}
+
 /** Onde os resultados sao salvos: o EasyComfee copia cada um para esta pasta (pasta_resultados.py). */
 function PastaResultados() {
   const [pasta, setPasta] = useState<string | null>(null)
@@ -369,6 +413,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         <Relatorio />
 
         <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
+        <EscanearModelos aoTerminar={recarregar} />
         {/* Os pacotes so aparecem depois de confirmar a maquina; antes nada dizia isso (02/11/2026). */}
         {!perfil && <p className="mq-aviso mq-aviso-passo" role="status">↑ Press <b>Confirm</b> in “Your machine” to see the model packages you can download with one click.</p>}
 

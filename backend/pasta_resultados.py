@@ -40,7 +40,7 @@ def salvar(pasta: str) -> pathlib.Path:
     return p
 
 
-def escolher() -> str | None:
+def escolher(titulo: str = "Where should EasyComfee save your results?", inicial: str | None = None) -> str | None:
     """Abre a janela de pasta do Windows (o servidor roda no mesmo PC). None = cancelou."""
     import tkinter
     from tkinter import filedialog
@@ -48,8 +48,7 @@ def escolher() -> str | None:
     raiz.withdraw()
     raiz.attributes("-topmost", True)
     try:
-        pasta = filedialog.askdirectory(parent=raiz, initialdir=str(atual()),
-                                        title="Where should EasyComfee save your results?")
+        pasta = filedialog.askdirectory(parent=raiz, initialdir=inicial or str(atual()), title=titulo)
     finally:
         raiz.destroy()
     return pasta or None
