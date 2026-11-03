@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, limitePrompt, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Genjutsu: recast a video with a new cast, place or style while its motion,
 // camera and timing stay. Models (backend genjutsu.py):
@@ -231,7 +231,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
               placeholder={modelo === 'wan_animate2'
                 ? 'Describe the character and the background'
                 : modelo === 'h3_swap' ? 'e.g. the performer is singing; keep the original voice'
-                : 'What changes, e.g. the dancer becomes a snow queen in an ice palace'} />
+                : 'What changes, e.g. the dancer becomes a snow queen in an ice palace'} /><Contador texto={texto} limite={limitePrompt(modelo)} />
             {modelo === 'recast' && (
               <label className="hf-ctrl"><small>The new video follows</small>
                 <Chips rotulo="Follow" opcoes={[{ id: 'pose', rotulo: 'Body pose' }, { id: 'profundidade', rotulo: 'Depth' }]}

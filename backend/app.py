@@ -1070,8 +1070,8 @@ async def _montar(tarefa: Tarefa):
         # mesmos nomes de arquivo (ver presets.VIDEO_MINIMAX).
         cfg = presets.VIDEO_MINIMAX
         local = not comfy.na_nuvem()
-        vram = variantes.vram() or 0
-        dur_local = cfg["local_duracao_max_grande"] if vram >= cfg["local_vram_grande"] else cfg["local_duracao_max"]
+        # Ate 15 s em qualquer placa; abaixo de 24 GB a tela avisa acima de 10 s (pedido de 03/11/2026).
+        dur_local = cfg["local_duracao_max_grande"]
         resolucao = p.resolucao_video
         if local and resolucao not in cfg["local_resolucoes"]:
             resolucao = cfg["local_resolucoes"][0]  # na placa local, so o que foi medido

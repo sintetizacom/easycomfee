@@ -3,7 +3,7 @@ import { MotorCtx } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Popup } from './AbaCinema'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, rotuloCusto, useCusto, useTarefas, Galeria, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, rotuloCusto, useCusto, useTarefas, Galeria, MAX_PROMPT, TituloPagina } from './comum'
 
 // VFX Apps: one card per effect, all open-weight LTX IC-LoRAs. Pick a card,
 // drop a video, press Apply. Each card id is an effect of VIDEO_TRANSFORMAR
@@ -862,8 +862,8 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
               {DIRECOES_RELIGHT.map((d) => <option key={d} value={d}>{d.replace('the ', '').replace(/^./, (c) => c.toUpperCase())}</option>)}</select></label>
             <p className="hf-dica">Outdoor shots only. A small light ball is drawn in the corner of each frame to guide the model.</p>
           </div>}
-          {!ehMapa && !app.semTexto && !(app.id === 'maquete' && modoMaquete === 'avancado') && <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
-            placeholder={app.dica ?? 'Optional: describe what you want to see…'} />}
+          {!ehMapa && !app.semTexto && !(app.id === 'maquete' && modoMaquete === 'avancado') && <><textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
+            placeholder={app.dica ?? 'Optional: describe what you want to see…'} /><Contador texto={texto} limite={MAX_PROMPT} /></>}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           {!(app.id === 'maquete' && modoMaquete === 'avancado') && <div className="hf-linha-controles">
             {ehMapa && <Chips rotulo="Look" opcoes={[{ id: 'gray', rotulo: 'Gray' }, { id: 'inferno', rotulo: 'Color' }]} valor={corMapa} aoMudar={setCorMapa} />}
@@ -985,7 +985,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                     </div>
                     <textarea aria-label="Scene description" maxLength={MAX_PROMPT} className="hf-cinema-texto" value={texto}
                       onChange={(e) => setTexto(e.target.value)} rows={3}
-                      placeholder="What the gray blocks become, where, the time of day and the mood: a green Lamborghini Huracan drives down a lonely desert highway at golden hour…" />
+                      placeholder="What the gray blocks become, where, the time of day and the mood: a green Lamborghini Huracan drives down a lonely desert highway at golden hour…" /><Contador texto={texto} limite={MAX_PROMPT} />
                     <div className="hf-grupos-cast">
                       <div className="hf-grupo-cast">
                         <div className="hf-grupo-cabeca">

@@ -4,7 +4,7 @@ import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
 import BlocoSeparar from './BlocoSeparar'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, useVersoes, versaoValida, versoesVisiveis, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, useVersoes, versaoValida, versoesVisiveis, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
@@ -192,7 +192,7 @@ export default function AbaMusica() {
           <section className="hf-vz-coluna">
             <span className="hf-grupo-rotulo">Style</span>
             <textarea aria-label="Style and mood" maxLength={MAX_PROMPT} className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
-              placeholder="Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive" />
+              placeholder="Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive" /><Contador texto={prompt} limite={MAX_PROMPT} />
             <div className="hf-vz-exemplos">
               {ESTILOS.map((e) => (
                 <button key={e} type="button" className="hf-botao-sec" onClick={() => setPrompt(e)}>{e.split(',')[0]}</button>
@@ -209,7 +209,7 @@ export default function AbaMusica() {
               {comVoz ? <>
                 <textarea aria-label="Lyrics" className="hf-vz-caixa hf-mu-letra" value={letra} onChange={(e) => setLetra(e.target.value)} rows={7}
                   maxLength={MAX_LETRA}
-                  placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} />
+                  placeholder={'[Verse]\nCity lights are calling me…\n[Chorus]\n…'} /><Contador texto={letra} limite={MAX_PROMPT} />
                 <div className="hf-vz-exemplos">
                   {['[Intro]', '[Verse]', '[Pre-Chorus]', '[Chorus]', '[Bridge]', '[Outro]'].map((m) => (
                     <button key={m} type="button" className="hf-botao-sec" onClick={() => inserir(m)}>{m}</button>

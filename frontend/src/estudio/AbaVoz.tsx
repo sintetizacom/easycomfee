@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, urlImagem } from '../api'
 import { GruposAbertos, useEscolha } from './motor'
-import { EVENTO_VOZES, BotaoGerar, CartaoTarefa, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
+import { Contador, MAX_PROMPT, EVENTO_VOZES, BotaoGerar, CartaoTarefa, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
 
 // Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
 // on Comfy Cloud, where OmniVoice is missing, Qwen3-TTS (voz.grafo_nuvem),
@@ -225,7 +225,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
             {modo === 'criar' && (
               <>
                 <textarea aria-label="Voice description" className="hf-vz-caixa" value={instrucao} onChange={(e) => setInstrucao(e.target.value)} rows={4}
-                  placeholder="Describe the voice: age, tone, pace, accent… e.g. warm elderly man, deep and slow, slight British accent" />
+                  placeholder="Describe the voice: age, tone, pace, accent… e.g. warm elderly man, deep and slow, slight British accent" /><Contador texto={instrucao} limite={MAX_PROMPT} />
                 <div className="hf-vz-exemplos">
                   {VOZES_PRONTAS.map((v) => (
                     <button key={v.rotulo} type="button" className="hf-botao-sec" onClick={() => setInstrucao(v.texto)}>{v.rotulo}</button>
@@ -252,7 +252,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           <section className="hf-vz-coluna hf-vz-texto">
             <span className="hf-grupo-rotulo">What to say</span>
             <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} maxLength={MAX_TEXTO}
-              placeholder="The text to speak…" aria-label="The text to speak" />
+              placeholder="The text to speak…" aria-label="The text to speak" /><Contador texto={texto} limite={MAX_TEXTO} />
             <span className="hf-dica">
               {texto.length.toLocaleString('en-US')} / {MAX_TEXTO.toLocaleString('en-US')} characters · about {segundosDe(texto)} s of speech
               {/* Narracao longa e valida; so o Lip Sync aceita ate 30 s de fala. */}

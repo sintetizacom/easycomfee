@@ -581,6 +581,24 @@ export function mensagem(e: unknown): string {
 // 'carregando' e so da tela: o preco do pedido atual ainda nao chegou.
 /** Mesmo limite do servidor (PedidoGeracao.prompt). */
 export const MAX_PROMPT = 12000
+/** Limite de caracteres que o no do ComfyUI de cada modelo pago aceita, lido do codigo de
+ *  comfy_api_nodes em 03/11/2026 (chave = id do modelo no menu). Fora daqui: o do proprio app. */
+const LIMITES_PROMPT: Record<string, number> = {
+  // video
+  kling: 2500, runway: 1000, luma: 6000, flux3max: 50000, pixverse6: 5000, viduq3: 2000, viduq4: 5000,
+  ltx25api: 10000, pruna2: 5000, heygenvideo: 32000,
+  // imagem
+  flux3api: 15000, recraft4: 10000, ideogram45: 10000, kling3img: 500, luma1: 6000,
+  // genjutsu
+  higgsfield: 10000, kling_omni: 2500, aleph2: 1000,
+}
+export const limitePrompt = (id: string, extra?: Record<string, number>) =>
+  Math.min((extra ?? LIMITES_PROMPT)[id] ?? MAX_PROMPT, MAX_PROMPT)
+/** "120 / 2,500 characters" embaixo da caixa de texto; neon perto do limite. */
+export function Contador({ texto, limite }: { texto: string; limite: number }) {
+  return <small className={`hf-contador${texto.length > limite * 0.9 ? ' hf-contador-perto' : ''}`}>
+    {texto.length.toLocaleString('en-US')} / {limite.toLocaleString('en-US')} characters{texto.length > limite ? ' · too long for this model' : ''}</small>
+}
 
 export type Estimativa = { tipo: 'gratis' | 'api' | 'gpu' | 'desconhecido' | 'carregando'; min?: number; max?: number; usd?: number }
 

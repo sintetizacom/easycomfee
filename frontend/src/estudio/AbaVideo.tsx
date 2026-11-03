@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
 import { api, urlImagem, type GeradorVideo, type Referencia } from '../api'
-import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, arquivos, parteDoHash, useLembrado, quadroChave, passoChave, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, TituloPagina, Midia, EVENTO_REMOVIDO } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, arquivos, parteDoHash, useLembrado, quadroChave, passoChave, AJUSTES_VAZIOS, Contador, limitePrompt, Avancado, camposAjustes, type Ajustes, TituloPagina, Midia, EVENTO_REMOVIDO } from './comum'
 
 // Video tab: LTX 2.5 or the open-weight MiniMax H3, plus the API generators.
 // "References" puts the people and objects of your images into the shot:
@@ -128,7 +128,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
   const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]
-  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? (h3Local ? ((vramGb ?? 0) >= 24 ? 15 : 10) : 15)
+  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? 15
   const duracaoOk = Math.max(dMin, Math.min(dMax, duracao))
 
   const refsOk = refs.slice(0, maxRefs)
@@ -150,6 +150,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
     : modoOk === 'primeiro_ultimo' ? (!inicio && !fim ? 'Add the first and the last frame.' : !inicio ? 'Add the first frame.' : 'Add the last frame.')
     : `Add a start image${soDeImagem ? `: ${rotuloMotor} only makes video from an image` : ''}.`
   const motorPedido = motor
+  const limiteOk = limitePrompt(motor)
   const nomesRefs = ehRef ? refsOk.map((r) => r.nome)
     : [inicio, fim].filter((r): r is Referencia => !!r && modoOk !== 'texto').map((r) => r.nome)
       .slice(0, modoOk === 'primeiro_ultimo' ? 2 : 1)
@@ -266,7 +267,8 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${LEVES[escolhido].rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing LTX 2.5 on Comfy Cloud instead.`}</p>}
         {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing LTX 2.5 instead.`}</p>}
         {motor === 'minimax' && (h3Local
-          ? <p className="hf-dica">{`About ${h3Segundos < 90 ? `${h3Segundos} s` : `${Math.round(h3Segundos / 60)} min`} on a 16 GB card.`}{resolucaoOk === '720p' && duracaoOk > 5 ? ' 720p over 5 s needs about 60 GB of RAM: close other programs first.' : ''}</p>
+          ? <><p className="hf-dica">{`About ${h3Segundos < 90 ? `${h3Segundos} s` : `${Math.round(h3Segundos / 60)} min`} on a 16 GB card.`}{resolucaoOk === '720p' && duracaoOk > 5 ? ' 720p over 5 s needs about 60 GB of RAM: close other programs first.' : ''}</p>
+          {h3Local && duracaoOk > 10 && (vramGb ?? 0) < 24 && <p className="hf-erro" role="alert">Over 10 s was only tested on 24 GB+ cards. On a smaller card it may run out of memory: try 10 s or less, or Comfy Cloud.</p>}</>
           : <p className="hf-dica">MiniMax H3 is heavy: best on Comfy Cloud or a 32 GB+ GPU.</p>)}
         <Chips rotulo="Mode" opcoes={modos} valor={modoOk} aoMudar={setModo} />
         {ehRef && (
@@ -325,9 +327,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           </div>
         )}
         <span className="hf-vid-rotulo">Prompt</span>
-        <textarea className="hf-vid-prompt" aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
+        <textarea className="hf-vid-prompt" aria-label="Prompt" maxLength={limiteOk} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2}
           placeholder={ehRef ? 'e.g. @image1 and @image2 dance together on a rooftop at sunset' : 'Describe the shot: subject, action, camera, sound…'} />
-        <small className={`hf-contador${prompt.length > MAX_PROMPT * 0.9 ? ' hf-contador-perto' : ''}`}>{prompt.length.toLocaleString('en-US')} / {MAX_PROMPT.toLocaleString('en-US')} characters</small>
+        <Contador texto={prompt} limite={limiteOk} />
           {comRascunho && (
             <Chips rotulo="Quality" opcoes={[{ id: 1, rotulo: 'Draft · 480p (fast, cheaper)' }, { id: 0, rotulo: 'Final' }]}
               valor={rascunhoLigado ? 1 : 0} aoMudar={(v) => setRascunhoLigado(v === 1)} />

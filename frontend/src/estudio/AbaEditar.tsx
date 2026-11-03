@@ -2,7 +2,7 @@ import type React from 'react'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { MotorCtx, AvisoInstalar, useFaltaInstalar, trocarMotor } from './motor'
 import { api, urlImagem, type Referencia } from '../api'
-import { pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, Midia, SlotImagem, mensagem, useCusto, useTarefas, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, pegarParaEditar, referenciaDe, arquivos, BotaoGerar, CartaoTarefa, Chips, Midia, SlotImagem, mensagem, useCusto, useTarefas, MAX_PROMPT, TituloPagina } from './comum'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 
 // Edit Studio: as ferramentas de edicao herdadas do Editor de Imagens. Cada cartao e
@@ -634,7 +634,7 @@ export default function AbaEditar() {
           {com3d && <p className="hf-orbita-frase"><b>How it works:</b> the photo becomes a 3D model (about 40 s the first time), the preview shows it at the exact angle, and Apply turns that view into a photo with Qwen Image Edit, using your photo for the face, clothes and place. About 3 minutes.</p>}
           {comFrase && <p className="hf-orbita-frase"><b>Prompt (written for you):</b> {fraseOrbita(giro, alturaFrase, texto)}</p>}
           {f.texto && (f.id !== 'ampliar' || metodoAmpliar === 'magnific') && <div className="hf-campo hf-edt-texto"><span>{luzApi ? 'Light' : f.id === 'area' ? 'New look' : f.texto === 'obrigatorio' ? 'Prompt' : 'Optional'}</span><textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
-            placeholder={luzApi ? 'Describe the light, e.g. "warm sunset light from the left, soft shadows"' : f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'An extra touch, e.g. "keep the background dark"'} /></div>}
+            placeholder={luzApi ? 'Describe the light, e.g. "warm sunset light from the left, soft shadows"' : f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'An extra touch, e.g. "keep the background dark"'} /><Contador texto={texto} limite={MAX_PROMPT} /></div>}
             <BotaoGerar rotulo="✦ Apply" est={custo} desligado={faltaImagem || faltaTexto || naoInstalado || soLocal} aoClicar={gerar} />
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
             {soLocal && <span className="hf-dica">This tool runs on your GPU.{' '}

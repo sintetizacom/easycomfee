@@ -6,7 +6,7 @@ import {
   ABERTURAS, CAMERAS, ENQUADRAMENTOS, FILMES, FOCAIS, GENEROS, GRADES, LENTES, LUZES, MOVIMENTOS,
   montarPrompt, texto, visualDe, type Cor, type Direcao, type Opcao,
 } from './cinema'
-import { BotaoGerar, CartaoTarefa, SlotImagem, arquivos, eVideo, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, TituloPagina } from './comum'
+import { Contador, BotaoGerar, CartaoTarefa, SlotImagem, arquivos, eVideo, mensagem, useCusto, useTarefas, vezes, useLembrado, MAX_PROMPT , AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, TituloPagina } from './comum'
 import { IconeCamera } from './IconesCamera'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 
@@ -328,7 +328,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
           </div>
         <textarea aria-label="Scene description" maxLength={MAX_PROMPT} className="hf-cinema-texto" value={cena} onChange={(e) => setCena(e.target.value)} rows={3}
           placeholder={castOk.length > 1 ? 'e.g. @image1 and @image2 argue in a rain-soaked neon alley at night…'
-            : 'Who, where, what is happening: a detective in a rain-soaked neon alley at night…'} />
+            : 'Who, where, what is happening: a detective in a rain-soaked neon alley at night…'} /><Contador texto={cena} limite={MAX_PROMPT} />
         {maxCast > 0 ? (
           <div className="hf-cast">
             {castOk.map((r, i) => (

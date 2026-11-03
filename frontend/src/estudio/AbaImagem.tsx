@@ -4,7 +4,7 @@ import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Ref
 import LayoutIdeogram from './LayoutIdeogram'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useInstalado, useValor, valorAberto } from './motor'
 import { LOOKS, aplicarLook } from './looks'
-import { AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, BotaoGerar, CartaoTarefa, Chips, SlotImagem, Midia, arquivos, mensagem, useCusto, useTarefas, parteDoHash, teclasRadio, useLembrado, useVersoes, versaoValida, versoesVisiveis, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, limitePrompt, AJUSTES_VAZIOS, Avancado, camposAjustes, type Ajustes, BotaoGerar, CartaoTarefa, Chips, SlotImagem, Midia, arquivos, mensagem, useCusto, useTarefas, parteDoHash, teclasRadio, useLembrado, useVersoes, versaoValida, versoesVisiveis, TituloPagina } from './comum'
 
 // Image tab: one prompt bar, the model, aspect ratio and how many images.
 // Everything else (steps, cfg, styles) keeps its defaults; the full controls
@@ -276,7 +276,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           <div className="hf-img-prompt">
             <span className="hf-img-titulo">Prompt</span>
             <div className="hf-img-prompt-linha">
-        <textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={1}
+        <textarea aria-label="Prompt" maxLength={limitePrompt(modelo)} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={1}
           placeholder={comRefs && lookAtual ? `Optional: an extra touch for ${lookAtual.rotulo}, e.g. "smiling" or "blue background"`
             : comRefs ? 'Describe the result. Refer to the images as @image1, @image2…'
             : faltaFoto ? 'Add your photo under Character (right), then press Generate. Optional: extra direction here.'
@@ -284,6 +284,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !desligado) gerar() }} />
               <BotaoGerar est={custo} desligado={desligado} aoClicar={gerar} />
             </div>
+            <Contador texto={prompt} limite={limitePrompt(modelo)} />
           </div>
         </section>
 
