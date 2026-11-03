@@ -126,18 +126,6 @@
       "batch_size": 1
     }
   },
-  "som": {
-    "class_type": "LTXVEmptyLatentAudio",
-    "inputs": {
-      "frames_number": 121,
-      "frame_rate": 24,
-      "batch_size": 1,
-      "audio_vae": [
-        "vae_a",
-        0
-      ]
-    }
-  },
   "pos": {
     "class_type": "CLIPTextEncode",
     "inputs": {
@@ -260,6 +248,36 @@
       "tile_frames": 97
     }
   },
+  "audio_lat": {
+    "class_type": "VAEEncodeAudio",
+    "inputs": {
+      "audio": [
+        "partes",
+        1
+      ],
+      "vae": [
+        "vae_a",
+        0
+      ]
+    }
+  },
+  "ref1": {
+    "class_type": "LTXVSetAudioRefTokens",
+    "inputs": {
+      "positive": [
+        "guia",
+        0
+      ],
+      "negative": [
+        "guia",
+        1
+      ],
+      "audio_latent": [
+        "audio_lat",
+        0
+      ]
+    }
+  },
   "av1": {
     "class_type": "LTXVConcatAVLatent",
     "inputs": {
@@ -268,8 +286,8 @@
         2
       ],
       "audio_latent": [
-        "som",
-        0
+        "ref1",
+        2
       ]
     }
   },
@@ -281,11 +299,11 @@
         0
       ],
       "positive": [
-        "guia",
+        "ref1",
         0
       ],
       "negative": [
-        "guia",
+        "ref1",
         1
       ],
       "cfg": 1
@@ -396,6 +414,23 @@
       "bypass": false
     }
   },
+  "ref2": {
+    "class_type": "LTXVSetAudioRefTokens",
+    "inputs": {
+      "positive": [
+        "tira1",
+        0
+      ],
+      "negative": [
+        "tira1",
+        1
+      ],
+      "audio_latent": [
+        "audio_lat",
+        0
+      ]
+    }
+  },
   "av2": {
     "class_type": "LTXVConcatAVLatent",
     "inputs": {
@@ -404,8 +439,8 @@
         0
       ],
       "audio_latent": [
-        "separa1",
-        1
+        "ref2",
+        2
       ]
     }
   },
@@ -417,11 +452,11 @@
         0
       ],
       "positive": [
-        "tira1",
+        "ref2",
         0
       ],
       "negative": [
-        "tira1",
+        "ref2",
         1
       ],
       "cfg": 1

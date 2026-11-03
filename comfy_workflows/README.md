@@ -35,6 +35,9 @@ Config Models, or see the main README for the download links.
 | `video_hunyuan15.json` | Video: HunyuanVideo 1.5 720p, text or image to video |
 | `video_kandinsky5.json` | Video: Kandinsky 5 Lite, text to video |
 | `video_fasth3.json` | Video: FastH3 (MiniMax H3 distilled, 8 steps) |
+| `video_minimax_h3_cinematic.json` | Video: MiniMax H3 on your GPU, Cinematic style (turbo LoRA, 8 steps), text or image to video |
+| `video_minimax_h3_pika_flex.json` | Video: MiniMax H3 on your GPU, Pika Flex style (6 steps) |
+| `video_minimax_h3_references_singularity.json` | Video: MiniMax H3 references to video, Singularity V2 style (turbo + Singularity LoRAs, 4 steps) |
 | `lipsync_ltx23.json` | Lip Sync: a portrait and a voice track become a talking video (LTX 2.3) |
 | `genjutsu_wan_animate2.json` | Genjutsu: Wan Animate 2, the photo performs the video's motion |
 | `tool_depth_map.json` | Apps: video to depth map (Video Depth Anything), optional EXR frames |
