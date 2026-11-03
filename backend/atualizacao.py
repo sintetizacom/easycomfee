@@ -22,7 +22,7 @@ RAIZ = config.RAIZ
 ORIGEM_EXTRA = config._valor("atualizar_de")
 _CACHE: dict = {"quando": 0.0, "dados": None}
 # Sem internet a resposta vale pouco: assim que a conexao volta, a novidade aparece.
-VALIDADE, VALIDADE_SEM_INTERNET = 300, 120  # 5 min: com 30, o botao Update demorava meia hora a aparecer (03/11/2026)
+VALIDADE, VALIDADE_SEM_INTERNET = 3600, 120  # 1 h (decidido em 03/11/2026, depois do teste com 5 min)
 SEM_INTERNET = ("No internet connection. Connect to the internet and press Update again. "
                 "Nothing was changed.")
 
@@ -56,7 +56,7 @@ def _origem_valida(url: str) -> bool:
 
 def estado(forcar: bool = False) -> dict:
     """{"disponivel": bool, "novos": n, "versao": sha curto, "motivo": texto}.
-    Consulta o GitHub no maximo a cada 5 min (git fetch), salvo forcar."""
+    Consulta o GitHub no maximo a cada 1 h (git fetch), salvo forcar."""
     validade = VALIDADE_SEM_INTERNET if (_CACHE["dados"] or {}).get("sem_internet") else VALIDADE
     if not forcar and _CACHE["dados"] and time.time() - _CACHE["quando"] < validade:
         return _CACHE["dados"]

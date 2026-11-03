@@ -28,7 +28,7 @@ export default function BotaoAtualizar() {
       fetch('/api/atualizacao').then((r) => r.json()).then(setEstado).catch(() => {})
     }
     ler()
-    const t = setInterval(ler, 5 * 60_000)
+    const t = setInterval(ler, 60 * 60_000)
     const aoVoltar = () => { if (document.visibilityState === 'visible') ler() }
     document.addEventListener('visibilitychange', aoVoltar)
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', aoVoltar) }
