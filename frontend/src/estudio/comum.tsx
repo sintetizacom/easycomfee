@@ -419,18 +419,23 @@ function rotuloFaixa(a: { nome: string; subpasta: string }): string | null {
   return m ? FAIXAS[m[1]] ?? m[1] : null
 }
 
-/** Versoes instaladas de cada modelo (chave "Version"; variantes.py no servidor). */
+/** Versoes de cada modelo neste PC (chave "Faster / Best quality"; variantes.py no servidor).
+ *  O servidor ja tira as que nao cabem na placa e diz a padrao para esta maquina. */
 export type Versao = { id: string; rotulo: string; instalada: boolean }
-export function useVersoes(): Record<string, Versao[]> {
-  const [v, setV] = useState<Record<string, Versao[]>>({})
+export type Versoes = { versoes: Versao[]; padrao: string }
+export function useVersoes(): Record<string, Versoes> {
+  const [v, setV] = useState<Record<string, Versoes>>({})
   useEffect(() => { fetch('/api/variantes').then((r) => (r.ok ? r.json() : {})).then(setV).catch(() => {}) }, [])
   return v
 }
-/** A versao escolhida, ou a primeira instalada quando a escolhida nao existe neste PC. */
-export function versaoValida(lista: Versao[] | undefined, escolhida: string): string {
-  if (!lista?.length) return ''
-  return lista.find((x) => x.id === escolhida && x.instalada)?.id ?? lista.find((x) => x.instalada)?.id ?? ''
+/** A versao escolhida pela pessoa, ou a padrao da maquina quando ela nao escolheu (ou nao tem). */
+export function versaoValida(v: Versoes | undefined, escolhida: string): string {
+  if (!v?.versoes.length) return ''
+  const ok = (id: string) => v.versoes.some((x) => x.id === id && x.instalada)
+  return ok(escolhida) ? escolhida : ok(v.padrao) ? v.padrao : v.versoes.find((x) => x.instalada)?.id ?? ''
 }
+/** So as versoes instaladas que cabem: a chave aparece quando ha mais de uma. */
+export const versoesVisiveis = (v: Versoes | undefined) => (v?.versoes ?? []).filter((x) => x.instalada)
 
 /** One job: progress while it runs, the result when done. */
 export function CartaoTarefa({ t }: { t: Tarefa }) {

@@ -127,11 +127,14 @@ popd
 echo.
 REM Atalho com o icone da marca (cria ou atualiza; quem instalou antes dele ganha agora).
 call "%~dp0criar-atalho.bat" >nul 2>nul
-echo Done. Starting EasyComfee...
+echo Update done. EasyComfee is starting in a new window; this one closes by itself.
+echo (If it stays open, you can close it.)
 REM O app volta numa janela minimizada (fechar ela desliga o estudio) e esta
-REM janela se fecha. Caminho completo: depois do npm, "start.bat" sozinho nao e encontrado.
+REM janela se fecha (exit sem /b: a janela foi aberta com cmd /c, sugestao de 03/11/2026).
+REM Caminho completo: depois do npm, "start.bat" sozinho nao e encontrado.
 start "EasyComfee" /min cmd /c ""%~dp0start.bat" noopen"
-exit /b 0
+ping -n 4 127.0.0.1 >nul
+exit 0
 :sem_internet
 echo.
 echo No internet connection. Nothing was changed.
@@ -159,7 +162,8 @@ def aplicar() -> None:
         raise RuntimeError("no update available")
     caminho = RAIZ / "atualizar.bat"
     caminho.write_text(BAT.replace("\n", "\r\n"), encoding="ascii")
-    subprocess.Popen(["cmd", "/c", "start", "", str(caminho)], cwd=RAIZ,
+    # "start" com um .bat abre "cmd /k" (a janela ficava aberta); com "cmd /c" ela fecha no fim.
+    subprocess.Popen(["cmd", "/c", "start", "EasyComfee update", "cmd", "/c", str(caminho)], cwd=RAIZ,
                      creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
 
 

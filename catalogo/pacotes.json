@@ -650,7 +650,7 @@
      "repo": "black-forest-labs/flux-3-image-klein-comfy",
      "caminho": "diffusion_models/flux3-image-klein-bf16.safetensors",
      "opcional": true,
-     "rotulo": "FLUX 3 Klein distilled · Fast version (bf16)",
+     "rotulo": "Faster version (about 3x faster)",
      "tamanho": 11097404512,
      "licenca": "other",
      "requer_aceite": true
@@ -1313,7 +1313,7 @@
    "id": "minimax_h3",
    "nome": "MiniMax H3 Video",
    "tipo": "video",
-   "descricao": "Open-weight MiniMax H3: text, image and first/last frame to video with sound. Best on 32 GB+ cards or Comfy Cloud.",
+   "descricao": "Open-weight MiniMax H3: text, image and first/last frame to video with sound. On a 16 GB card: up to 720p and 10 s (480p / 5 s takes about 1 min). Styles: Cinematic, Pika Flex and, with references, Singularity V2.",
    "vram_min_gb": 16,
    "modos": [
     "video MiniMax H3"
@@ -1327,7 +1327,7 @@
     "nota_limitado": "Runs on 16 GB only at low resolution: use Comfy Cloud or a 32 GB card."
    },
    "licenca": {
-    "nome": "other",
+    "nome": "other, unknown",
     "url": "https://huggingface.co/Comfy-Org/MiniMax-H3"
    },
    "arquivos": [
@@ -1356,14 +1356,14 @@
      "requer_aceite": false
     },
     {
-     "arquivo": "minimax_h3_video_vae_fp16.safetensors",
+     "arquivo": "minimax_h3_video_vae_int8_convrot.safetensors",
      "pasta": "vae",
      "subpasta": "Minimax",
      "repo": "Comfy-Org/MiniMax-H3",
-     "caminho": "vae/minimax_h3_video_vae_fp16.safetensors",
+     "caminho": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
      "opcional": false,
-     "rotulo": "Video VAE",
-     "tamanho": 5207808496,
+     "rotulo": "Video VAE (int8)",
+     "tamanho": 2811065184,
      "licenca": "other",
      "requer_aceite": false
     },
@@ -1389,6 +1389,66 @@
      "rotulo": "Turbo LoRA (8 steps)",
      "tamanho": 1956193000,
      "licenca": "other",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "pika_h3_flex_fl2va_v1_avg_rank_56_bf16.safetensors",
+     "pasta": "loras",
+     "subpasta": "Minimax",
+     "repo": "Kijai/MiniMax-H3_comfy",
+     "caminho": "loras/Pika/pika_h3_flex_fl2va_v1_avg_rank_56_bf16.safetensors",
+     "opcional": true,
+     "rotulo": "Pika Flex style",
+     "tamanho": 559266144,
+     "licenca": "unknown",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+     "pasta": "diffusion_models",
+     "subpasta": "Minimax",
+     "repo": "Comfy-Org/MiniMax-H3",
+     "caminho": "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+     "opcional": true,
+     "rotulo": "References mode · model (int8)",
+     "tamanho": 20970379616,
+     "licenca": "other",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+     "pasta": "loras",
+     "subpasta": "Minimax",
+     "repo": "Comfy-Org/MiniMax-H3",
+     "caminho": "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+     "opcional": true,
+     "rotulo": "References mode · Cinematic (4 steps)",
+     "tamanho": 1956193000,
+     "licenca": "other",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "pika_h3_flex_ref2va_v1_avg_rank_55_bf16.safetensors",
+     "pasta": "loras",
+     "subpasta": "Minimax",
+     "repo": "Kijai/MiniMax-H3_comfy",
+     "caminho": "loras/Pika/pika_h3_flex_ref2va_v1_avg_rank_55_bf16.safetensors",
+     "opcional": true,
+     "rotulo": "References mode · Pika Flex",
+     "tamanho": 553202008,
+     "licenca": "unknown",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "minimax_h3_singularity_v2_lora_avg_rank_351_bf16.safetensors",
+     "pasta": "loras",
+     "subpasta": "Minimax",
+     "repo": "Kijai/MiniMax-H3-experimental",
+     "caminho": "loras/minimax_h3_singularity_v2_lora_avg_rank_351_bf16.safetensors",
+     "opcional": true,
+     "rotulo": "References mode · Singularity V2 style",
+     "tamanho": 3300296560,
+     "licenca": "unknown",
      "requer_aceite": false
     }
    ]
@@ -1875,7 +1935,7 @@
      "repo": "Comfy-Org/ACE-Step-1.5",
      "caminho": "split_files/diffusion_models/acestep_v1.5_xl_turbo_bf16.safetensors",
      "opcional": true,
-     "rotulo": "ACE-Step 1.5 XL Turbo",
+     "rotulo": "Best quality version (needs a 12 GB+ card)",
      "tamanho": 9974719892,
      "licenca": "apache-2.0",
      "requer_aceite": false
@@ -1887,7 +1947,7 @@
      "repo": "Comfy-Org/ACE-Step-1.5",
      "caminho": "split_files/text_encoders/qwen_4b_ace15.safetensors",
      "opcional": true,
-     "rotulo": "ACE-Step XL text encoder 4B",
+     "rotulo": "Best quality version · text part",
      "tamanho": 8379154232,
      "licenca": "apache-2.0",
      "requer_aceite": false
@@ -2028,14 +2088,14 @@
      "requer_aceite": false
     },
     {
-     "arquivo": "minimax_h3_video_vae_fp16.safetensors",
+     "arquivo": "minimax_h3_video_vae_int8_convrot.safetensors",
      "pasta": "vae",
      "subpasta": "Minimax",
      "repo": "Comfy-Org/MiniMax-H3",
-     "caminho": "vae/minimax_h3_video_vae_fp16.safetensors",
+     "caminho": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
      "opcional": false,
-     "rotulo": "Video VAE",
-     "tamanho": 5207808496,
+     "rotulo": "Video VAE (int8)",
+     "tamanho": 2811065184,
      "licenca": "other",
      "requer_aceite": false
     },

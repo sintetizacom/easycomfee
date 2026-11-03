@@ -3667,8 +3667,9 @@ def chaves_ltx(texto, chaves, quadros, largura, altura, forca=0.7, seed=42,
 
 
 def gerar_video_minimax(prompt, seed, largura, altura, duracao, imagem=None,
-                        imagem_final=None, turbo=True, com_audio=True, prefixo="video"):
+                        imagem_final=None, turbo=True, com_audio=True, prefixo="video", estilo=""):
     """MiniMax H3 de pesos abertos, local ou na Comfy Cloud (mesmos nomes).
+    estilo "pika": o LoRA Pika Flex no lugar do turbo, 6 passos.
 
     O `MiniMaxH3ImageToVideo` cobre os tres modos: os quadros-guia sao
     opcionais (nenhum = texto, o primeiro = imagem, os dois = primeiro+ultimo)
@@ -3682,7 +3683,11 @@ def gerar_video_minimax(prompt, seed, largura, altura, duracao, imagem=None,
                  "inputs": {"clip_name": win(p["clip"]), "type": p["clip_type"], "device": "default"}},
         "vae_v": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_video"])}},
     }
-    if turbo:
+    if estilo == "pika":
+        g["lora"] = {"class_type": "LoraLoaderModelOnly",
+                     "inputs": {"model": ["unet", 0], "lora_name": win(p["lora_pika"]), "strength_model": 1.0}}
+        modelo, passos = ["lora", 0], p["passos_pika"]
+    elif turbo:
         g["lora"] = {"class_type": "LoraLoaderModelOnly",
                      "inputs": {"model": ["unet", 0], "lora_name": win(p["lora_turbo"]),
                                 "strength_model": p["forca_lora"]}}
@@ -3714,6 +3719,65 @@ def gerar_video_minimax(prompt, seed, largura, altura, duracao, imagem=None,
         g["som"] = {"class_type": "VAEDecodeAudio", "inputs": {"samples": ["passo", 0], "vae": ["vae_a", 0]}}
         entradas_video["audio"] = ["som", 0]
     g["monta"] = {"class_type": "CreateVideo", "inputs": entradas_video}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["monta", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
+def gerar_video_minimax_ref(prompt, seed, largura, altura, duracao, referencias, turbo=True,
+                            estilo="", com_audio=True, prefixo="video"):
+    """MiniMax H3 local, referencias -> video (ref2va), como o template oficial
+    video_minimax_h3_r2v: MiniMaxH3ReferenceToVideo com as imagens em ref_images.ref_image_N.
+    O texto cita as imagens como <Picture N>; o @imageN do app vira isso aqui."""
+    import re
+    from presets import VIDEO_MINIMAX as p, quadros_minimax
+    refs = list(referencias)[:p["max_referencias"]]
+    if not refs:
+        raise ValueError("envie ao menos uma imagem de referência")
+    texto = re.sub(r"@ima?ge?m?(\d+)", lambda m: f"<Picture {m.group(1)}>", prompt, flags=re.I)
+    if "<Picture" not in texto:
+        # Sem citar as imagens o H3 as ignora: diz para usa-las, na ordem enviada.
+        citadas = " and ".join(f"<Picture {i}>" for i in range(1, len(refs) + 1))
+        texto = f"Use {citadas} as reference{'s' if len(refs) > 1 else ''}. {texto}"
+    g = {
+        "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": win(p["unet_ref"]), "weight_dtype": "default"}},
+        "clip": {"class_type": "CLIPLoader",
+                 "inputs": {"clip_name": win(p["clip"]), "type": p["clip_type"], "device": "default"}},
+        "vae_v": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_video"])}},
+        "vae_a": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae_audio"])}},
+    }
+    # LoRAs em cadeia sobre a base (Singularity: o turbo e depois o V2).
+    loras = ([p["lora_pika_ref"]] if estilo == "pika"
+             else [p["lora_turbo_ref"], p["lora_singularity_ref"]] if estilo == "singularity"
+             else [p["lora_turbo_ref"]] if turbo else [])
+    modelo = ["unet", 0]
+    for i, lora in enumerate(loras):
+        g[f"lora{i}"] = {"class_type": "LoraLoaderModelOnly",
+                         "inputs": {"model": modelo, "lora_name": win(lora), "strength_model": 1.0}}
+        modelo = [f"lora{i}", 0]
+    passos = (p["passos_pika"] if estilo == "pika" else p["passos_turbo_ref"] if estilo == "singularity" or turbo
+              else p["passos_qualidade_ref"])
+    entradas = {"clip": ["clip", 0], "vae": ["vae_v", 0], "audio_vae": ["vae_a", 0], "prompt": texto,
+                "width": int(largura), "height": int(altura), "length": quadros_minimax(duracao, p["fps"]),
+                "ref_image_size": "match"}
+    for i, r in enumerate(refs, start=1):
+        g[f"ref{i}"] = {"class_type": "LoadImage", "inputs": {"image": r}}
+        entradas[f"ref_images.ref_image_{i}"] = [f"ref{i}", 0]
+    g["prep"] = {"class_type": "MiniMaxH3ReferenceToVideo", "inputs": entradas}
+    g["guia"] = {"class_type": "BasicGuider", "inputs": {"model": modelo, "conditioning": ["prep", 0]}}
+    g["sigmas"] = {"class_type": "BasicScheduler",
+                   "inputs": {"model": modelo, "scheduler": p["scheduler"], "steps": passos, "denoise": 1.0}}
+    g["amostrador"] = {"class_type": "KSamplerSelect", "inputs": {"sampler_name": p["sampler"]}}
+    g["ruido"] = {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}}
+    g["passo"] = {"class_type": "SamplerCustomAdvanced",
+                  "inputs": {"noise": ["ruido", 0], "guider": ["guia", 0], "sampler": ["amostrador", 0],
+                             "sigmas": ["sigmas", 0], "latent_image": ["prep", 1]}}
+    g["decodifica"] = {"class_type": "VAEDecode", "inputs": {"samples": ["passo", 0], "vae": ["vae_v", 0]}}
+    video = {"images": ["decodifica", 0], "fps": p["fps"]}
+    if com_audio:
+        g["som"] = {"class_type": "VAEDecodeAudio", "inputs": {"samples": ["passo", 0], "vae": ["vae_a", 0]}}
+        video["audio"] = ["som", 0]
+    g["monta"] = {"class_type": "CreateVideo", "inputs": video}
     g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["monta", 0], "filename_prefix": prefixo,
                                                         "format": "auto", "codec": "auto"}}
     return g

@@ -390,6 +390,8 @@ class PedidoGeracao(Pedido):
     planos: list[str] = []
     # Chave da LoRA turbo do MiniMax: LoRA + 6 passos, em vez de 20.
     turbo: bool = True
+    # MiniMax H3: "" (Cinematic, o turbo) ou "pika" (Pika Flex).
+    estilo_h3: str = Field("", pattern="^(|pika|singularity)$")
     # So o gerador de nuvem usa estes: la o tamanho e proporcao +
     # resolucao, nao pixels.
     proporcao_video: str = "16:9"
@@ -741,10 +743,11 @@ async def _montar(tarefa: Tarefa):
         tarefa.largura = tarefa.altura = 0
         tarefa.prompt_final = musica.configuracao_geracao(p)[0]
         cfg = next(c for c in await musica.catalogo() if c["id"] == p.modelo_musica)
-        if p.modelo_musica == "ace-step15" and p.variante == "xl" and not comfy.na_nuvem():
-            # XL escolhido: os pesos da alternativa XL, se estiverem instalados.
+        if p.modelo_musica == "ace-step15" and p.variante != "turbo" and not comfy.na_nuvem():
+            # XL escolhido, ou sem escolha numa placa onde ele cabe (variantes.padrao).
             xl = musica.resolver(await comfy.info_nos(), "ace-step15", preferir_alt=True)
-            if xl["disponivel"]:
+            xl_ok = xl["disponivel"] and "xl" in xl["pesos"].get("unet", "")
+            if xl_ok and (p.variante == "xl" or variantes.padrao("ace-step15", {"turbo", "xl"}) == "xl"):
                 cfg = dict(cfg, pesos=xl["pesos"])
         if not cfg["disponivel"]: raise comfy.ErroComfy(cfg["motivo"])
         if cfg.get("plenio"):
@@ -1066,8 +1069,11 @@ async def _montar(tarefa: Tarefa):
         # Pesos abertos: local em placas grandes, ou na Comfy Cloud com os
         # mesmos nomes de arquivo (ver presets.VIDEO_MINIMAX).
         cfg = presets.VIDEO_MINIMAX
-        larg, alt = presets.tamanho_de_video(p.resolucao_video, p.proporcao_video,
-                                             cfg["alinhamento"])
+        local = not comfy.na_nuvem()
+        resolucao = p.resolucao_video
+        if local and resolucao not in cfg["local_resolucoes"]:
+            resolucao = cfg["local_resolucoes"][0]  # na placa local, so o que foi medido
+        larg, alt = presets.tamanho_de_video(resolucao, p.proporcao_video, cfg["alinhamento"])
         refs = p.referencias or []
         if p.modo_video in ("imagem", "primeiro_ultimo") and not refs:
             raise ValueError("envie a imagem do primeiro quadro")
@@ -1075,12 +1081,19 @@ async def _montar(tarefa: Tarefa):
             raise ValueError("envie DUAS imagens: o primeiro e o último quadro")
         tarefa.largura, tarefa.altura = larg, alt
         tarefa.prompt_final = p.prompt
+        if p.modo_video == "referencia":
+            if not local:
+                raise ValueError("Referências com o MiniMax H3 aberto só rodam na placa; na nuvem use o MiniMax H3 MultiRef.")
+            return workflows.gerar_video_minimax_ref(
+                p.prompt, seed, larg, alt, max(cfg["duracao_min"], min(cfg["local_duracao_max"], p.duracao_video)),
+                refs, turbo=p.turbo, estilo=p.estilo_h3, com_audio=p.com_audio, prefixo=prefixo)
         return workflows.gerar_video_minimax(
             p.prompt, seed, larg, alt,
-            max(cfg["duracao_min"], min(cfg["duracao_max"], p.duracao_video)),
+            max(cfg["duracao_min"], min(cfg["local_duracao_max"] if local else cfg["duracao_max"], p.duracao_video)),
             imagem=refs[0] if p.modo_video != "texto" and refs else None,
             imagem_final=refs[1] if p.modo_video == "primeiro_ultimo" else None,
-            turbo=p.turbo, com_audio=p.com_audio, prefixo=prefixo)
+            turbo=p.turbo, com_audio=p.com_audio, prefixo=prefixo,
+            estilo=p.estilo_h3 if local else "")
 
     if p.modelo == "video" and p.modelo_video == "ltx23":
         cfg = presets.VIDEO_LTX23
@@ -1924,6 +1937,27 @@ async def treinar_voz(tarefa: Tarefa):
     await anunciar(tarefa)
 
 
+def normalizar_volume(caminho: pathlib.Path) -> bool:
+    """Volume do audio do video a -16 LUFS, no lugar, sem mexer na imagem (-c:v copy).
+    Sem audio ou se o ffmpeg falhar, o original fica como esta."""
+    if caminho.suffix.lower() not in (".mp4", ".mov", ".webm", ".mkv") or not caminho.is_file():
+        return False
+    temp = caminho.with_name(caminho.stem + ".norm" + caminho.suffix)
+    try:
+        r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(caminho), "-map", "0:v:0", "-map", "0:a:0",
+                            "-c:v", "copy", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+                            "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(temp)],
+                           capture_output=True, timeout=300)
+        if r.returncode != 0 or not temp.is_file():
+            temp.unlink(missing_ok=True)
+            return False
+        temp.replace(caminho)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        temp.unlink(missing_ok=True)
+        return False
+
+
 def copiar_para_easycomfee(itens) -> None:
     """O ComfyUI grava na pasta dele; uma copia de cada resultado vai para a pasta de resultados
     (<EasyComfee>/output ou a escolhida). Nunca derruba a geracao."""
@@ -2295,6 +2329,11 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
                 if capa:
                     for s_ in saidas:
                         s_["musica"] = dict(s_.get("musica") or {}, capa=capa)
+            if (tarefa.pedido.modelo == "video" and tarefa.pedido.modelo_video == "minimax"
+                    and not comfy.na_nuvem()):
+                # O H3 sai com o volume muito variavel: normaliza o audio (guia de 03/11/2026).
+                for s_ in saidas:
+                    await asyncio.to_thread(normalizar_volume, SAIDA_DO_MOTOR / s_.get("subpasta", "") / s_["nome"])
             nomes = [json.dumps(im, ensure_ascii=False) for im in saidas]
             await asyncio.to_thread(copiar_para_easycomfee, saidas)
             try:
@@ -3057,17 +3096,17 @@ async def pasta_resultados_mudar(c: PastaResultados):
 
 @app.get("/api/variantes")
 async def variantes_disponiveis():
-    """Quais versoes de cada modelo estao neste PC (para a chave Version)."""
-    r = variantes.disponiveis()
+    """Versoes de cada modelo neste PC, com a padrao escolhida pela maquina (variantes.py)."""
+    turbo = xl = False
     try:
         info = await comfy.info_nos(comfy.BASE_PRINCIPAL)
-        turbo = musica.resolver(info, "ace-step15")
-        xl = musica.resolver(info, "ace-step15", preferir_alt=True)
-        r["ace-step15"] = [{"id": "turbo", "rotulo": "Standard · Turbo", "instalada": turbo["disponivel"] and turbo["pesos"].get("unet", "").find("xl") < 0},
-                           {"id": "xl", "rotulo": "XL · bigger, ~12 GB VRAM", "instalada": xl["disponivel"] and "xl" in xl["pesos"].get("unet", "")}]
+        r_turbo = musica.resolver(info, "ace-step15")
+        r_xl = musica.resolver(info, "ace-step15", preferir_alt=True)
+        turbo = r_turbo["disponivel"] and "xl" not in r_turbo["pesos"].get("unet", "")
+        xl = r_xl["disponivel"] and "xl" in r_xl["pesos"].get("unet", "")
     except Exception:
         pass
-    return r
+    return variantes.disponiveis(ace_turbo=turbo, ace_xl=xl)
 
 
 @app.post("/api/modelos/escanear")

@@ -4,7 +4,7 @@ import { useReusarPrompt } from './Visualizador'
 import { api } from '../api'
 import BlocoYue from './BlocoYue'
 import BlocoSeparar from './BlocoSeparar'
-import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, useVersoes, versaoValida, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTarefas, Galeria, parteDoHash, useLembrado, useVersoes, versaoValida, versoesVisiveis, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Music: the three open-weight song models of the backend (musica.py), on
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
@@ -116,7 +116,7 @@ export default function AbaMusica() {
 
   // Versao do ACE-Step 1.5 (Turbo ou XL), so as que estao neste PC.
   const versoes = useVersoes()
-  const [versao, setVersao] = useLembrado('music.ace.versao', 'turbo')
+  const [versao, setVersao] = useLembrado('music.ace.versao', '')
   const versaoOk = modelo === 'ace-step15' && !naNuvem ? versaoValida(versoes['ace-step15'], versao) : ''
   const pedido = {
     ...(versaoOk ? { variante: versaoOk } : {}),
@@ -242,9 +242,10 @@ export default function AbaMusica() {
               <option value="natural">Natural ending</option><option value="fade">Fade out</option><option value="original">Keep as generated</option>
             </select></label>
           </div>
-          {versaoOk && (versoes['ace-step15']?.filter((x) => x.instalada).length ?? 0) > 1 && (
-            <Chips rotulo="Version" valor={versaoOk} aoMudar={setVersao}
-              opcoes={(versoes['ace-step15'] ?? []).map((x) => ({ id: x.id, rotulo: x.rotulo }))} />
+          {versaoOk && versoesVisiveis(versoes['ace-step15']).length > 1 && (
+            <Chips rotulo="Speed" valor={versaoOk} aoMudar={setVersao}
+              opcoes={versoesVisiveis(versoes['ace-step15']).map((x) => ({ id: x.id, rotulo: x.rotulo,
+                dica: x.id === 'xl' ? 'Bigger model, richer sound; a bit slower' : 'Lighter model, quicker songs' }))} />
           )}
           {modelo === 'ace-step15' && <>
             <label className="hf-ctrl"><small>Tempo</small><span><input className="hf-campo" type="number" min={BPM_MIN} max={BPM_MAX} value={bpm} style={{ width: 64 }}

@@ -108,7 +108,7 @@ On smaller cards, **Config Models** shows which packages run well on that GPU an
 |---|---|---|
 | **Image** | Text to image, with up to 3 reference images (@image1…) | Krea 2, Kroma, Qwen Image 2.1, Flux 2 Klein, FLUX 3 Klein, Z-Image, Mage, Ideogram 4 · light: FLUX.1 schnell, SD 3.5 Medium, SDXL, SD 1.5 |
 | **Edit** | 12 photo tools: Relight, Copy the light, Change the angle, Orbit (3D body preview), Head swap, Character swap, Character sheet, Adjust the face, Edit an area, Upscale, Follow the structure, Remove background | TRELLIS 2 · Qwen Image Edit 2511 · Qwen Image 2.1 + SAM 3 · FLUX 3 Klein · Flux 2 Klein · Krea 2 Anygles · SeedVR2 · Z-Image · LivePortrait · optional: Nano Banana 2, Seedream 5 Pro, GPT Image 2.5, Magnific, Topaz, Recraft |
-| **Video** | Text → video, image → video, first & last frame, references (up to 4 people/objects), keyframes, with sound | LTX 2.5 · LTX 2.3 · MiniMax H3 · FastH3 · light: LTX-Video 2B, Wan 2.2 5B, Wan 2.1 1.3B |
+| **Video** | Text → video, image → video, first & last frame, references (up to 4 people/objects), keyframes, with sound | LTX 2.5 · LTX 2.3 · MiniMax H3 (*Cinematic*, *Pika Flex* or, with references, *Singularity V2* style; up to 720p / 10 s on a 16 GB card) · FastH3 · light: LTX-Video 2B, Wan 2.2 5B, Wan 2.1 1.3B |
 | **LTX Studio** | Every LTX workflow in one place, with its own screens: **Keyframes** on a timeline (drag images to the second they should appear), **Ingredients** (a shot built from several images), **Latent upscale** | LTX 2.5 / 2.3 |
 | **Lip Sync** | A portrait and a voice track become a talking video, up to 30 s | LTX 2.3 |
 | **Music** | Songs from a style, with your lyrics or instrumental: BPM, key, voice, guide track, lyrics/score review | MiniMax Music 3 · ACE-Step 1.5 · Stable Audio 3 · YuE2 |
@@ -308,6 +308,7 @@ The studio's code is released under the [MIT License](LICENSE). Models are not p
 | LTX 2.3 (Lightricks) | Video, Lip Sync, Union Control, In/Outpainting, Relight, Add sound (Foley V2A) | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2); the Foley V2A LoRA card says part of its training data (FoleyBench) is CC BY-NC-SA, non-commercial |
 | LTX-Video 2B 0.9.8 | Light video | Apache 2.0 / LTX-Video license |
 | MiniMax H3 · FastH3 | Video, Character Swap | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) |
+| Pika Flex adapter for MiniMax H3 (Pika Labs; compressed version by Kijai) | Video, *Pika Flex* style | Derived from MiniMax H3, under the [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) |
 | Wan 2.2 5B · Wan 2.1 1.3B · Wan Animate | Light video, Genjutsu | Apache 2.0 |
 | Qwen Image Edit 2511 | Recast first frame, editing | Apache 2.0 |
 | Qwen Image 2.1 | Image | [Qwen Research License](https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE) (non-commercial) |

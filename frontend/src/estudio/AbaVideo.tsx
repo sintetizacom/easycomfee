@@ -64,6 +64,8 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const faltaInstalar = useFaltaInstalar()
   const valorSelect = useValor(motor, apiGeradores.some((g) => g.id === motor))
   const [turbo, setTurbo] = useState(true)
+  // MiniMax H3 local: Cinematic (turbo 8 passos), Pika Flex (6 passos) ou Quality (40 passos).
+  const [estiloH3, setEstiloH3] = useState<'cinema' | 'pika' | 'singularity' | 'qualidade'>('cinema')
   const [modo, setModo] = useState<Modo>(() => {
     const destino = parteDoHash(1)
     return MODOS.some((item) => item.id === destino) ? destino as Modo : 'texto'
@@ -100,8 +102,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const modos = gApi ? MODOS.filter((m) => gApi.modos.includes(m.id))
     : leve ? MODOS.filter((m) => leve.modos.includes(m.id))
     : motor === 'ltx' ? MODOS.filter((m) => !naNuvem || m.id !== 'referencia')
-      : MODOS.filter((m) => m.id !== 'referencia' && m.id !== 'chaves')
-  const maxRefs = gApi ? (gApi.max_referencias ?? 1) : 4
+      // MiniMax H3 aberto: referencias so na placa (ref2va, ate 9 imagens).
+      : MODOS.filter((m) => m.id !== 'chaves' && (m.id !== 'referencia' || (motor === 'minimax' && !naNuvem)))
+  const maxRefs = gApi ? (gApi.max_referencias ?? 1) : motor === 'minimax' ? 9 : 4
   const modoOk = modos.some((m) => m.id === modo) ? modo : modos[0]?.id ?? 'texto'
   // Some sozinho quando a pessoa troca o modo (ou o modelo passa a ter o modo).
   const rotuloModo = (id: string) => MODOS.find((m) => m.id === id)?.rotulo
@@ -110,10 +113,12 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
     : modo === modoDoLink && modoOk !== modo ? `${rotuloModo(modo)} is not available with this model; showing ${rotuloModo(modoOk)}.`
     : null
   const proporcoes = gApi ? (gApi.proporcoes ?? []).filter((p) => p !== 'adaptive') : ['16:9', '9:16', '1:1']
+  // H3 na placa: so 480p e ate 5 s, o que foi medido numa placa de 16 GB (guia de 03/11/2026).
+  const h3Local = motor === 'minimax' && !naNuvem
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
   const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]
-  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? 15
+  const dMin = gApi?.duracao_min ?? 2, dMax = gApi?.duracao_max ?? leve?.max ?? (h3Local ? 10 : 15)
   const duracaoOk = Math.max(dMin, Math.min(dMax, duracao))
 
   const refsOk = refs.slice(0, maxRefs)
@@ -143,8 +148,14 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   // video gerado renderiza o final a partir do mesmo rascunho (vale 7 dias).
   const comRascunho = motorPedido === 'seedance'
   const rascunho = comRascunho && rascunhoLigado
+  // H3 na placa: o estilo vai ao servidor (Singularity so com referencias) e o tempo e estimado
+  // como no guia de 03/11/2026: base a 480p/5 s, x(segundos/5)^1.57, x2,7 em 720p.
+  const estiloOk = estiloH3 === 'singularity' && modoOk !== 'referencia' ? 'cinema' : estiloH3
+  const estiloPedido = h3Local && (estiloOk === 'pika' || estiloOk === 'singularity') ? estiloOk : ''
+  const h3Segundos = h3Local ? Math.round(({ cinema: 87, pika: 63, singularity: 57, qualidade: 400 }[estiloOk])
+    * Math.pow(duracaoOk / 5, 1.57) * (resolucaoOk === '720p' ? 2.7 : 1)) : 0
   // Para o preco, imagem que ainda falta vira um nome qualquer: so os campos contam.
-  const custo = useCusto({ rascunho_video: rascunho,
+  const custo = useCusto({ rascunho_video: rascunho, estilo_h3: estiloPedido,
     modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt: prompt || 'x', proporcao: '1:1',
     proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
     referencias: modoOk === 'texto' ? [] : ehRef ? (nomesRefs.length ? nomesRefs : ['a.png']) : [inicio?.nome ?? 'a.png', fim?.nome ?? 'b.png'],
@@ -176,7 +187,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const gerar = async () => {
     setErro(null); setSelecionado(null)  // o video novo vai para o player quando sair
     try {
-      await api.gerar({ rascunho_video: rascunho,
+      await api.gerar({ rascunho_video: rascunho, estilo_h3: estiloPedido,
         modelo: 'video', modelo_video: motorPedido, turbo, modo_video: modoOk, prompt, proporcao: '1:1',
         proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
         referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
@@ -229,15 +240,23 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
             <GruposAbertos itens={[{ id: 'ltx', rotulo: 'LTX 2.5' }, { id: 'minimax', rotulo: 'MiniMax H3' },
               ...Object.entries(LEVES).map(([id, l]) => ({ id, rotulo: l.rotulo, soLocal: !l.nuvem }))]} api={apiGeradores} />
           </select></label>
-          {motor === 'minimax' && (
+          {motor === 'minimax' && (h3Local ? (
+            <Chips rotulo="Style" valor={estiloOk} aoMudar={(v) => { setEstiloH3(v); setTurbo(v !== 'qualidade') }}
+              opcoes={[{ id: 'cinema', rotulo: 'Cinematic', dica: 'Turbo, 8 steps: darker, filmic, soft background' },
+                { id: 'pika', rotulo: 'Pika Flex', dica: 'Pika Labs adapter, 6 steps: brighter and more colorful, a bit faster' },
+                ...(modoOk === 'referencia' ? [{ id: 'singularity' as const, rotulo: 'Singularity V2', dica: 'References only, 4 steps: closer camera, more expressive faces' }] : []),
+                { id: 'qualidade' as const, rotulo: 'Quality · slow', dica: 'No adapter, 40 steps' }]} />
+          ) : (
             <Chips rotulo="Speed" opcoes={[{ id: 1, rotulo: 'Turbo · 8 steps' }, { id: 0, rotulo: 'Quality · 40 steps' }]}
               valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
-          )}
+          ))}
           </div>
         {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
         {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${LEVES[escolhido].rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing LTX 2.5 on Comfy Cloud instead.`}</p>}
         {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing LTX 2.5 instead.`}</p>}
-        {motor === 'minimax' && <p className="hf-dica">MiniMax H3 is heavy: on a 16 GB card it only fits at low resolution. Best on Comfy Cloud or a 32 GB+ GPU.</p>}
+        {motor === 'minimax' && (h3Local
+          ? <p className="hf-dica">{`About ${h3Segundos < 90 ? `${h3Segundos} s` : `${Math.round(h3Segundos / 60)} min`} on a 16 GB card.`}{resolucaoOk === '720p' && duracaoOk > 5 ? ' 720p over 5 s needs about 60 GB of RAM: close other programs first.' : ''}</p>
+          : <p className="hf-dica">MiniMax H3 is heavy: best on Comfy Cloud or a 32 GB+ GPU.</p>)}
         <Chips rotulo="Mode" opcoes={modos} valor={modoOk} aoMudar={setModo} />
         {ehRef && (
           <>

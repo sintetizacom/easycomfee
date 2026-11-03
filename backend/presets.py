@@ -2232,9 +2232,33 @@ VIDEO_MINIMAX = {
     "unet": "Minimax/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
     "clip": "Qwen/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
     "clip_type": "minimax",
-    "vae_video": "Minimax/minimax_h3_video_vae_fp16.safetensors",
+    "vae_video": "Minimax/minimax_h3_video_vae_int8_convrot.safetensors",
     "vae_audio": "Minimax/minimax_h3_audio_vae_fp32.safetensors",
     "lora_turbo": "Minimax/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+    # Estilo Pika Flex (adaptador da Pika Labs sobre o H3; versao comprimida do Kijai), no
+    # lugar do turbo: 6 passos. Medido em 03/11/2026 na 5070 Ti 16 GB pelo motor v0.41:
+    # 5 s a 864x480 em 63 s (turbo: 87 s), pico de 15,1 GB de VRAM e 40 GB de RAM.
+    "lora_pika": "Minimax/pika_h3_flex_fl2va_v1_avg_rank_56_bf16.safetensors",
+    "passos_pika": 6,
+    # Referencias -> video (ref2va), do template oficial video_minimax_h3_r2v: outra base, o
+    # turbo Ref2V de 4 passos (sem ele, 20) e ate 9 imagens citadas como <Picture N>.
+    # O Pika tem a sua versao Ref2VA. Guia de 03/11/2026: roteiro ainda nao rodado.
+    "unet_ref": "Minimax/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+    "lora_turbo_ref": "Minimax/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+    "lora_pika_ref": "Minimax/pika_h3_flex_ref2va_v1_avg_rank_55_bf16.safetensors",
+    "passos_turbo_ref": 4,
+    "passos_qualidade_ref": 20,
+    "max_referencias": 9,
+    # Na placa local: so ate 480p e 5 s (o que foi medido). Na nuvem, o resto.
+    # Guia de 03/11/2026: na placa de 16 GB ate 720p e 10 s (medido). Tempo estimado:
+    # base a 480p/5 s, cresce com (segundos/5)^1.57 e x2,7 em 720p.
+    "local_resolucoes": ["480p", "720p"],
+    "local_duracao_max": 10,
+    "segundos_estimados": {"cinema": 87, "pika": 63, "singularity": 57, "qualidade": 400},
+    "expoente_duracao": 1.57,
+    "fator_resolucao": {"480p": 1.0, "720p": 2.7},
+    # Singularity V2 (so referencias): turbo Ref2V + este LoRA em cadeia, 4 passos.
+    "lora_singularity_ref": "Minimax/minimax_h3_singularity_v2_lora_avg_rank_351_bf16.safetensors",
     "forca_lora": 1.0,
     # Turbo: LoRA + 8 passos. Qualidade: sem LoRA, 40 passos (o que os relatos
     # pedem para um bom resultado). LoRA e passos andam SEMPRE juntos.
@@ -2263,7 +2287,7 @@ VIDEO_FASTH3 = {
     "unet": "Minimax/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors",
     "clip": "Qwen/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
     "clip_type": "minimax",
-    "vae_video": "Minimax/minimax_h3_video_vae_fp16.safetensors",
+    "vae_video": "Minimax/minimax_h3_video_vae_int8_convrot.safetensors",
     "vae_audio": "Minimax/minimax_h3_audio_vae_fp32.safetensors",
 
     "passos": 8,
@@ -2787,7 +2811,9 @@ def usa_motor_flux3(p) -> bool:
             or (p.modelo == "video" and p.modo_video in ("ingredientes", "chaves"))
             or (p.modelo == "musica" and getattr(p, "modelo_musica", "") in ("yue2", "yue2-cover"))
             or (p.modelo == "limpar_video" and p.metodo_video in METODOS_RTX)
-            or (p.modelo == "separar" and getattr(p, "modo_separar", "") == "plenio"))
+            or (p.modelo == "separar" and getattr(p, "modo_separar", "") == "plenio")
+            # MiniMax H3 local: so cabe com a VRAM dinamica do motor v0.41 (guia de 03/11/2026).
+            or (p.modelo == "video" and getattr(p, "modelo_video", "") == "minimax"))
 
 
 # LTX 2.5 Creative Lab (Lightricks): IC-LoRAs de video->video, no segundo

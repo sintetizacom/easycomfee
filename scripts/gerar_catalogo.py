@@ -177,7 +177,7 @@ pacote("flux3", "FLUX 3 Image Klein", "imagem",
     ("text_encoders", "Flux3/qwen3vl_4b_int8_convrot.safetensors", BFL3, "text_encoders/qwen3vl_4b_int8_convrot.safetensors", False, "Qwen3-VL 4B (int8)"),
     ("vae", "Flux2/flux2-vae.safetensors", BFL3, "vae/flux2-vae.safetensors", False, "FLUX 2 VAE"),
     # Versao destilada (chave Version > Fast; variantes.py a reconhece pelo tamanho).
-    ("diffusion_models", "Flux3/flux3_image_klein_fast_bf16.safetensors", BFL3, "diffusion_models/flux3-image-klein-bf16.safetensors", True, "FLUX 3 Klein distilled · Fast version (bf16)"),
+    ("diffusion_models", "Flux3/flux3_image_klein_fast_bf16.safetensors", BFL3, "diffusion_models/flux3-image-klein-bf16.safetensors", True, "Faster version (about 3x faster)"),
 ])
 
 pacote("flux2_klein", "FLUX 2 Klein 9B", "imagem",
@@ -264,13 +264,21 @@ pacote("upscale", "Upscalers", "imagem", "SeedVR2 (image and video), 4x UltraSha
 
 MH = "Comfy-Org/MiniMax-H3"
 pacote("minimax_h3", "MiniMax H3 Video", "video",
-       "Open-weight MiniMax H3: text, image and first/last frame to video with sound. Best on 32 GB+ cards or Comfy Cloud.",
+       "Open-weight MiniMax H3: text, image and first/last frame to video with sound. On a 16 GB card: up to 720p and 10 s (480p / 5 s takes about 1 min). Styles: Cinematic, Pika Flex and, with references, Singularity V2.",
        16, ["video MiniMax H3"], [
     ("diffusion_models", "Minimax/minimax_h3_fl2va_pruned_int8_convrot.safetensors", MH, "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors", False, "MiniMax H3 fl2va (int8)"),
     ("text_encoders", "Qwen/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", MH, "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", False, "Qwen3-VL 32B (nvfp4)"),
-    ("vae", "Minimax/minimax_h3_video_vae_fp16.safetensors", MH, "vae/minimax_h3_video_vae_fp16.safetensors", False, "Video VAE"),
+    ("vae", "Minimax/minimax_h3_video_vae_int8_convrot.safetensors", MH, "vae/minimax_h3_video_vae_int8_convrot.safetensors", False, "Video VAE (int8)"),
     ("vae", "Minimax/minimax_h3_audio_vae_fp32.safetensors", MH, "vae/minimax_h3_audio_vae_fp32.safetensors", False, "Audio VAE"),
     ("loras", "Minimax/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", MH, "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", False, "Turbo LoRA (8 steps)"),
+    # Estilo Pika Flex (Pika Labs, MiniMax H3 Community License), versao comprimida do Kijai.
+    ("loras", "Minimax/pika_h3_flex_fl2va_v1_avg_rank_56_bf16.safetensors", "Kijai/MiniMax-H3_comfy", "loras/Pika/pika_h3_flex_fl2va_v1_avg_rank_56_bf16.safetensors", True, "Pika Flex style"),
+    # Modo References -> Video (ref2va, template video_minimax_h3_r2v): outra base, o turbo de 4
+    # passos e o Pika Ref2VA. Opcionais: so quem quiser esse modo baixa os 21 GB.
+    ("diffusion_models", "Minimax/minimax_h3_ref2va_pruned_int8_convrot.safetensors", MH, "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors", True, "References mode · model (int8)"),
+    ("loras", "Minimax/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors", MH, "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors", True, "References mode · Cinematic (4 steps)"),
+    ("loras", "Minimax/pika_h3_flex_ref2va_v1_avg_rank_55_bf16.safetensors", "Kijai/MiniMax-H3_comfy", "loras/Pika/pika_h3_flex_ref2va_v1_avg_rank_55_bf16.safetensors", True, "References mode · Pika Flex"),
+    ("loras", "Minimax/minimax_h3_singularity_v2_lora_avg_rank_351_bf16.safetensors", "Kijai/MiniMax-H3-experimental", "loras/minimax_h3_singularity_v2_lora_avg_rank_351_bf16.safetensors", True, "References mode · Singularity V2 style"),
 ])
 
 pacote("h3_swap", "MiniMax H3 Character Swap", "video",
@@ -355,8 +363,8 @@ pacote("musica", "Music models", "audio", "Songs with lyrics (YuE2, ACE-Step 1.5
     ("text_encoders", "ACE-Step/qwen_1.7b_ace15.safetensors", ACE, "split_files/text_encoders/qwen_1.7b_ace15.safetensors", True, "ACE-Step text encoder 1.7B"),
     ("vae", "ACE-Step/ace_1.5_vae.safetensors", ACE, "split_files/vae/ace_1.5_vae.safetensors", True, "ACE-Step VAE"),
     # ACE-Step 1.5 XL Turbo (chave Version > XL): modelo maior e o codificador de 4B.
-    ("diffusion_models", "ACE-Step/acestep_v1.5_xl_turbo_bf16.safetensors", ACE2, "split_files/diffusion_models/acestep_v1.5_xl_turbo_bf16.safetensors", True, "ACE-Step 1.5 XL Turbo"),
-    ("text_encoders", "ACE-Step/qwen_4b_ace15.safetensors", ACE2, "split_files/text_encoders/qwen_4b_ace15.safetensors", True, "ACE-Step XL text encoder 4B"),
+    ("diffusion_models", "ACE-Step/acestep_v1.5_xl_turbo_bf16.safetensors", ACE2, "split_files/diffusion_models/acestep_v1.5_xl_turbo_bf16.safetensors", True, "Best quality version (needs a 12 GB+ card)"),
+    ("text_encoders", "ACE-Step/qwen_4b_ace15.safetensors", ACE2, "split_files/text_encoders/qwen_4b_ace15.safetensors", True, "Best quality version · text part"),
     ("diffusion_models", "Minimax/minimax_music3_dit_fp16.safetensors", MM, "diffusion_models/minimax_music3_dit_fp16.safetensors", True, "MiniMax Music 3"),
     ("text_encoders", "Minimax/minimax_music3_text_encoder_pruned_int8_convrot.safetensors", MM, "text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors", True, "MiniMax Music 3 text encoder"),
     ("vae", "minimax/minimax_music3_dav.safetensors", MM, "vae/minimax_music3_dav.safetensors", True, "MiniMax Music 3 VAE"),
@@ -373,7 +381,7 @@ pacote("fasth3", "FastH3 (MiniMax H3 distilled)", "video",
        16, ["video FastH3", "first/last frame"], [
     ("diffusion_models", "Minimax/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors", FH, "diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors", False, "FastH3 8-step v2 (int8)"),
     ("text_encoders", "Qwen/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", MH, "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", False, "Qwen3-VL 32B (nvfp4)"),
-    ("vae", "Minimax/minimax_h3_video_vae_fp16.safetensors", MH, "vae/minimax_h3_video_vae_fp16.safetensors", False, "Video VAE"),
+    ("vae", "Minimax/minimax_h3_video_vae_int8_convrot.safetensors", MH, "vae/minimax_h3_video_vae_int8_convrot.safetensors", False, "Video VAE (int8)"),
     ("vae", "Minimax/minimax_h3_audio_vae_fp32.safetensors", MH, "vae/minimax_h3_audio_vae_fp32.safetensors", False, "Audio VAE"),
 ])
 
