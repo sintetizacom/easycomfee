@@ -64,7 +64,8 @@ def porta_do_bat(bat: pathlib.Path) -> int:
 
 def desktop_exe() -> pathlib.Path | None:
     local = pathlib.Path(os.environ.get("LOCALAPPDATA", ""))
-    for exe in (local / "Programs" / "ComfyUI" / "ComfyUI.exe",
+    for exe in (local / "Programs" / "Comfy Desktop" / "Comfy Desktop.exe",
+                local / "Programs" / "ComfyUI" / "ComfyUI.exe",
                 local / "Programs" / "@comfyorgcomfyui-electron" / "ComfyUI.exe"):
         if exe.is_file():
             return exe
@@ -98,7 +99,7 @@ def comfy_da_pessoa(cfg: dict) -> None:
         print(f"Starting your ComfyUI ({bat.name}, minimized window \"ComfyUI\")...")
         return
     exe = desktop_exe()
-    if exe and cfg.get("comfy_url", "").rstrip("/").endswith(":8000"):
+    if exe and (cfg.get("comfy_desktop") or cfg.get("comfy_url", "").rstrip("/").endswith(":8000")):
         subprocess.Popen([str(exe)], cwd=exe.parent)
         print("Starting ComfyUI Desktop...")
         return

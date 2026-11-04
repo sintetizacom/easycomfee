@@ -14,6 +14,8 @@ const DEMORA_MS = 3 * 60 * 1000
 export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const { naNuvem } = useContext(MotorCtx)
   const [fora, setFora] = useState(false)
+  // Instalacao so nuvem (comfy_dir vazio): nao ha ComfyUI para abrir.
+  const [soNuvem, setSoNuvem] = useState(false)
   const [desde, setDesde] = useState<number | null>(null)
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
       setAgora(Date.now())
       if (document.hidden) return
       fetch('/api/andamento', { cache: 'no-store' }).then((r) => r.json())
-        .then((d) => { if (vivo) setFora(d.motor_respondendo === false) }).catch(() => {})
+        .then((d) => { if (vivo) { setFora(d.motor_respondendo === false); setSoNuvem(d.so_nuvem === true) } }).catch(() => {})
     }
     ler()
     const t = setInterval(ler, 4000)
@@ -32,6 +34,13 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   // Conta o tempo desde que a faixa apareceu; zera quando o ComfyUI responde.
   useEffect(() => { setDesde((d) => (ativo ? d ?? Date.now() : null)) }, [ativo])
   if (!ativo) return null
+  if (soNuvem) {
+    return (
+      <div className="hf-aviso-comfy" role="status">
+        <b>This install has no local ComfyUI.</b> Connect Comfy Cloud in Config Models to generate.
+      </div>
+    )
+  }
   const demorou = desde !== null && agora - desde > DEMORA_MS
   const ajuda = 'Open ComfyUI (ComfyUI Desktop, or run_nvidia_gpu.bat in the portable folder) and keep its window open. No GPU? Use Comfy Cloud in Config Models.'
   return (

@@ -2831,7 +2831,7 @@ async def saude():
 
 @app.get("/api/andamento")
 async def estado_andamento():
-    return andamento.ESTADO
+    return {**andamento.ESTADO, "so_nuvem": config.COMFY_DIR is None}
 
 
 def _metodos(cfg: dict) -> list[dict]:

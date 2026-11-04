@@ -2359,7 +2359,13 @@ def gerar_video_ltx_flf(prompt, seed, imagem_inicial, imagem_final,
                              "negative": ["guia_fim", 1],
                              "latent": video_lat}}
 
-    lad = p["decode_ladrilho"]
+    lad = list(p["decode_ladrilho"])
+    # Mais de 10 s: o video inteiro de uma vez, com os dois quadros-guia na placa, estourou
+    # a memoria numa de 16 GB (15 s a 1280x704, 361 quadros, 03/11/2026): a decodificacao
+    # passou a usar a memoria do PC, ficou quase parada e o driver da NVIDIA reiniciou.
+    # Em fatias de 192 quadros com 48 de sobreposicao, como no modo de quadros-chave.
+    if g["vazio"]["inputs"]["length"] > 241:
+        lad[2], lad[3] = 192, 48
     g["decodifica"] = {"class_type": "VAEDecodeTiled",
                        "inputs": {"samples": ["corta", 2], "vae": ["vae_v", 0],
                                   "tile_size": lad[0], "overlap": lad[1],

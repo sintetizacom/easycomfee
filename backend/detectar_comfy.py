@@ -5,10 +5,15 @@ Procura, nesta ordem:
   1. ComfyUI Desktop: %APPDATA%\\ComfyUI\\config.json traz "basePath" (a pasta de
      trabalho, com models, custom_nodes, input e output). O servidor dele usa a
      porta 8000.
-  2. ComfyUI portatil (ComfyUI_windows_portable\\ComfyUI) e instalacoes manuais:
+  2. Comfy Desktop (o app novo): %APPDATA%\\Comfy Desktop\\installations.json lista as
+     instalacoes e settings.json traz as pastas compartilhadas de modelos, input e
+     output. A porta muda (8188, ou outra se estiver ocupada).
+  3. Um ComfyUI aberto agora: ele mesmo diz as pastas dele (/internal/folder_paths).
+  4. ComfyUI portatil (ComfyUI_windows_portable\\ComfyUI) e instalacoes manuais:
      uma pasta com main.py, a pasta comfy e a pasta models. Porta 8188.
-Sem nenhum: explica, abre comfy.org/download e sai com codigo 2, para o
-install.bat parar antes de instalar o resto com um caminho errado.
+Sem nenhum: oferece colar o caminho da pasta, baixar o ComfyUI portatil ou seguir
+so com a Comfy Cloud (comfy_dir vazio). Recusando tudo, abre comfy.org/download e sai com codigo 2,
+para o install.bat parar antes de instalar o resto com um caminho errado.
 
     python backend/detectar_comfy.py            # preenche o config.json
     python backend/detectar_comfy.py --listar   # so mostra o que achou
@@ -18,12 +23,15 @@ import os
 import pathlib
 import string
 import sys
+import urllib.request
 import webbrowser
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = RAIZ / "config.json"
 EXEMPLO = RAIZ / "config.example.json"
 DOWNLOAD = "https://www.comfy.org/download"
+# As mesmas de iniciar_comfy.PORTAS (este arquivo so usa a biblioteca padrao).
+PORTAS = [8188, 8000, *range(8189, 8200), 8001, 8288]
 # Quem ja tinha ComfyUI: o atalho acha a porta dele ou o abre (ver iniciar_comfy.py).
 AVISO_DA_PESSOA = ("\nEasyComfee will use this ComfyUI. The shortcut finds it if it is already open,\n"
                    "or opens it for you (portable or Desktop). With a manual install, open it yourself first.")
@@ -42,6 +50,101 @@ def _desktop() -> list[dict]:
     if not (base / "models").is_dir():
         return []
     return [{"tipo": "ComfyUI Desktop", "pasta": base, "url": "http://127.0.0.1:8000"}]
+
+
+def _ler_json(arquivo: pathlib.Path):
+    try:
+        return json.loads(arquivo.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+
+
+def _pasta_do_app() -> pathlib.Path:
+    return pathlib.Path(os.environ.get("APPDATA", "")) / "Comfy Desktop"
+
+
+def _instalacoes_do_app() -> list[dict]:
+    lista = _ler_json(_pasta_do_app() / "installations.json")
+    return [i for i in lista if isinstance(i, dict)] if isinstance(lista, list) else []
+
+
+def _na_nuvem(inst: dict) -> bool:
+    return inst.get("sourceId") == "cloud" or bool(inst.get("remoteUrl"))
+
+
+def _porta_do_app(inst: dict) -> int:
+    """A porta da ultima vez que o app ligou essa instalacao (comfy-procs); sem ela, a
+    padrao. O atalho confere a porta de verdade (iniciar_comfy.porta_aberta)."""
+    proc = _ler_json(_pasta_do_app() / "comfy-procs" / f"{inst.get('id')}.json")
+    porta = proc.get("port") if isinstance(proc, dict) else None
+    return porta if isinstance(porta, int) else 8188
+
+
+def _comfy_desktop() -> list[dict]:
+    """Instalacoes locais do Comfy Desktop. Conferido numa instalacao real (03/11/2026):
+    sourceId "standalone", installPath, e o main.py em <installPath>\\ComfyUI."""
+    ajustes = _ler_json(_pasta_do_app() / "settings.json")
+    ajustes = ajustes if isinstance(ajustes, dict) else {}
+    modelos = ajustes.get("modelsDirs")
+    # O app liga o ComfyUI com essas pastas, nao com as de dentro da instalacao.
+    pastas = {"modelos_dir": modelos[0] if isinstance(modelos, list) and modelos else None,
+              "comfy_entrada": ajustes.get("inputDir"), "comfy_saida": ajustes.get("outputDir")}
+    pastas = {k: pathlib.Path(v).as_posix() for k, v in pastas.items() if isinstance(v, str) and v}
+    achados = []
+    for inst in _instalacoes_do_app():
+        if _na_nuvem(inst) or inst.get("status", "installed") != "installed":
+            continue
+        raiz = inst.get("installPath")
+        if not raiz and ajustes.get("installDir") and inst.get("name"):
+            raiz = pathlib.Path(str(ajustes["installDir"])) / str(inst["name"])
+        if not raiz:
+            continue
+        for p in (pathlib.Path(raiz) / "ComfyUI", pathlib.Path(raiz)):
+            if _e_comfy(p):
+                achados.append({"tipo": "Comfy Desktop", "pasta": p, "desktop": True, "pastas": pastas,
+                                "url": f"http://127.0.0.1:{_porta_do_app(inst)}"})
+                break
+    return achados
+
+
+def so_comfy_cloud() -> bool:
+    """O Comfy Desktop esta instalado, mas so com a Comfy Cloud (nao tem ComfyUI local)."""
+    return any(_na_nuvem(i) for i in _instalacoes_do_app()) and not _comfy_desktop()
+
+
+def _perguntar(url: str):
+    try:
+        with urllib.request.urlopen(url, timeout=1.5) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except (OSError, ValueError):
+        return None
+
+
+def _pasta_do_comfy(url: str) -> pathlib.Path | None:
+    """A pasta do ComfyUI que responde em `url`. O sys.argv costuma trazer o main.py
+    sem caminho completo (portatil e Desktop); por isso vem da pasta models dele."""
+    pastas = _perguntar(url + "/internal/folder_paths")
+    if not isinstance(pastas, dict):
+        return None
+    for lista in pastas.values():
+        for caminho in lista if isinstance(lista, list) else []:
+            p = pathlib.Path(str(caminho))
+            for pai in p.parents:
+                if pai.name.lower() == "models" and _e_comfy(pai.parent):
+                    return pai.parent
+    return None
+
+
+def _comfy_aberto() -> list[dict]:
+    achados = []
+    for porta in PORTAS:
+        url = f"http://127.0.0.1:{porta}"
+        estado = _perguntar(url + "/system_stats")
+        if isinstance(estado, dict) and "system" in estado:
+            pasta = _pasta_do_comfy(url)
+            if pasta:
+                achados.append({"tipo": "ComfyUI (open now)", "pasta": pasta, "url": url})
+    return achados
 
 
 def _procurar(raiz: pathlib.Path, fundo: int) -> list[pathlib.Path]:
@@ -65,6 +168,16 @@ def _procurar(raiz: pathlib.Path, fundo: int) -> list[pathlib.Path]:
     return achados
 
 
+def _sem_repetir(achados: list[dict], novos: list[dict]) -> list[dict]:
+    vistos = {str(a["pasta"]).lower() for a in achados}
+    saida = []
+    for n in novos:
+        if str(n["pasta"]).lower() not in vistos:
+            vistos.add(str(n["pasta"]).lower())
+            saida.append(n)
+    return saida
+
+
 def candidatos() -> list[dict]:
     achados = []
     # O ComfyUI que o proprio install.bat baixou (instalar_comfy.py) vem primeiro.
@@ -72,7 +185,10 @@ def candidatos() -> list[dict]:
     if _e_comfy(proprio):
         achados.append({"tipo": "ComfyUI (installed by EasyComfee)", "pasta": proprio,
                         "url": "http://127.0.0.1:8188", "proprio": True})
-    achados += _desktop()
+    # O Desktop vem antes do aberto: so ele sabe as pastas compartilhadas de input e output.
+    achados += _sem_repetir(achados, _desktop())
+    achados += _sem_repetir(achados, _comfy_desktop())
+    achados += _sem_repetir(achados, _comfy_aberto())
     casa = pathlib.Path.home()
     raizes = [(casa, 3), (casa / "Desktop", 3), (casa / "Documents", 3), (casa / "Downloads", 3)]
     raizes += [(pathlib.Path(f"{d}:\\"), 3) for d in string.ascii_uppercase if pathlib.Path(f"{d}:\\").exists()]
@@ -102,13 +218,66 @@ def _escolher(achados: list[dict]) -> dict:
             return achados[int(r) - 1]
 
 
-def _quer_instalar() -> bool:
-    print("\nComfyUI was not found on this computer. EasyComfee runs on top of it.")
-    try:
-        r = input("Install ComfyUI now, inside the EasyComfee folder? (about 2 GB download) [Y/n]: ").strip().lower()
-    except EOFError:  # sem teclado (instalacao automatica): instala
-        r = "y"
-    return r in ("", "y", "yes", "s", "sim")
+def _sem_comfy() -> str:
+    """O que fazer sem ComfyUI local: "pasta", "instalar", "nuvem" ou "parar"."""
+    if so_comfy_cloud():
+        print("\nComfy Desktop found, but only with Comfy Cloud (no local ComfyUI).")
+    else:
+        print("\nComfyUI was not found on this computer.")
+    print("  1. Install ComfyUI now, inside the EasyComfee folder (about 2 GB download)\n"
+          "  2. Continue without ComfyUI and generate only on Comfy Cloud (uses your credits)\n"
+          "  3. I already have ComfyUI: type its folder\n"
+          "  4. Stop here")
+    while True:
+        try:
+            r = input("What should EasyComfee do? [1-4, Enter = 1]: ").strip() or "1"
+        except EOFError:  # sem teclado (instalacao automatica): instala
+            r = "1"
+        if r in ("1", "2", "3", "4"):
+            return {"1": "instalar", "2": "nuvem", "3": "pasta", "4": "parar"}[r]
+
+
+def pasta_digitada(texto: str) -> pathlib.Path | None:
+    """Aceita a pasta com main.py ou uma acima dela (a do portatil, a do Desktop)."""
+    p = pathlib.Path(texto.strip().strip('"'))
+    return next((c for c in (p, p / "ComfyUI") if _e_comfy(c)), None)
+
+
+def _pedir_pasta() -> pathlib.Path | None:
+    while True:
+        try:
+            r = input("ComfyUI folder (the one with main.py and models; Enter = cancel): ").strip()
+        except EOFError:
+            return None
+        if not r:
+            return None
+        pasta = pasta_digitada(r)
+        if pasta:
+            return pasta
+        print("No ComfyUI there: this folder needs main.py, comfy and models.")
+
+
+def _ler_config() -> dict:
+    dados = {}
+    for origem in (EXEMPLO, CONFIG):
+        lido = _ler_json(origem)
+        if isinstance(lido, dict):
+            dados.update(lido)
+    return dados
+
+
+def _gravar_config(dados: dict) -> None:
+    CONFIG.write_text(json.dumps(dados, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _gravar_so_nuvem() -> None:
+    """Sem ComfyUI local: comfy_dir vazio e sem comfy_iniciar (o atalho nao liga nada)."""
+    dados = _ler_config()
+    dados["comfy_dir"] = ""
+    for chave in ("comfy_iniciar", "comfy_desktop", "comfy_saida", "comfy_entrada", "modelos_dir"):
+        dados.pop(chave, None)
+    _gravar_config(dados)
+    print("EasyComfee will use Comfy Cloud only. Connect your Comfy Cloud key in Config Models.")
 
 
 class _Tee:
@@ -137,7 +306,15 @@ def main() -> int:
         for a in achados:
             print(f"{a['tipo']}: {a['pasta']} ({a['url']})")
         return 0 if achados else 2
-    if not achados and _quer_instalar():
+    escolha = "" if achados else _sem_comfy()
+    if escolha == "nuvem":
+        _gravar_so_nuvem()
+        return 0
+    if escolha == "pasta":
+        pasta = _pedir_pasta()
+        if pasta:
+            achados = [{"tipo": "ComfyUI", "pasta": pasta, "url": "http://127.0.0.1:8188"}]
+    if escolha == "instalar":
         import instalar_comfy
         try:
             pasta = instalar_comfy.instalar()
@@ -159,12 +336,7 @@ def main() -> int:
             pass
         return 2
     a = _escolher(achados)
-    dados = {}
-    for origem in (EXEMPLO, CONFIG):
-        try:
-            dados.update(json.loads(origem.read_text(encoding="utf-8-sig")))
-        except (OSError, ValueError):
-            pass
+    dados = _ler_config()
     atual = pathlib.Path(dados.get("comfy_dir") or "")
     if CONFIG.exists() and dados.get("comfy_dir") and (_e_comfy(atual) or (atual / "models").is_dir()):
         print(f"Using the ComfyUI already set in config.json: {atual}")
@@ -177,11 +349,14 @@ def main() -> int:
     dados["comfy_iniciar"] = bool(a.get("proprio"))
     # O ComfyUI que o EasyComfee liga grava as geracoes em <EasyComfee>\output
     # (iniciar_comfy.py passa --output-directory). O da pessoa grava na pasta dele.
+    for chave in ("comfy_saida", "comfy_entrada", "modelos_dir", "comfy_desktop"):
+        dados.pop(chave, None)
     if a.get("proprio"):
         dados["comfy_saida"] = (RAIZ / "output").as_posix()
-    else:
-        dados.pop("comfy_saida", None)
-    CONFIG.write_text(json.dumps(dados, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if a.get("desktop"):
+        dados["comfy_desktop"] = True
+        dados.update(a.get("pastas", {}))
+    _gravar_config(dados)
     print(f"Found {a['tipo']} at {a['pasta']}  (saved in config.json)")
     if not a.get("proprio"):
         print(AVISO_DA_PESSOA)
