@@ -3004,6 +3004,10 @@ async def relatorio_suporte():
 
 @app.get("/api/motor")
 async def motor_atual():
+    # Sem ComfyUI local (instalacao so nuvem) nao ha o que escolher: com a chave o motor
+    # e a nuvem, e a faixa de "sem ComfyUI" some; sem a chave, ela volta.
+    if config.COMFY_DIR is None and comfy.na_nuvem() != (chaves.chave() is not None):
+        comfy.escolher_motor("nuvem" if chaves.chave() else "local")
     return {"modo": comfy.MODO["motor"], "chave_nuvem": chaves.chave() is not None,
             "link_recarga": config.LINK_RECARGA, "so_abertos": comfy.so_abertos(),
             "modo_seguro": comfy.modo_seguro(), "comfy_da_pessoa": config.COMFY_DA_PESSOA}

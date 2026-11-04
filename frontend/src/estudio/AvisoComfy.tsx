@@ -2,11 +2,15 @@
 // abria o EasyComfee sem o ComfyUI aberto via o app normal e nada gerava. Le o
 // retrato do backend (andamento.py, motor_respondendo) e some sozinha quando o
 // ComfyUI sobe. No modo Comfy Cloud nao aparece: la nao se usa o ComfyUI local.
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { MotorCtx } from './motor'
 
 // Depois disto sem resposta, a faixa deixa de dizer "esta subindo" e diz o que conferir.
 const DEMORA_MS = 3 * 60 * 1000
+// Quanto tempo fica o aviso neon de nuvem conectada.
+const CONECTADA_MS = 6000
+// Ao abrir o app o motor chega como nuvem logo depois da pagina: isso nao e uma conexao nova.
+const ABERTURA_MS = 3000
 
 // Uma faixa so: "subindo" (o app acabou de abrir) e "fora" viravam duas mensagens.
 // Quem ja tinha ComfyUI (o instalador gravou comfy_iniciar: false): o atalho acha a porta
@@ -16,6 +20,17 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const [fora, setFora] = useState(false)
   // Instalacao so nuvem (comfy_dir vazio): nao ha ComfyUI para abrir.
   const [soNuvem, setSoNuvem] = useState(false)
+  const [conectada, setConectada] = useState(false)
+  const abriu = useRef(Date.now())
+  const antes = useRef(naNuvem)
+  useEffect(() => {
+    const ligou = naNuvem && !antes.current
+    antes.current = naNuvem
+    if (!ligou || !soNuvem || Date.now() - abriu.current < ABERTURA_MS) return
+    setConectada(true)
+    const t = setTimeout(() => setConectada(false), CONECTADA_MS)
+    return () => clearTimeout(t)
+  }, [naNuvem, soNuvem])
   const [desde, setDesde] = useState<number | null>(null)
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => {
@@ -33,6 +48,9 @@ export default function AvisoComfy({ subindo = false }: { subindo?: boolean }) {
   const ativo = (fora || subindo) && !naNuvem
   // Conta o tempo desde que a faixa apareceu; zera quando o ComfyUI responde.
   useEffect(() => { setDesde((d) => (ativo ? d ?? Date.now() : null)) }, [ativo])
+  if (conectada) {
+    return <div className="hf-aviso-comfy hf-aviso-conectada" role="status"><b>Comfy Cloud connected.</b> You can generate now.</div>
+  }
   if (!ativo) return null
   if (soNuvem) {
     return (

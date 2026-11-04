@@ -2884,3 +2884,10 @@ html .mq-achado { cursor: help; white-space: nowrap; }
 .hf-contador { align-self: flex-end; margin-top: -4px; font-size: 11px; color: #8C8197; }
 .hf-contador-perto { color: var(--hf-neon); }
 .hf-slot-limite { display: block; margin-top: 4px; font-size: 10px; color: #8C8197; font-weight: 400; }
+
+.hf-aviso-comfy.hf-aviso-conectada {
+  background: color-mix(in srgb, var(--hf-neon) 14%, transparent);
+  border-color: var(--hf-neon);
+  color: var(--hf-neon);
+}
+.hf-aviso-comfy.hf-aviso-conectada b { color: var(--hf-neon); }
