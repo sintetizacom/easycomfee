@@ -4486,16 +4486,16 @@ async def rotacao_do_corpo(pedido: PedidoRotacao):
 async def previa_rosto(pedido: PedidoGeracao):
     """Aplica o ajuste na hora, fora da fila.
 
-    São ~1,1 s, então esperar atrás de uma geração de 110 s mataria a ideia de
+    São ~1 s, então esperar atrás de uma geração de 110 s mataria a ideia de
     arrastar um controle e ver o efeito. Por isso vai direto ao motor, como já
     faz a prévia do ControlNet.
     """
     if not pedido.referencias:
         raise HTTPException(400, "envie uma imagem")
     grafo = workflows.ajustar_rosto(pedido.referencias[0], pedido.rosto,
-                                    prefixo="previa/rosto")
+                                    prefixo="previa/rosto", lado_max=1024)
     try:
-        saidas = await comfy.executar(grafo, timeout=300)
+        saidas = await comfy.executar(grafo, timeout=300, intervalo=0.1)
     except Exception as e:
         # Na primeira execução os pesos do LivePortrait são baixados sob
         # demanda e a chamada falha. Uma segunda tentativa costuma passar; se

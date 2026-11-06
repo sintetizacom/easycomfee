@@ -445,8 +445,12 @@ async def acompanhar(ao_evento, base: str | None = None):
             await asyncio.sleep(2)
 
 
-async def executar(grafo: dict, timeout: float = 1800) -> dict:
-    """Enfileira e espera terminar. Devolve as saidas. Use para tarefas curtas."""
+async def executar(grafo: dict, timeout: float = 1800, intervalo: float = 1) -> dict:
+    """Enfileira e espera terminar. Devolve as saidas. Use para tarefas curtas.
+
+    `intervalo` e de quanto em quanto tempo pergunta ao motor: as previas ao vivo
+    usam menos de 1 s, senao a espera pesa mais que o proprio calculo.
+    """
     pid = await enfileirar(grafo)
     espera = 0.0
     while espera < timeout:
@@ -457,8 +461,8 @@ async def executar(grafo: dict, timeout: float = 1800) -> dict:
                 raise ErroComfy(json.dumps(h["status"].get("messages"),
                                            ensure_ascii=False)[:1200])
             return h["outputs"]
-        await asyncio.sleep(1)
-        espera += 1
+        await asyncio.sleep(intervalo)
+        espera += intervalo
     raise ErroComfy("tempo esgotado esperando o motor")
 
 

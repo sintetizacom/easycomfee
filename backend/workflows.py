@@ -1401,12 +1401,15 @@ def escrever_texto(instrucao, max_length=1024, criativo=False, seed=0):
     }
 
 
-def ajustar_rosto(imagem, valores, prefixo="rosto"):
+def ajustar_rosto(imagem, valores, prefixo="rosto", lado_max=None):
     """Ajuste fino do rosto pelo ExpressionEditor (LivePortrait).
 
     Tres nos so. Nao ha VAE, sampler nem seed: o no recebe a imagem e os 15
     numeros e devolve o rosto deformado. Valores fora da faixa sao cortados
     em vez de recusados — arrastar um controle nao deve virar erro 400.
+
+    `lado_max` reduz a foto antes do ajuste: so a previa ao vivo usa, para
+    responder enquanto o controle anda. O Apply grava na resolucao inteira.
     """
     defs = controles_do_rosto()
     entradas = dict(ROSTO["fixos"])
@@ -1418,13 +1421,19 @@ def ajustar_rosto(imagem, valores, prefixo="rosto"):
             v = d["padrao"]
         entradas[chave] = min(d["max"], max(d["min"], v))
 
-    return {
+    grafo = {
         "img": {"class_type": "LoadImage", "inputs": {"image": imagem}},
         "exp": {"class_type": "ExpressionEditor",
                 "inputs": {"src_image": ["img", 0], **entradas}},
         "salva": {"class_type": "SaveImage",
                   "inputs": {"images": ["exp", 0], "filename_prefix": prefixo}},
     }
+    if lado_max:
+        grafo["reduz"] = {"class_type": "ImageScaleToMaxDimension",
+                          "inputs": {"image": ["img", 0], "upscale_method": "lanczos",
+                                     "largest_size": lado_max}}
+        grafo["exp"]["inputs"]["src_image"] = ["reduz", 0]
+    return grafo
 
 
 def gerar_nuvem(modelo, prompt, seed, proporcao="auto", resolucao="1K",

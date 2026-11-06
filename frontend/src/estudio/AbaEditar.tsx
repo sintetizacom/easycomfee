@@ -202,6 +202,9 @@ export default function AbaEditar() {
   const [prioridade, setPrioridade] = useState('rapido')
   const [tipoControle, setTipoControle] = useState('contorno')
   const [rosto, setRosto] = useState<Record<string, number>>({})
+  // Previa ao vivo do rosto: sai fora da fila (~1 s). O Apply so grava o resultado.
+  const [previaRosto, setPreviaRosto] = useState<{ url: string; foto: string } | null>(null)
+  const [calculandoRosto, setCalculandoRosto] = useState(false)
   // Upscale
   const [metodoAmpliar, setMetodoAmpliar] = useState('seedvr')
   const [escalaAmpliar, setEscalaAmpliar] = useState(2)
@@ -221,7 +224,7 @@ export default function AbaEditar() {
     return () => window.removeEventListener('easycomfee:editar', pegar)
   }, [])
   const abrir = (f: Ferramenta) => {
-    setFerramenta(f); setErro(null); setPrevia(null); setUltimoId(null); setVerResultado(null); setZoom(100)
+    setFerramenta(f); setErro(null); setPrevia(null); setUltimoId(null); setVerResultado(null); setZoom(100); setPreviaRosto(null)
     setImgs(esperando && f.imagens.length ? [esperando] : [])
   }
   const f = ferramenta
@@ -337,6 +340,31 @@ export default function AbaEditar() {
     return () => clearTimeout(t)
   }, [f?.id, chaveAngulo, motorOrbita])  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Rosto em tempo real: uma previa por vez; se o controle andou enquanto ela rodava, a
+  // seguinte sai com os valores novos, e arrastar nao enfileira uma chamada por passo.
+  const rostoAjustado = Object.values(rosto).some(Boolean)
+  const chaveRosto = `${nomes[0]}|${JSON.stringify(rosto)}`
+  const ultimoRosto = useRef({ chave: chaveRosto, foto: nomes[0], valores: rosto })
+  ultimoRosto.current = { chave: chaveRosto, foto: nomes[0], valores: rosto }
+  const rodandoRosto = useRef(false)
+  const previsualizarRosto = async () => {
+    if (rodandoRosto.current) return
+    rodandoRosto.current = true; setCalculandoRosto(true); setErro(null)
+    try {
+      for (;;) {
+        const { chave, foto, valores } = ultimoRosto.current
+        const r = await api.previaRosto(foto, valores)
+        setPreviaRosto({ url: urlImagem({ nome: r.nome, subpasta: r.subpasta }), foto })
+        if (ultimoRosto.current.chave === chave) break
+      }
+    } catch (e) { setErro(mensagem(e)) } finally { rodandoRosto.current = false; setCalculandoRosto(false) }
+  }
+  useEffect(() => {
+    if (f?.id !== 'rosto' || !nomes[0] || !rostoAjustado || soLocal || naoInstalado) return
+    const t = setTimeout(previsualizarRosto, 200)
+    return () => clearTimeout(t)
+  }, [f?.id, chaveRosto, soLocal, naoInstalado])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const ids = new Set(FERRAMENTAS.map((x) => x.id))
   // O Orbit tambem gera por Flux 3 e por APIs (outro "modelo" na tarefa): reconhece pela frase dele.
   const doOrbit = (p: string) => p.startsWith('Show the same person from')
@@ -405,6 +433,22 @@ export default function AbaEditar() {
                 </div>
               )}
             </div>
+          ) : f?.id === 'rosto' ? (
+            <div className="hf-orbita-par">
+              <div className="hf-orbita-caixa">
+                <span className="hf-orbita-caixa-nome">Original</span>
+                {imgs[0] ? <img src={imgs[0].url} alt="Your photo" />
+                  : <span className="hf-orbita-vazio">Add a photo in the box on the right</span>}
+              </div>
+              <div className="hf-orbita-caixa">
+                <span className="hf-orbita-caixa-nome">{verResultado ? 'Saved edit' : 'Live preview'}</span>
+                {verResultado ? <img src={urlImagem(verResultado)} alt="Saved edit" onClick={() => abrirVisualizador(verResultado)} title="Open full screen" />
+                  : rostoAjustado && previaRosto?.foto === nomes[0] ? <img src={previaRosto.url} alt="The face with your adjustments" />
+                  : imgs[0] ? <img src={imgs[0].url} alt="Your photo, no adjustments yet" />
+                  : <span className="hf-orbita-vazio">Move a slider and the face changes here</span>}
+                {calculandoRosto && <span className="hf-orbita-selo">Updating…</span>}
+              </div>
+            </div>
           ) : (
             <div className="hf-edt-palco">
               <div className="hf-edt-zoom" style={{ transform: `scale(${zoom / 100})` }}>
@@ -415,7 +459,7 @@ export default function AbaEditar() {
               </div>
             </div>
           )}
-          {f?.id !== 'anygles' && (
+          {f?.id !== 'anygles' && f?.id !== 'rosto' && (
             <div className="hf-edt-barra" role="toolbar" aria-label="View">
               <button type="button" onClick={() => setZoom((z) => Math.max(50, z - 25))} aria-label="Zoom out">−</button>
               <span>{zoom}%</span>
@@ -578,14 +622,14 @@ export default function AbaEditar() {
                   {g.itens.map((c) => (
                     <label key={c.id} className="hf-rosto-item">{c.rotulo}
                       <input type="range" min={c.min} max={c.max} step={c.passo} value={rosto[c.id] ?? 0} aria-label={c.rotulo}
-                        onChange={(e) => setRosto((r) => ({ ...r, [c.id]: Number(e.target.value) }))}
-                        onDoubleClick={() => setRosto((r) => ({ ...r, [c.id]: 0 }))} />
+                        onChange={(e) => { setVerResultado(null); setRosto((r) => ({ ...r, [c.id]: Number(e.target.value) })) }}
+                        onDoubleClick={() => { setVerResultado(null); setRosto((r) => ({ ...r, [c.id]: 0 })) }} />
                       <small>{(rosto[c.id] ?? 0).toFixed(c.passo < 0.5 ? 2 : 1)}</small>
                     </label>
                   ))}
                 </div>
               ))}
-              {Object.values(rosto).some(Boolean) && <button type="button" className="hf-ajustes-limpar" onClick={() => setRosto({})}>Reset all</button>}
+              {Object.values(rosto).some(Boolean) && <button type="button" className="hf-ajustes-limpar" onClick={() => { setVerResultado(null); setRosto({}) }}>Reset all</button>}
             </div>
           )}
           {f.id === 'ampliar' && (<>
@@ -635,7 +679,8 @@ export default function AbaEditar() {
           {comFrase && <p className="hf-orbita-frase"><b>Prompt (written for you):</b> {fraseOrbita(giro, alturaFrase, texto)}</p>}
           {f.texto && (f.id !== 'ampliar' || metodoAmpliar === 'magnific') && <div className="hf-campo hf-edt-texto"><span>{luzApi ? 'Light' : f.id === 'area' ? 'New look' : f.texto === 'obrigatorio' ? 'Prompt' : 'Optional'}</span><textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
             placeholder={luzApi ? 'Describe the light, e.g. "warm sunset light from the left, soft shadows"' : f.id === 'area' ? 'What it should become, e.g. "a red leather jacket"' : f.texto === 'obrigatorio' ? 'Describe what to draw on this structure…' : 'An extra touch, e.g. "keep the background dark"'} /><Contador texto={texto} limite={MAX_PROMPT} /></div>}
-            <BotaoGerar rotulo="✦ Apply" est={custo} desligado={faltaImagem || faltaTexto || naoInstalado || soLocal} aoClicar={gerar} />
+            {f.id === 'rosto' && <span className="hf-dica">The preview updates as you move the sliders. Apply saves the result to your gallery.</span>}
+            <BotaoGerar rotulo="✦ Apply" est={custo} desligado={faltaImagem || faltaTexto || naoInstalado || soLocal || (f.id === 'rosto' && !rostoAjustado)} aoClicar={gerar} />
             {naoInstalado && <span className="hf-dica">Needs {pacoteAtual}.</span>}
             {soLocal && <span className="hf-dica">This tool runs on your GPU.{' '}
               {/* A aba Edit nao tem menu de modelo: o botao troca o motor aqui mesmo. */}
