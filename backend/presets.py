@@ -141,6 +141,41 @@ SIMPLE = {
         # 1080p ampliado 2x pelo RTX nao tem.
         "nativo_4k": {"segundos": 450},
     },
+    # Segundo motor: exigem ComfyUI >= 0.43. MOSS e Apache 2.0; Fibo e CC-BY-NC,
+    # por isso o aviso no rotulo. Medidas do Editor em 04/11/2026, 1024x1024:
+    # MOSS 18 s, 13,6 GB; Fibo dev 38 s, 15,1 GB.
+    "moss": {
+        "rotulo": "MOSS-Image",
+        "descricao": "Modelo aberto, bom em texto escrito na imagem. Licença Apache 2.0.",
+        "unet": "MOSS/moss_image_sft_int8_convrot.safetensors",
+        "clip": "MOSS/qwen3.5_9b_w4a8_gptq.safetensors",
+        "clip_type": "moss_image",
+        "vae": "MOSS/flux2-vae_small.safetensors",
+        "latent": "EmptyFlux2LatentImage",
+        # Template oficial image_moss_image_t2i.
+        "steps": 25,
+        "cfg": 2.5,
+        "sampler": "er_sde",
+        "scheduler": "simple",
+        "zero_negative": False,
+        "segundos_estimados": 30,
+    },
+    "fibo2": {
+        "rotulo": "Fibo 2.0 (non-commercial)",
+        "descricao": "Segue descrições longas. Licença CC-BY-NC: só uso não comercial.",
+        "unet": "Fibo2/fibo2_dev_int8_convrot.safetensors",
+        "clip": "Fibo2/qwen3vl_4b_int8_convrot.safetensors",
+        "clip_type": "fibo2",
+        "vae": "Flux2/flux2-vae.safetensors",
+        "latent": "EmptyFlux2LatentImage",
+        "encoder": "fibo2",
+        "steps": 50,
+        "cfg": 5.0,
+        "sampler": "euler",
+        "scheduler": "simple",
+        "zero_negative": False,
+        "segundos_estimados": 50,
+    },
     "zimage": {
         "rotulo": "Z-Image Turbo",
         "descricao": "Rascunho rápido. Aceita ControlNet.",
@@ -583,6 +618,37 @@ EDICAO = {
                  "pessoa da primeira imagem, na cena da segunda\". Para tirar "
                  "o fundo, peça \"remova o fundo, mantenha só a pessoa "
                  "sobre fundo branco\"."),
+    },
+    "mossedit": {
+        "grupo": "instrucao",
+        "rotulo": "MOSS-Image",
+        "descricao": "Muda o que você pedir e preserva o resto. Licença Apache 2.0.",
+        "unet": "MOSS/moss_image_sft_int8_convrot.safetensors",
+        "lora": "MOSS/moss_image_edit_lora_rank_64_bf16.safetensors",
+        "clip": "MOSS/qwen3.5_9b_w4a8_gptq.safetensors",
+        "vae": "MOSS/flux2-vae_small.safetensors",
+        # Template oficial image_moss_image_edit.
+        "steps": 30,
+        "cfg": 4.0,
+        "min_referencias": 1,
+        "max_referencias": 1,
+        "segundos_estimados": 60,
+        "dica": "Diga o que muda e o que fica: \"change the coat to black, keep the face and background\".",
+    },
+    "fibo2edit": {
+        "grupo": "instrucao",
+        "rotulo": "Fibo 2.0 (non-commercial)",
+        "descricao": "Edição rápida, em 4 passos. Licença CC-BY-NC: só uso não comercial.",
+        "unet": "Fibo2/fibo2_edit_turbo_int8_convrot.safetensors",
+        "clip": "Fibo2/qwen3vl_4b_int8_convrot.safetensors",
+        "vae": "Flux2/flux2-vae.safetensors",
+        # Template oficial image_fibo2_edit_turbo_pe.
+        "steps": 4,
+        "cfg": 1.0,
+        "min_referencias": 1,
+        "max_referencias": 1,
+        "segundos_estimados": 25,
+        "dica": "Diga o que muda e o que fica: \"change the background to snow, keep the character\".",
     },
     "flux3ref": {
         "grupo": "referencia",
@@ -1585,6 +1651,7 @@ MOTOR_DO_MODO = {
     "krea": "krea", "klein": "klein", "zimage": "zimage", "mage": "mage",
     "kroma": "kroma", "kroma_foto": "kroma_foto",
     "flux3": "flux3", "flux3ref": "flux3",
+    "moss": "moss", "mossedit": "moss", "fibo2": "fibo2", "fibo2edit": "fibo2",
     "ideogram": "ideogram",
     "trocar": "klein", "personagem": "klein",
     "instrucao": "mage", "qwen": "qwen", "luzref": "qwen",
@@ -2789,7 +2856,7 @@ MAX_PIXELS_VIDEO_LOCAL = 1_100_000
 
 
 # Modos que rodam no segundo motor (ComfyUI v0.41.1, porta 8189).
-MODELOS_MOTOR_FLUX3 = {"flux3", "flux3ref"}
+MODELOS_MOTOR_FLUX3 = {"flux3", "flux3ref", "moss", "mossedit", "fibo2", "fibo2edit"}
 
 # Nos RTX da NVIDIA (ComfyUI_Nvidia_VFX_Nodes), so no segundo motor. Nao sao
 # generativos: nao inventam detalhe. MEDIDO em 16/10/2026 num video do LTX 2.3

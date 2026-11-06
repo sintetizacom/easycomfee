@@ -1586,6 +1586,12 @@ async def _montar(tarefa: Tarefa):
                 extra=p.prompt.strip(), seed=seed, prefixo=prefixo,
                 previa=p.previa_angulo)
 
+        if p.modelo in ("mossedit", "fibo2edit"):
+            editar = workflows.editar_moss if p.modelo == "mossedit" else workflows.editar_fibo
+            return editar(p.prompt, p.negativo, refs[0], seed,
+                          steps=p.steps or e["steps"],
+                          cfg=p.cfg if p.cfg is not None else e["cfg"],
+                          prefixo=prefixo)
         if p.modelo == "flux3ref":
             return workflows.editar_flux3(p.prompt, refs, seed,
                                           largura=largura, altura=altura,

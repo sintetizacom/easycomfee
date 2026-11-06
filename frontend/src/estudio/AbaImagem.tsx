@@ -19,6 +19,8 @@ const DESCRICOES: Record<string, string> = {
   qwen21: 'Text inside the scene, very accurate. The only local model with native 2K.',
   klein: 'Maximum micro-detail and texture. Slower.',
   flux3: 'The new BFL model. Photorealism and well-written text.',
+  moss: 'Open model, good with text inside the image. Apache 2.0.',
+  fibo2: 'Follows long descriptions closely. CC-BY-NC: non-commercial use only.',
   zimage: 'Fast drafts. Supports ControlNet.',
   mage: 'Lightweight. The base of instruction editing.',
   ideogram: 'Typography and layout controlled with boxes.',
@@ -50,6 +52,8 @@ const REFERENCIAS: Record<string, { modo: string; max: number; uso: string; base
   qwen21: { modo: 'qwen21edit', max: 8, base: true, uso: 'Image 1 is the base you edit; add people or objects as image 2, 3… e.g. "put the woman from @image2 in @image1".' },
   klein: { modo: 'trocar', max: 4, base: true, uso: 'Image 1 is the scene; the others replace who or what is in it.' },
   flux3: { modo: 'flux3ref', max: 10, base: true, uso: 'Image 1 is the base you edit; add people, outfits or places as image 2, 3… (up to 10).' },
+  moss: { modo: 'mossedit', max: 1, base: true, uso: 'Edits your image from an instruction: say what changes and what stays.' },
+  fibo2: { modo: 'fibo2edit', max: 1, base: true, uso: 'Fast edit of your image from an instruction: say what changes and what stays.' },
   mage: { modo: 'instrucao', max: 3, base: true, uso: 'Quick edit of image 1 from an instruction, keeping the rest intact.' },
   sd15: { modo: 'sd15', max: 1, base: true, uso: 'Starting image: the new picture keeps its layout and colors. Strength says how much it changes.' },
   sdxl: { modo: 'sdxl', max: 1, base: true, uso: 'Starting image: the new picture keeps its layout and colors. Strength says how much it changes.' },
@@ -59,7 +63,7 @@ const REFERENCIAS: Record<string, { modo: string; max: number; uso: string; base
 
 // On Comfy Cloud the Krea character, Qwen 2.1 edit and Flux 3 reference modes
 // are not hosted; images go through Qwen Image Edit 2511 there (open, 3 images).
-const NUVEM_SEM_REF = new Set(['krea', 'kroma', 'qwen21', 'flux3'])
+const NUVEM_SEM_REF = new Set(['krea', 'kroma', 'qwen21', 'flux3', 'moss', 'fibo2'])
 // Modelos de checkpoint unico: a imagem vira o ponto de partida (img2img), com uma forca.
 const IMG2IMG = new Set(['sd15', 'sdxl', 'sd35m', 'sd35l'])
 const REF_NUVEM = { modo: 'qwen', max: 3, base: true, uso: 'On Comfy Cloud, images go through Qwen Image Edit. Image 1 is the base; add people or objects as image 2, 3.' }

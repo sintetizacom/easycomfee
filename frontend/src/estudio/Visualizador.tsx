@@ -82,7 +82,7 @@ const quando = (t?: number) => !t ? '—' : new Date(t * 1000).toLocaleString('e
 // Readable names for the ids saved with each file. Unknown ids show as saved.
 const NOMES: Record<string, string> = {
   ltx: 'LTX 2.5', ltx23: 'LTX 2.3', minimax: 'MiniMax H3', krea: 'Krea 2 Turbo', kroma: 'Kroma', qwen21: 'Qwen Image 2.1',
-  klein: 'Flux 2 Klein 9B', flux3: 'Flux 3 Klein', zimage: 'Z-Image Turbo', mage: 'Mage Flow', ideogram: 'Ideogram 4',
+  klein: 'Flux 2 Klein 9B', flux3: 'Flux 3 Klein', moss: 'MOSS-Image', mossedit: 'MOSS-Image · edit', fibo2: 'Fibo 2.0', fibo2edit: 'Fibo 2.0 · edit', zimage: 'Z-Image Turbo', mage: 'Mage Flow', ideogram: 'Ideogram 4',
   transformar_video: 'LTX VFX app', video: 'Video', musica: 'Music', voz: 'Voice', avatar: 'Lip sync', genjutsu: 'Genjutsu',
   trocar: 'Flux 2 Klein · swap', flux3ref: 'Flux 3 · references', qwen21edit: 'Qwen 2.1 · edit', instrucao: 'Mage · edit', qwen: 'Qwen Image Edit',
 }

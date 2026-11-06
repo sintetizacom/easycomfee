@@ -45,6 +45,8 @@ REQ = {
     "krea2": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "kroma": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "flux3": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
+    "moss": {"vram_min": 16, "vram_rec": 16, "ram_min": 32, "medido": M16 + " Peak 13.6 GB at 1024x1024."},
+    "fibo2": {"vram_min": 16, "vram_rec": 16, "ram_min": 32, "medido": M16 + " Peak 15.1 GB at 1024x1024."},
     "flux2_klein": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "qwen21": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "qwen_edit": {"vram_min": 16, "vram_rec": 24, "ram_min": 48, "medido": M16 + " The 20.5 GB model spills into system RAM.",
@@ -178,6 +180,26 @@ pacote("flux3", "FLUX 3 Image Klein", "imagem",
     ("vae", "Flux2/flux2-vae.safetensors", BFL3, "vae/flux2-vae.safetensors", False, "FLUX 2 VAE"),
     # Versao destilada (chave Version > Fast; variantes.py a reconhece pelo tamanho).
     ("diffusion_models", "Flux3/flux3_image_klein_fast_bf16.safetensors", BFL3, "diffusion_models/flux3-image-klein-bf16.safetensors", True, "Faster version (about 3x faster)"),
+])
+
+MOSS = "Comfy-Org/MOSS-Image"
+pacote("moss", "MOSS-Image", "imagem",
+       "OpenMOSS image model (Apache 2.0): generation and instruction editing. Needs ComfyUI 0.43 or newer.",
+       16, ["image MOSS", "edit with an instruction (MOSS)"], [
+    ("diffusion_models", "MOSS/moss_image_sft_int8_convrot.safetensors", MOSS, "diffusion_models/moss_image_sft_int8_convrot.safetensors", False, "MOSS-Image SFT (int8)"),
+    ("loras", "MOSS/moss_image_edit_lora_rank_64_bf16.safetensors", MOSS, "loras/moss_image_edit_lora_rank_64_bf16.safetensors", False, "Edit LoRA"),
+    ("text_encoders", "MOSS/qwen3.5_9b_w4a8_gptq.safetensors", MOSS, "text_encoders/qwen3.5_9b_w4a8_gptq.safetensors", False, "Qwen3.5 9B (w4a8)"),
+    ("vae", "MOSS/flux2-vae_small.safetensors", MOSS, "vae/flux2-vae_small.safetensors", False, "FLUX 2 VAE (small)"),
+])
+
+FIBO = "Comfy-Org/Fibo-2.0"
+pacote("fibo2", "Fibo 2.0 (non-commercial)", "imagem",
+       "Bria Fibo 2.0 (CC-BY-NC, non-commercial use only): generation and fast editing. Needs ComfyUI 0.43 or newer.",
+       16, ["image Fibo 2.0", "edit with an instruction (Fibo 2.0)"], [
+    ("diffusion_models", "Fibo2/fibo2_dev_int8_convrot.safetensors", FIBO, "diffusion_models/fibo2_dev_int8_convrot.safetensors", False, "Fibo 2.0 dev (int8)"),
+    ("diffusion_models", "Fibo2/fibo2_edit_turbo_int8_convrot.safetensors", FIBO, "diffusion_models/fibo2_edit_turbo_int8_convrot.safetensors", False, "Fibo 2.0 edit turbo (int8)"),
+    ("text_encoders", "Fibo2/qwen3vl_4b_int8_convrot.safetensors", FIBO, "text_encoders/qwen3vl_4b_int8_convrot.safetensors", False, "Qwen3-VL 4B (int8)"),
+    ("vae", "Flux2/flux2-vae.safetensors", FIBO, "vae/flux2-vae.safetensors", False, "FLUX 2 VAE"),
 ])
 
 pacote("flux2_klein", "FLUX 2 Klein 9B", "imagem",

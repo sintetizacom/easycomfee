@@ -102,6 +102,14 @@ def gerar_simples(modelo, prompt, negativo, seed, largura, altura,
                                 "negative_prompt": negativo or "",
                                 "resolution": max(largura, altura)}}
         pos, neg = ["cond", 0], ["cond", 1]
+    elif p.get("encoder") == "fibo2":
+        # Um no so devolve positivo, negativo e o latente, que aqui E usado.
+        g["cond"] = {"class_type": "TextEncodeFibo2",
+                     "inputs": {"clip": ["clip", 0], "vae": ["vae", 0],
+                                "prompt": prompt, "negative_prompt": negativo or "",
+                                "width": largura, "height": altura, "batch_size": lote}}
+        del g["latente"]
+        pos, neg = ["cond", 0], ["cond", 1]
     else:
         fonte = "clip_t5" if "clip_t5" in g else "clip"
         _texto(g, "pos", fonte, prompt)
@@ -117,7 +125,8 @@ def gerar_simples(modelo, prompt, negativo, seed, largura, altura,
 
     g["amostra"] = {"class_type": "KSampler",
                     "inputs": {"model": ["unet", 0], "positive": pos,
-                               "negative": neg, "latent_image": ["latente", 0],
+                               "negative": neg,
+                               "latent_image": ["cond", 2] if p.get("encoder") == "fibo2" else ["latente", 0],
                                "seed": seed,
                                "steps": steps or p["steps"],
                                "cfg": cfg if cfg is not None else p["cfg"],
@@ -3065,6 +3074,73 @@ def editar_flux3(prompt, refs, seed, steps=25, cfg=3.5, prefixo="saida", largura
     g["salva"] = {"class_type": "SaveImage",
                   "inputs": {"images": ["decodifica", 0], "filename_prefix": prefixo}}
     return g
+
+
+def editar_moss(prompt, negativo, ref, seed, steps=30, cfg=4.0, prefixo="saida"):
+    """MOSS-Image Edit, como o template oficial image_moss_image_edit."""
+    p = EDICAO["mossedit"]
+    neg = negativo or "nsfw, worst quality, bad anatomy, watermark, jpeg artifact"
+    g = {
+        "unet": {"class_type": "UNETLoader",
+                 "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
+        "lora": {"class_type": "LoraLoaderModelOnly",
+                 "inputs": {"model": ["unet", 0], "lora_name": win(p["lora"]), "strength_model": 1.0}},
+        "slg": {"class_type": "SkipLayerGuidanceDiTSimple",
+                "inputs": {"model": ["lora", 0], "double_layers": "", "single_layers": "22",
+                           "start_percent": 0.0, "end_percent": 1.0}},
+        "clip": {"class_type": "CLIPLoader",
+                 "inputs": {"clip_name": win(p["clip"]), "type": "moss_image", "device": "default"}},
+        "vae": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae"])}},
+        "ref": {"class_type": "LoadImage", "inputs": {"image": ref}},
+        "escala": {"class_type": "ImageScaleToTotalPixels",
+                   "inputs": {"image": ["ref", 0], "upscale_method": "lanczos",
+                              "megapixels": 1.0, "resolution_steps": 16}},
+        "medida": {"class_type": "GetImageSize", "inputs": {"image": ["escala", 0]}},
+        "latente": {"class_type": "EmptyFlux2LatentImage",
+                    "inputs": {"width": ["medida", 0], "height": ["medida", 1], "batch_size": 1}},
+    }
+    for nome, texto in (("pos", prompt), ("neg", neg)):
+        g[nome] = {"class_type": "TextEncodeMOSSImageEdit",
+                   "inputs": {"clip": ["clip", 0], "vae": ["vae", 0], "prompt": texto,
+                              "edit_format": "Moss-Image-Edit", "image_strength": 1.0,
+                              "images.image_0": ["escala", 0]}}
+    g["amostra"] = {"class_type": "KSampler",
+                    "inputs": {"model": ["slg", 0], "positive": ["pos", 0], "negative": ["neg", 0],
+                               "latent_image": ["latente", 0], "seed": seed, "steps": steps,
+                               "cfg": cfg, "sampler_name": "euler", "scheduler": "normal",
+                               "denoise": 1.0}}
+    g["decodifica"] = {"class_type": "VAEDecode",
+                       "inputs": {"samples": ["amostra", 0], "vae": ["vae", 0]}}
+    g["salva"] = {"class_type": "SaveImage",
+                  "inputs": {"images": ["decodifica", 0], "filename_prefix": prefixo}}
+    return g
+
+
+def editar_fibo(prompt, negativo, ref, seed, steps=4, cfg=1.0, prefixo="saida"):
+    """Fibo 2.0 Edit: o no de texto recebe a imagem e devolve o latente no
+    tamanho de treino para a proporcao dela (width e height 0)."""
+    p = EDICAO["fibo2edit"]
+    return {
+        "unet": {"class_type": "UNETLoader",
+                 "inputs": {"unet_name": win(p["unet"]), "weight_dtype": "default"}},
+        "clip": {"class_type": "CLIPLoader",
+                 "inputs": {"clip_name": win(p["clip"]), "type": "fibo2", "device": "default"}},
+        "vae": {"class_type": "VAELoader", "inputs": {"vae_name": win(p["vae"])}},
+        "ref": {"class_type": "LoadImage", "inputs": {"image": ref}},
+        "cond": {"class_type": "TextEncodeFibo2",
+                 "inputs": {"clip": ["clip", 0], "vae": ["vae", 0], "prompt": prompt,
+                            "negative_prompt": negativo or "", "width": 0, "height": 0,
+                            "batch_size": 1, "images.image_1": ["ref", 0]}},
+        "amostra": {"class_type": "KSampler",
+                    "inputs": {"model": ["unet", 0], "positive": ["cond", 0],
+                               "negative": ["cond", 1], "latent_image": ["cond", 2],
+                               "seed": seed, "steps": steps, "cfg": cfg,
+                               "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}},
+        "decodifica": {"class_type": "VAEDecode",
+                       "inputs": {"samples": ["amostra", 0], "vae": ["vae", 0]}},
+        "salva": {"class_type": "SaveImage",
+                  "inputs": {"images": ["decodifica", 0], "filename_prefix": prefixo}},
+    }
 
 
 def video_rtx(entrada, metodo, largura=0, altura=0, prefixo="editor/video_rtx"):
