@@ -871,14 +871,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
             {app.id === 'maquete' && ladosTela.length > 0 && (
               <Chips rotulo="Resolution" opcoes={ladosTela} valor={lado} aoMudar={setLadoEscolhido} />
             )}
-            {app.id === 'maquete' && avisoLado && <span className="hf-erro hf-aviso-lado">{avisoLado}</span>}
-            {semPlaca && <span className="hf-erro">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
+            {app.id === 'maquete' && avisoLado && <span className="hf-erro hf-aviso-lado" role="alert">{avisoLado}</span>}
+            {semPlaca && <span className="hf-erro" role="alert">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
             {app.formatos && <Chips rotulo="Output format" opcoes={['16:9', '9:16', '1:1'].map((f) => ({ id: f, rotulo: f }))} valor={formato} aoMudar={setFormato} />}
             {semPacote && <span className="hf-dica">Install “Video depth map” in Config Models to use this app.</span>}
             {bloqueado && <span className="hf-dica">This effect is not on Comfy Cloud yet. Switch to Local to use it.</span>}
             <BotaoGerar rotulo={app.id === 'maquete' && modoMaquete === 'avancado' ? 'Generate video ✦' : '✦ Apply effect'} est={custo} desligado={!pronto} aoClicar={aplicar} />
           </div>}
-          {erro && !(app.chaves && video && modoMaquete === 'avancado') && <p className="hf-erro">{erro}</p>}
+          {erro && !(app.chaves && video && modoMaquete === 'avancado') && <p className="hf-erro" role="alert">{erro}</p>}
         </div>
         </>)}
           </>) : <p className="hf-dica">Pick an effect on the left.</p>}
@@ -1129,7 +1129,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                                 onClick={() => gerarVersao(id)}>
                                 {gerando === id ? 'Shooting…' : lista.length ? '↻ Reshoot' : '✦ Shoot this frame'}
                                 {ehApi && rotuloCusto(custoVersao) ? ` · ${rotuloCusto(custoVersao)}` : ''}</button>
-                              {!podeDesenhar ? <span className="hf-erro">{faltaParaDesenhar}</span>
+                              {!podeDesenhar ? <span className="hf-erro" role="alert">{faltaParaDesenhar}</span>
                                 : escolhida && lista.some((v) => v.nome === escolhida.nome)
                                   ? <span className="hf-dica">Take {lista.findIndex((v) => v.nome === escolhida.nome) + 1} goes into the video. Drag the line to compare.</span>
                                   : gerando !== null && gerando !== id ? <span className="hf-dica">Another frame is being shot…</span> : null}
@@ -1168,20 +1168,20 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                       )
                     })}
                   </div>
-                  {!imagem && <p className="hf-erro">Frame 1 needs an image: go back to step 2.</p>}
+                  {!imagem && <p className="hf-erro" role="alert">Frame 1 needs an image: go back to step 2.</p>}
                 </div>
               )}
             </div>
             {passo === 3 && <div className="hf-linha-controles">
               {ladosTela.length > 0 && <Chips rotulo="Resolution" opcoes={ladosTela} valor={lado} aoMudar={setLadoEscolhido} />}
-              {avisoLado && <span className="hf-erro hf-aviso-lado">{avisoLado}</span>}
-              {semPlaca && <span className="hf-erro">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
+              {avisoLado && <span className="hf-erro hf-aviso-lado" role="alert">{avisoLado}</span>}
+              {semPlaca && <span className="hf-erro" role="alert">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
               <div className="hf-gerar-grupo">
                 <button type="button" className="hf-nav-voltar" onClick={() => setPasso(2)}>← Step 2 · Cinema Studio</button>
                 <BotaoGerar rotulo="Generate video ✦" est={custo} desligado={!pronto} aoClicar={aplicar} />
               </div>
             </div>}
-            {erro && <p className="hf-erro">{erro}</p>}
+            {erro && <p className="hf-erro" role="alert">{erro}</p>}
           </div>
         )}
       </>)}

@@ -354,11 +354,11 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
         {atual && <p className="hf-dica">{DESCRICOES[atual.id] ?? atual.descricao}
           {usoRefs ? ` With images: ${usoRefs.uso}` : ''}</p>}
         {apiAtual && <p className="hf-dica">Paid API model, runs on your Comfy account credits{preco !== null ? ` · about $${preco.toFixed(2)} per run` : ''}.</p>}
-        {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing {atual?.rotulo ?? 'another model'} instead.</p>}
+        {apiOculta && <p className="hf-erro" role="alert">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing {atual?.rotulo ?? 'another model'} instead.</p>}
         {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${modelos.find((m) => m.id === escolhido)?.rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing ${atual?.rotulo ?? 'another model'} on Comfy Cloud instead.`}</p>}
         {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing ${atual?.rotulo ?? 'another model'} instead.`}</p>}
         {naoInstalado && <AvisoInstalar rotulo={atual?.rotulo ?? modelo} />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
         </aside>
       </div>
 

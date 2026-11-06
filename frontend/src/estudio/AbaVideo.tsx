@@ -264,7 +264,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
               valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
           ))}
           </div>
-        {apiOculta && <p className="hf-erro">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
+        {apiOculta && <p className="hf-erro" role="alert">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
         {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${LEVES[escolhido].rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing LTX 2.5 on Comfy Cloud instead.`}</p>}
         {indisponivel && !soLocal && <p className="hf-erro" role="alert">{`"${escolhido}" is not available here: an unknown name, or a paid API model (those need a Comfy Cloud key and "Paid API models" turned on in Config Models → Comfy Cloud API). Showing LTX 2.5 instead.`}</p>}
         {motor === 'minimax' && (h3Local
@@ -353,10 +353,10 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
           </div>
           </div>
         {avisoModo && <p className="hf-dica" role="note">{avisoModo}</p>}
-        {chavesRepetidas && <p className="hf-erro">Two keyframes are at the same second: move one of them.</p>}
+        {chavesRepetidas && <p className="hf-erro" role="alert">Two keyframes are at the same second: move one of them.</p>}
         {naoInstalado && <AvisoInstalar rotulo={rotuloMotor} />}
         {!naoInstalado && faltaQual && <p className="hf-dica" role="note">{faltaQual}</p>}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
           {!gApi && <Avancado valor={ajustes} aoMudar={setAjustes} comPassos={false} />}
           <BotaoGerar rotulo="✦ Generate" est={custo} desligado={naoInstalado || !prompt.trim() || faltaImagem || chavesRepetidas} aoClicar={gerar} />
         </aside>

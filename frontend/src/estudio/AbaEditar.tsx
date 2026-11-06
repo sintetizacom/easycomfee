@@ -641,7 +641,7 @@ export default function AbaEditar() {
               {/* A aba Edit nao tem menu de modelo: o botao troca o motor aqui mesmo. */}
               <button type="button" className="hf-link hf-link-neon" onClick={() => { trocarMotor('local').catch((e) => setErro(mensagem(e))) }}>Switch to Local</button></span>}
             {naoInstalado && <AvisoInstalar rotulo={pacoteAtual!} semMenu />}
-            {erro && <p className="hf-erro">{erro}</p>}
+            {erro && <p className="hf-erro" role="alert">{erro}</p>}
           </>) : <p className="hf-dica">Pick a tool on the left.</p>}
         </aside>
       </div>

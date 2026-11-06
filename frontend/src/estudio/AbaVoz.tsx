@@ -275,7 +275,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
         </div>
         {falta && <p className="hf-dica" role="status">{falta}</p>}
         {semMotor && <p className="hf-erro" role="alert">{naNuvem ? 'Voice design is not available here.' : 'OmniVoice is not installed in your ComfyUI'}{caps?.motivo ? ` (${caps.motivo})` : ''}. Install the TTS Audio Suite nodes, or pick Qwen3-TTS (Comfy Cloud) in the menu.</p>}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
 
       <section className="hf-img-recentes hf-lsn-recentes" aria-label="Recent voices">

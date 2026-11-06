@@ -8,6 +8,7 @@ import AbaApps from './AbaApps'
 import AbaAssets from './AbaAssets'
 import BotaoAtualizar from './BotaoAtualizar'
 import BotaoDesligar from './BotaoDesligar'
+import BotaoLigarMotor from './BotaoLigarMotor'
 import MedidorRecursos from './MedidorRecursos'
 import AvisoComfy from './AvisoComfy'
 import MenuEstudios, { ESTUDIOS } from './MenuEstudios'
@@ -252,6 +253,7 @@ export default function Estudio() {
 <BotaoAtualizar />
           <PainelConta temChave={temChave} linkRecarga={linkRecarga} abrirConfig={() => setVerModelos('api')} />
           <button className="hf-botao-modelos" onClick={() => setVerModelos('locais')}>Config Models</button>
+          <BotaoLigarMotor />
           <BotaoDesligar />
         </div>
       </header>

@@ -153,7 +153,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
         <textarea rows={2} value={docs.style ?? ''} disabled={fase !== 'letra'} onChange={(e) => setDocs((d) => ({ ...d, style: e.target.value }))} /></label>
       <label className="hf-ctrl"><small>Lyrics · keep the [Verse], [Chorus] sections: the score is built on them</small>
         <textarea rows={14} value={docs.lyrics ?? ''} disabled={fase !== 'letra'} onChange={(e) => setDocs((d) => ({ ...d, lyrics: e.target.value }))} /></label>
-      {errosFolha.map((x) => <p key={x} className="hf-erro">{x}</p>)}
+      {errosFolha.map((x) => <p key={x} className="hf-erro" role="alert">{x}</p>)}
       <div className="hf-linha-controles">
         <button type="button" className="hf-botao" disabled={fase !== 'letra'} onClick={() => revisao(proxima('letra'))}>
           {ocupado ? 'Working…' : `Approve and go on to ${NOME[proxima('letra')]}`}</button>
@@ -171,7 +171,7 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
         {' '}· about {segundos ? minutos(segundos) : '—'}. In ABC notation; “Open the full editor” shows it as a score, piano roll, chords and MIDI.</p>
       <textarea aria-label="Score in ABC notation" rows={16} spellCheck={false} className="hf-abc" value={docs.score ?? ''} disabled={fase !== 'partitura'}
         onChange={(e) => setDocs((d) => ({ ...d, score: e.target.value }))} />
-      {errosFolha.map((x) => <p key={x} className="hf-erro">{x}</p>)}
+      {errosFolha.map((x) => <p key={x} className="hf-erro" role="alert">{x}</p>)}
       <div className="hf-linha-controles">
         <button type="button" className="hf-botao" disabled={fase !== 'partitura'} onClick={() => revisao(proxima('partitura'))}>
           {ocupado ? 'Working…' : `Approve and go on to ${NOME[proxima('partitura')]}`}</button>
@@ -288,12 +288,12 @@ export default function BlocoYue({ cfg, prompt }: { cfg: ModeloYue; prompt: stri
             : revisar ? (ordem[0] === 'partitura' ? 'Transcribe the recording ✦' : 'Write the lyrics ✦') : 'Generate ✦'}
         </button>
       </div>
-      {!cfg.disponivel && <p className="hf-erro">{cfg.motivo}</p>}
+      {!cfg.disponivel && <p className="hf-erro" role="alert">{cfg.motivo}</p>}
 
       {revisar && caixa && (ordem[0] === 'partitura'
         ? <>{caixa === 'partitura' && caixaPartitura}{caixa === 'letra' && caixaLetra}</>
         : <>{caixa === 'letra' && caixaLetra}{caixa === 'partitura' && caixaPartitura}</>)}
-      {erro && <p className="hf-erro">{erro}</p>}
+      {erro && <p className="hf-erro" role="alert">{erro}</p>}
     </div>
   )
 }

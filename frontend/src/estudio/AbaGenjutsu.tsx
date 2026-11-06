@@ -260,13 +260,13 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
             <div className="hf-gj-gerar">
               {etapa && <span className="hf-dica">{etapa}</span>}
               {cfg.aberto && !naNuvem && !instalado(modelo) && (
-                <span className="hf-erro">{cfg.rotulo} is not installed on this computer. Install it in Config Models, or choose Cloud on its card.</span>
+                <span className="hf-erro" role="alert">{cfg.rotulo} is not installed on this computer. Install it in Config Models, or choose Cloud on its card.</span>
               )}
               <BotaoGerar rotulo="Generate →" est={custo} desligado={!pronto} aoClicar={gerar} />
             </div>
           </section>
         </div>
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
         {aprovar && (
           <section className="hf-gj-aprovar" aria-label="Approve the new first frame">
             <img src={urlImagem(aprovar.quadro)} alt="New first frame" onClick={() => abrirVisualizador(aprovar.quadro)} />

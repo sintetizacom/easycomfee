@@ -82,7 +82,7 @@ export default function BlocoSeparar({ naNuvem }: { naNuvem: boolean }) {
         <button type="button" className="hf-botao" disabled={!origem || enviando || naNuvem} onClick={separar}
           title={naNuvem ? 'Split into stems runs on your GPU: switch to Local.' : undefined}>Split ✦</button>
       </div>
-      {erro && <p className="hf-erro">{erro}</p>}
+      {erro && <p className="hf-erro" role="alert">{erro}</p>}
     </section>
   )
 }

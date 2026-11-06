@@ -465,7 +465,7 @@ export function CartaoTarefa({ t }: { t: Tarefa }) {
           <div className="hf-espera">
             <span className="hf-estado">{ESTADOS[t.estado] ?? t.estado}{t.detalhe && emIngles(t.detalhe) !== ESTADOS[t.estado] ? ` · ${emIngles(t.detalhe)}` : ''}</span>
             {t.estado !== 'erro' && <div className="hf-barra"><div style={{ width: `${Math.round((t.progresso || 0) * 100)}%` }} /></div>}
-            {t.erro && <span className="hf-erro" title={t.erro}><ComLinks texto={erroCurto(t.erro)} /></span>}
+            {t.erro && <span className="hf-erro" role="alert" title={t.erro}><ComLinks texto={erroCurto(t.erro)} /></span>}
           </div>
         )}
       {rodando && (
@@ -524,7 +524,7 @@ export function SlotImagem({ rotulo, valor, aoMudar }: {
         setEnviando(true); setErro(null)
         try { aoMudar(await api.enviarReferencia(f)) } catch (x) { setErro(String(x)) } finally { setEnviando(false) }
       }} />
-      {erro && <span className="hf-erro">{erro}</span>}
+      {erro && <span className="hf-erro" role="alert">{erro}</span>}
     </label>
   )
 }

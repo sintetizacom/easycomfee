@@ -136,7 +136,7 @@ function Keyframes() {
               <input type="range" min={0.3} max={1} step={0.05} value={forca} onChange={(e) => setForca(Number(e.target.value))} />
             </label>
           </div>
-          {repetidas && <p className="hf-erro">Two images are at the same moment: move one of them.</p>}
+          {repetidas && <p className="hf-erro" role="alert">Two images are at the same moment: move one of them.</p>}
           <p className="hf-dica">Neighbouring images should share a similar point of view; very different ones blend into each other.</p>
         </div>
 
@@ -148,7 +148,7 @@ function Keyframes() {
           <BotaoGerar est={custo} desligado={semLtx || !prompt.trim() || ordem.length < 2 || repetidas} aoClicar={gerar} />
         </div>
         {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
 
       <Galeria tipo="video">
@@ -230,7 +230,7 @@ function Ingredientes() {
           <BotaoGerar est={custo} desligado={semLtx || !prompt.trim() || !imgs.length} aoClicar={gerar} />
         </div>
         {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
 
       <Galeria tipo="video">
@@ -317,7 +317,7 @@ function Ampliar() {
         </div>
         <p className="hf-dica">{metodo === 'ltx' ? 'Latent: LTX re-renders the clip at twice the size, keeping the motion. Faces may change a little.' : 'Pixels: sharpens and enlarges without changing what is in the shot.'}</p>
         {semLtx && <AvisoInstalar rotulo="LTX 2.5" semMenu />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
 
       <Galeria tipo="video">

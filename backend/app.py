@@ -2764,6 +2764,33 @@ async def pasta_bridge():
     return {"ok": True}
 
 
+async def _comfy_local_vivo() -> bool:
+    try:
+        async with httpx.AsyncClient(timeout=3) as c:
+            return (await c.get(f"{comfy.BASE_PRINCIPAL}/system_stats")).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
+@app.get("/api/comfy/estado")
+async def estado_comfy():
+    """Diz se o botao de ligar deve aparecer. pode_religar ja exclui o ComfyUI da pessoa
+    e a instalacao so nuvem, que o app nao sabe ligar."""
+    return {"vivo": await _comfy_local_vivo(), "pode_ligar": not comfy.na_nuvem() and motores.pode_religar()}
+
+
+@app.post("/api/comfy/ligar")
+async def ligar_comfy():
+    """So sobe o motor local. Nunca encerra nada: ele e dividido com o Editor."""
+    if not motores.pode_religar():
+        raise HTTPException(409, "EasyComfee can't start this ComfyUI. Open it yourself.")
+    if await _comfy_local_vivo():
+        return {"ligando": False}
+    if not await asyncio.to_thread(motores.ligar):
+        raise HTTPException(500, "Could not start ComfyUI. Check the logs folder.")
+    return {"ligando": True}
+
+
 @app.post("/api/desligar")
 async def desligar():
     """O botao Power: fecha os motores que o app sabe religar e depois o proprio app.

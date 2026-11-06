@@ -528,7 +528,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
             est={custoTotal} desligado={!!naoInstalado || !cena.trim() || !!trabalhando} aoClicar={gerarTodos} />
         </div>
         {naoInstalado && <AvisoInstalar rotulo={naoInstalado} />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
       </div>
     </div>

@@ -286,13 +286,13 @@ export default function AbaMusica() {
         )}
         <div className="hf-linha-controles">
           {cfg && !naNuvem && cfg.local === false
-            ? <span className="hf-erro">{cfg.rotulo} is not installed on this computer{cfg.motivo_local ? ` (${cfg.motivo_local.replace('Missing: ', 'missing: ')})` : ''}. Install it in Config Models, or choose Cloud on its card.</span>
-            : cfg && !cfg.disponivel && <span className="hf-erro">{cfg.motivo}</span>}
+            ? <span className="hf-erro" role="alert">{cfg.rotulo} is not installed on this computer{cfg.motivo_local ? ` (${cfg.motivo_local.replace('Missing: ', 'missing: ')})` : ''}. Install it in Config Models, or choose Cloud on its card.</span>
+            : cfg && !cfg.disponivel && <span className="hf-erro" role="alert">{cfg.motivo}</span>}
           <span className="hf-espaco" />
           <BotaoGerar rotulo="Generate ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
         </div>
         </>}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </aside>
       </div>
       </>}

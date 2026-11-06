@@ -154,12 +154,12 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
           </select></label>
           <span className="hf-dica">{DESCRICOES[cfg.id]}</span>
           {ocupado && <span className="hf-dica">{ocupado}</span>}
-          {longa && <span className="hf-erro">The voice is {fala!.segundos.toFixed(1)} s; the limit is {LIMITE} s.</span>}
+          {longa && <span className="hf-erro" role="alert">The voice is {fala!.segundos.toFixed(1)} s; the limit is {LIMITE} s.</span>}
           <span className="hf-espaco" />
           <BotaoGerar rotulo="Generate ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
         </div>
         {naoInstalado && <AvisoInstalar rotulo={cfg.rotulo} />}
-        {erro && <p className="hf-erro">{erro}</p>}
+        {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>
 
       <section className="hf-img-recentes hf-lsn-recentes" aria-label="Your talking videos">
