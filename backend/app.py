@@ -283,7 +283,7 @@ class PedidoGeracao(Pedido):
     # "auto": a voz segue o motor (OmniVoice local, Qwen3-TTS na nuvem). "elevenlabs": so na Comfy Cloud.
     modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs)$")
     # Modelo 3D por API (aba 3D): tripo | meshy; com ou sem textura.
-    modelo_3d: str = Field("tripo", pattern="^(tripo|meshy)$")
+    modelo_3d: str = Field("tripo", pattern="^(tripo|tripo_texto|meshy)$")
     textura_3d: bool = True
     referencia_voz: str = ""
     nome_voz: str = Field("", max_length=120)
@@ -900,11 +900,13 @@ async def _montar(tarefa: Tarefa):
     if p.modelo == "modelo3d":
         if not comfy.na_nuvem():
             raise ValueError("3D models run on Comfy Cloud: switch the engine to Comfy Cloud.")
-        if not p.referencias:
+        texto = modelos3d.MODELOS[p.modelo_3d].get("texto")
+        if not texto and not p.referencias:
             raise ValueError("send the image to turn into 3D")
         tarefa.largura = tarefa.altura = 0
-        tarefa.prompt_final = ""
-        return modelos3d.grafo(p.modelo_3d, p.referencias[0], p.textura_3d, seed, prefixo="editor/modelo3d")
+        tarefa.prompt_final = p.prompt if texto else ""
+        return modelos3d.grafo(p.modelo_3d, p.referencias[0] if p.referencias else "", p.textura_3d, seed,
+                               prefixo="editor/modelo3d", prompt=p.prompt)
 
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0

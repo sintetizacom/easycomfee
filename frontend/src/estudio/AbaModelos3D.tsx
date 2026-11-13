@@ -7,6 +7,7 @@ import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCus
 
 const MODELOS = [
   { id: 'tripo', rotulo: 'Tripo 3.1', dica: 'Textured model with PBR materials. A good all-rounder.' },
+  { id: 'tripo_texto', rotulo: 'Tripo 3.1 · from text', dica: 'Describe the object; no image needed.' },
   { id: 'meshy', rotulo: 'Meshy 7.1', dica: 'Clean topology, textures up to 2K here.' },
 ]
 
@@ -38,9 +39,12 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
   const [textura, setTextura] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const pedido = { modelo: 'modelo3d', modelo_3d: modelo, textura_3d: textura, prompt: '', proporcao: '1:1',
-    referencias: imagem ? [imagem.nome] : [] }
-  const custo = useCusto(naNuvem && imagem ? pedido : null)
+  const [texto, setTexto] = useState('')
+  const porTexto = modelo === 'tripo_texto'
+  const pedido = { modelo: 'modelo3d', modelo_3d: modelo, textura_3d: textura, prompt: porTexto ? texto.trim() : '', proporcao: '1:1',
+    referencias: !porTexto && imagem ? [imagem.nome] : [] }
+  const pronto = naNuvem && (porTexto ? !!texto.trim() : !!imagem)
+  const custo = useCusto(pronto ? pedido : null)
   const gerar = async () => {
     setErro(null)
     try { await api.gerar(pedido as Parameters<typeof api.gerar>[0]) } catch (e) { setErro(mensagem(e)) }
@@ -52,13 +56,16 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
       <TituloPagina antes="Turn a picture into" destaque="3D" sub="One image becomes a textured 3D model you can spin, download and use in Blender or a game engine." />
       <div className="hf-barra-prompt">
         <div className="hf-m3d-entrada">
-          <SlotImagem rotulo="Image" valor={imagem} aoMudar={setImagem} />
+          {porTexto
+            ? <textarea aria-label="Describe the object" className="hf-campo" rows={5} maxLength={600} value={texto} onChange={(e) => setTexto(e.target.value)}
+                placeholder="A small wooden chair with a red cushion, cartoon style" />
+            : <SlotImagem rotulo="Image" valor={imagem} aoMudar={setImagem} />}
           <div className="hf-m3d-opcoes">
             <Chips rotulo="Model" opcoes={MODELOS.map((m) => ({ id: m.id, rotulo: m.rotulo, dica: m.dica }))} valor={modelo} aoMudar={setModelo} />
             <label className="hf-toggle"><input type="checkbox" checked={textura} onChange={(e) => setTextura(e.target.checked)} /> Textures</label>
             <p className="hf-dica">A single object on a plain background works best. Runs on Comfy Cloud (credits): the cost shows on the button.</p>
             {!naNuvem && <p className="hf-dica">Switch the engine to Comfy Cloud to use the 3D models.</p>}
-            <BotaoGerar rotulo="Generate 3D ✦" est={custo} desligado={!naNuvem || !imagem} aoClicar={gerar} />
+            <BotaoGerar rotulo="Generate 3D ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
             {erro && <p className="hf-erro" role="alert">{erro}</p>}
           </div>
         </div>

@@ -22,6 +22,14 @@ class TestModelos3D(unittest.TestCase):
         self.assertEqual(g["gera"]["inputs"]["should_texture"], "true")
         self.assertEqual(g["gera"]["inputs"]["should_texture.texture_resolution"], "2k")
 
+    def test_tripo_por_texto(self):
+        g = modelos3d.grafo("tripo_texto", "", True, 7, prompt="a small wooden chair")
+        self.assertEqual(g["gera"]["class_type"], "TripoTextToModelNodeV2")
+        self.assertEqual(g["gera"]["inputs"]["prompt"], "a small wooden chair")
+        self.assertNotIn("imagem", g)
+        with self.assertRaises(ValueError):
+            modelos3d.grafo("tripo_texto", "", True, 7, prompt="  ")
+
     def test_modelo_desconhecido(self):
         with self.assertRaises(ValueError):
             modelos3d.grafo("outro", "a.png")
