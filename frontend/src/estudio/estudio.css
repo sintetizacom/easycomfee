@@ -2984,3 +2984,12 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-cin-grade > *, .hf-cin-centro > * { grid-area: auto; grid-column: 1; grid-row: auto; min-width: 0; }
   .hf-cin-palco { order: 1; } .hf-cin-esq { order: 2; } .hf-cin-dir { order: 3; } .hf-cin-planos { order: 4; } .hf-cin-rodape { order: 5; }
 }
+
+/* 3D */
+.hf-m3d-entrada { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; gap: 18px; align-items: start; }
+.hf-m3d-opcoes { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.hf-m3d-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-top: 16px; }
+.hf-m3d-cartao { position: relative; height: 380px; border-radius: 14px; overflow: hidden; background: #0b0d12; border: 1px solid #ffffff1a; }
+.hf-m3d-baixar { position: absolute; right: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: #000a; color: #fff; text-decoration: none; font-size: 13px; }
+.hf-m3d-baixar:hover { background: var(--hf-neon, #8cf); color: #000; }
+@media (max-width: 700px) { .hf-m3d-entrada { grid-template-columns: 1fr; } }

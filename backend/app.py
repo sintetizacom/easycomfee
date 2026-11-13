@@ -49,6 +49,7 @@ import relight
 import prompting
 import workflows
 import voz
+import modelos3d
 import minhas_vozes
 import relatorio
 import pasta_resultados
@@ -281,6 +282,9 @@ class PedidoGeracao(Pedido):
     modo_voz: str = Field("narrar", pattern="^(narrar|criar|clonar)$")
     # "auto": a voz segue o motor (OmniVoice local, Qwen3-TTS na nuvem). "elevenlabs": so na Comfy Cloud.
     modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs)$")
+    # Modelo 3D por API (aba 3D): tripo | meshy; com ou sem textura.
+    modelo_3d: str = Field("tripo", pattern="^(tripo|meshy)$")
+    textura_3d: bool = True
     referencia_voz: str = ""
     nome_voz: str = Field("", max_length=120)
     titulo_audio_voz: str = Field("", max_length=120)
@@ -892,6 +896,15 @@ async def _montar(tarefa: Tarefa):
         proporcao = "16:9" if larg / alt > 1.2 else "9:16" if larg / alt < 0.83 else "1:1"
         return genjutsu.grafo_api(p.modelo_genjutsu, entrada, refs, p.prompt, seed,
                                   d["duracao"] or 5, proporcao, prefixo, p.resolucao_genjutsu)
+
+    if p.modelo == "modelo3d":
+        if not comfy.na_nuvem():
+            raise ValueError("3D models run on Comfy Cloud: switch the engine to Comfy Cloud.")
+        if not p.referencias:
+            raise ValueError("send the image to turn into 3D")
+        tarefa.largura = tarefa.altura = 0
+        tarefa.prompt_final = ""
+        return modelos3d.grafo(p.modelo_3d, p.referencias[0], p.textura_3d, seed, prefixo="editor/modelo3d")
 
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0
@@ -2456,8 +2469,8 @@ async def esperar_fim(tarefa: Tarefa, timeout: float = 3600,
                 grafos.salvar(getattr(tarefa, "_grafo", None), saidas)
             except OSError:
                 pass  # a receita e um extra: nunca derruba a geracao
-            if tarefa.pedido.modelo in ("voz", "musica") and not nomes:
-                raise comfy.ErroComfy("O motor terminou sem salvar áudio.")
+            if tarefa.pedido.modelo in ("voz", "musica", "modelo3d") and not nomes:
+                raise comfy.ErroComfy("O motor terminou sem salvar o resultado.")
             tarefa.imagens = tarefa.imagens + nomes if acumular else nomes
             tarefa.duracao = time.time() - (tarefa.iniciada_em or inicio)
             # Tamanho e dimensoes vem do proprio arquivo, sem baixa-lo: nos
@@ -2947,6 +2960,7 @@ def _eh_api(p: PedidoGeracao) -> bool:
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
         p.modelo == "limpar_video" and p.metodo_video in presets.METODOS_API_VIDEO) or (
         p.modelo == "voz" and p.modelo_voz == "elevenlabs") or (
+        p.modelo == "modelo3d") or (
         p.modelo == "musica" and bool(musica.MODELOS.get(p.modelo_musica, {}).get("api"))) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
@@ -2958,7 +2972,7 @@ def _modelos_conhecidos() -> set[str]:
     return (set(presets.SIMPLE) | set(presets.EDICAO) | set(presets.NUVEM)
             | {"ideogram", "controle", "ampliar", "angulo", "reluz",
                "personagem", "rosto", "recorte", "orbita3d", "video",
-               "limpar_video", "transformar_video", "quadros_maquete", "voz",
+               "limpar_video", "transformar_video", "quadros_maquete", "voz", "modelo3d",
                "profundidade_video",
                "transcricao_voz", "musica", "genjutsu",
                "avatar", "separar", "trocar_voz", "treinar_voz"})
@@ -4036,7 +4050,7 @@ async def gerar(pedido: PedidoGeracao):
     sem_prompt = ("ampliar", "angulo", "reluz", "personagem", "rosto", "luzref",
                   "recorte", "limpar_video", "transformar_video", "quadros_maquete",
                   "profundidade_video", "anygles", "cabeca", "folha", "orbita3d", "avatar",
-                  "separar", "trocar_voz", "treinar_voz")
+                  "separar", "trocar_voz", "treinar_voz", "modelo3d")
     # O video de TEXTO exige prompt. Os outros dois aceitam so as imagens,
     # porque o gerador automatico escreve a descricao a partir delas.
     if (pedido.modelo == "video" and pedido.modo_video != "texto"
@@ -4630,7 +4644,7 @@ async def frase_de_luz(azimute: float = Query(-45, ge=-720, le=720, allow_inf_na
     return {"frase": luz.em_palavras(azimute, elevacao, intensidade, temperatura)}
 
 
-_MIME = {".flac": "audio/flac", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".mp4": "video/mp4", ".webm": "video/webm", ".mkv": "video/x-matroska",
+_MIME = {".glb": "model/gltf-binary", ".flac": "audio/flac", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".mp4": "video/mp4", ".webm": "video/webm", ".mkv": "video/x-matroska",
          ".mov": "video/quicktime", ".webp": "image/webp", ".jpg": "image/jpeg",
          ".jpeg": "image/jpeg", ".gif": "image/gif"}
 

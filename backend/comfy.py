@@ -493,5 +493,5 @@ def imagens_salvas(saidas: dict) -> list[dict]:
     return [{"nome": im["filename"], "subpasta": im.get("subfolder", ""),
              "tipo": im.get("type", "output")}
             for saida in fonte.values()
-            for chave in ("images", "gifs", "audio")
+            for chave in ("images", "gifs", "audio", "3d")
             for im in saida.get(chave, [])]

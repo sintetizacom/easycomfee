@@ -23,6 +23,7 @@ import { AbaFlux3, AbaH3, AbaWan } from './EstudiosModelo'
 import AbaMusica from './AbaMusica'
 import AbaVideo from './AbaVideo'
 import AbaVoz from './AbaVoz'
+import AbaModelos3D from './AbaModelos3D'
 import { CHAVE_OCULTAR, EVENTO_AVISO_MOTOR, MotorCtx } from './motor'
 import ContaApi, { ModelosPagos } from './ContaApi'
 import PainelConta from './PainelConta'
@@ -33,7 +34,7 @@ import './estudio.css'
 // balance and Models. Where each generation runs is picked in the model menus. "Advanced" is ComfyUI itself,
 // with its node editor.
 
-type Aba = 'image' | 'video' | 'ltx' | 'h3' | 'wan' | 'flux3' | 'lipsync' | 'music' | 'voice' | 'cinema' | 'genjutsu' | 'apps' | 'edit' | 'assets' | 'advanced'
+type Aba = 'image' | 'video' | 'ltx' | 'h3' | 'wan' | 'flux3' | 'lipsync' | 'music' | 'voice' | 'm3d' | 'cinema' | 'genjutsu' | 'apps' | 'edit' | 'assets' | 'advanced'
 
 const ABAS: { id: Aba; rotulo: string; breve?: boolean }[] = [
   { id: 'image', rotulo: 'Image' },
@@ -47,6 +48,7 @@ const ABAS: { id: Aba; rotulo: string; breve?: boolean }[] = [
   { id: 'lipsync', rotulo: 'Lip Sync' },
   { id: 'music', rotulo: 'Music' },
   { id: 'voice', rotulo: 'Voice' },
+  { id: 'm3d', rotulo: '3D' },
   { id: 'cinema', rotulo: 'Cinema Studio' },
   { id: 'genjutsu', rotulo: 'Genjutsu' },
   { id: 'assets', rotulo: 'Assets' },
@@ -273,6 +275,7 @@ export default function Estudio() {
         {aba === 'lipsync' && <AbaLipSync key={chave} apiModelos={soAbertos ? [] : lipsyncApi} />}
         {aba === 'music' && <AbaMusica key={chave} />}
         {aba === 'voice' && <AbaVoz key={chave} naNuvem={naNuvem} />}
+        {aba === 'm3d' && <AbaModelos3D key={chave} naNuvem={naNuvem} />}
         {aba === 'assets' && <AbaAssets />}
         {aba === 'advanced' && <AbaNodes />}
         </ProtegeAba>
