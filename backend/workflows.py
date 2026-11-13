@@ -1776,6 +1776,16 @@ def limpar_audio_video_api(entrada, prefixo="video_audio_limpo"):
                                                             "format": "auto", "codec": "auto"}}}
 
 
+def reframe_video_api(entrada, aspecto="16:9", prompt="", seed=42, prefixo="video_reframe"):
+    """Muda o formato do video por API (Luma Ray 3.2 Reframe): as bordas novas sao inventadas."""
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "gera": {"class_type": "LumaRay32VideoReframeNode", "inputs": {
+                "video": ["carga", 0], "prompt": prompt, "aspect_ratio": aspecto, "resolution": "720p",
+                "seed": seed}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

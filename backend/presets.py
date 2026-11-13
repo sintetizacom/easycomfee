@@ -2955,6 +2955,9 @@ METODOS_API_VIDEO.update(METODOS_ESTENDER)
 # Limpar o audio da fala de um video (VEED): so a trilha muda.
 METODOS_LIMPAR_AUDIO = {"limpar_audio": "VeedCleanVideoAudioNode"}
 METODOS_API_VIDEO.update(METODOS_LIMPAR_AUDIO)
+# Mudar o formato do video inventando as bordas (Expand frame na nuvem): Luma Ray 3.2 Reframe.
+METODOS_REFRAME = {"reframe_luma": "LumaRay32VideoReframeNode"}
+METODOS_API_VIDEO.update(METODOS_REFRAME)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

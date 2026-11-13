@@ -378,6 +378,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [segExt, setSegExt] = useState(5)
   const estenderApi = app?.id === 'estender'
   const audioApi = app?.id === 'audio'
+  // Expand frame: o LoRA do LTX (sua placa) ou, na Comfy Cloud, o Reframe do Luma Ray 3.2.
+  const [escolhaExp, setEscolhaExp] = useState('ltxexp')
+  const expandirApi = app?.id === 'expandir' && naNuvem && escolhaExp === 'reframe_luma'
+  const escolherExp = useEscolha(setEscolhaExp)
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -628,7 +632,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : audioApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : expandirApi
+    ? { modelo: 'limpar_video', metodo_video: 'reframe_luma', prompt: texto.trim(), formato_saida: formato, proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : audioApi
     ? { modelo: 'limpar_video', metodo_video: 'limpar_audio', prompt: '', proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : estenderApi
@@ -658,7 +665,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (audioApi) {
+      if (expandirApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: 'reframe_luma', prompt: texto.trim(), formato_saida: formato, proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (audioApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: 'limpar_audio', prompt: '', proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (estenderApi) {
@@ -960,6 +970,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
               </label>
               <Chips rotulo="Add" opcoes={[3, 5, 8, 10].map((n) => ({ id: String(n), rotulo: `${n} s` }))} valor={String(segExt)} aoMudar={(v) => setSegExt(Number(v))} />
             </>}
+            {app.id === 'expandir' && (
+              <label>Model
+                <select className="hf-select" value={`${naNuvem && escolhaExp === 'reframe_luma' ? 'nuvem' : 'local'}:${naNuvem && escolhaExp === 'reframe_luma' ? 'reframe_luma' : 'ltxexp'}`} onChange={(e) => escolherExp(e.target.value)}>
+                  <optgroup label="Local · your GPU"><option value="local:ltxexp">LTX Expand frame</option></optgroup>
+                  <optgroup label="Comfy Cloud · credits"><option value="nuvem:reframe_luma">Luma Ray 3.2 Reframe (up to 30 s)</option></optgroup>
+                </select>
+              </label>
+            )}
             {chromaApi && <Chips rotulo="Background" opcoes={[{ id: 'green', rotulo: 'Green' }, { id: 'broadcast', rotulo: 'Broadcast green' }, { id: 'blue', rotulo: 'Blue' }]} valor={corChroma} aoMudar={setCorChroma} />}
             {ehMapa && <label className="hf-toggle"><input type="checkbox" checked={exr} onChange={(e) => setExr(e.target.checked)} /> EXR too</label>}
             {app.id === 'maquete' && ladosTela.length > 0 && (

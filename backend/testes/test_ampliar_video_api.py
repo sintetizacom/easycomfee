@@ -84,6 +84,11 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(g["gera"]["class_type"], "VeedCleanVideoAudioNode")
         self.assertEqual(g["gera"]["inputs"]["loudness"], "normalize")
 
+    def test_reframe_luma(self):
+        g = workflows.reframe_video_api("v.mp4", "9:16", "street", 3)
+        self.assertEqual(g["gera"]["class_type"], "LumaRay32VideoReframeNode")
+        self.assertEqual(g["gera"]["inputs"]["aspect_ratio"], "9:16")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")
