@@ -311,6 +311,7 @@ export const APPS: App[] = [
   { id: 'chroma', nome: 'Green screen', frase: 'Replaces the background with a flat chroma-key color and keeps the subject, so you can key it in any editor. Comfy Cloud (Bria), credits.', semTexto: true, beta: true },
   { id: 'fundo', nome: 'Swap background', frase: 'Keeps the subject and puts your image behind it, with matching edges. Comfy Cloud (Bria), credits.', semTexto: true, imagem: 'New background', beta: true },
   { id: 'estender', nome: 'Extend video', frase: 'Continues your clip with new footage that follows what you describe. Comfy Cloud (Grok or PixVerse), credits.', textoObrigatorio: true, dica: 'What happens next: she turns and walks down the street as the lights come on', beta: true },
+  { id: 'audio', nome: 'Clean audio', frase: 'Removes background noise from the speech and evens out the volume. The picture stays untouched. Comfy Cloud (VEED), credits.', semTexto: true, beta: true },
   { id: 'foley', nome: 'Add sound (foley)', frase: 'Creates the sound effects of a silent clip: steps, doors, rain. No speech or music. Up to 7 s.', textoObrigatorio: true, dica: 'What makes sound and on what: boots crunching on gravel, a wooden door slams shut, light rain on a car roof', beta: true },
   { id: 'cinemagraph', nome: 'Cinemagraph', frase: 'Brings one thing in a still to life in a seamless loop while the rest stays frozen. Best on scenes without people.', imagem: 'Still image', video: false, textoObrigatorio: true, dica: 'What moves, and only that: only the water in the fountain flows', beta: true },
   { id: 'ampliar2x', nome: 'Upscale 2×', frase: 'Doubles the resolution by inventing fine detail (not a faithful restoration). Up to 2 s.', semTexto: true, beta: true },
@@ -376,6 +377,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [modeloExt, setModeloExt] = useState<'ext_grok' | 'ext_pixverse'>('ext_grok')
   const [segExt, setSegExt] = useState(5)
   const estenderApi = app?.id === 'estender'
+  const audioApi = app?.id === 'audio'
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -622,11 +624,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
   const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi
-  const soNuvem = (chromaApi || fundoApi || estenderApi) && !naNuvem
+  const soNuvem = (chromaApi || fundoApi || estenderApi || audioApi) && !naNuvem
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : estenderApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : audioApi
+    ? { modelo: 'limpar_video', metodo_video: 'limpar_audio', prompt: '', proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : estenderApi
     ? { modelo: 'limpar_video', metodo_video: modeloExt, prompt: texto.trim() || 'x', duracao_video: segExt, proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : fundoApi
@@ -653,7 +658,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (estenderApi) {
+      if (audioApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: 'limpar_audio', prompt: '', proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (estenderApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: modeloExt, prompt: texto.trim(), duracao_video: segExt, proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (fundoApi) {

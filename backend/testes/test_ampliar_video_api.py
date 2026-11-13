@@ -79,6 +79,11 @@ class AmpliarVideoApiTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             workflows.estender_video_api("v.mp4", "outro", "x")
 
+    def test_limpar_audio(self):
+        g = workflows.limpar_audio_video_api("v.mp4")
+        self.assertEqual(g["gera"]["class_type"], "VeedCleanVideoAudioNode")
+        self.assertEqual(g["gera"]["inputs"]["loudness"], "normalize")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

@@ -1767,6 +1767,15 @@ def estender_video_api(entrada, metodo, prompt, duracao=5, seed=42, prefixo="vid
     return g
 
 
+def limpar_audio_video_api(entrada, prefixo="video_audio_limpo"):
+    """Tira o ruido de fundo da fala (VEED): o video fica igual, so a trilha e trocada pela limpa."""
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "gera": {"class_type": "VeedCleanVideoAudioNode", "inputs": {
+                "video": ["carga", 0], "strength": 0.874, "loudness": "normalize", "loudness.target_lufs": -19.0}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

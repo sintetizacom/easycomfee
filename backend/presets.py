@@ -2952,6 +2952,9 @@ METODOS_API_VIDEO.update(METODOS_CHROMA)
 METODOS_ESTENDER = {"ext_grok": "GrokVideoExtendNode", "ext_pixverse": "PixverseV6ExtendVideoNode"}
 DURACAO_ESTENDER = {"ext_grok": (2, 10), "ext_pixverse": (1, 15)}
 METODOS_API_VIDEO.update(METODOS_ESTENDER)
+# Limpar o audio da fala de um video (VEED): so a trilha muda.
+METODOS_LIMPAR_AUDIO = {"limpar_audio": "VeedCleanVideoAudioNode"}
+METODOS_API_VIDEO.update(METODOS_LIMPAR_AUDIO)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "
