@@ -382,6 +382,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [escolhaExp, setEscolhaExp] = useState('ltxexp')
   const expandirApi = app?.id === 'expandir' && naNuvem && escolhaExp === 'reframe_luma'
   const escolherExp = useEscolha(setEscolhaExp)
+  // SDR -> HDR: o LTX local ou, na Comfy Cloud, o LTX por API (sem audio na saida).
+  const [escolhaHdr, setEscolhaHdr] = useState('ltxhdr')
+  const hdrApi = app?.id === 'hdr' && naNuvem && escolhaHdr === 'hdr_ltx'
+  const escolherHdr = useEscolha(setEscolhaHdr)
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -627,12 +631,15 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     try { setVideo(await api.enviarReferencia(f)) } catch (x) { setErro(mensagem(x)) } finally { setEnviando(false) }
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
-  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi
+  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi && !hdrApi
   const soNuvem = (chromaApi || fundoApi || estenderApi || audioApi) && !naNuvem
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : expandirApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : hdrApi
+    ? { modelo: 'limpar_video', metodo_video: 'hdr_ltx', prompt: '', proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : expandirApi
     ? { modelo: 'limpar_video', metodo_video: 'reframe_luma', prompt: texto.trim(), formato_saida: formato, proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : audioApi
@@ -665,7 +672,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (expandirApi) {
+      if (hdrApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: 'hdr_ltx', prompt: '', proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (expandirApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: 'reframe_luma', prompt: texto.trim(), formato_saida: formato, proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (audioApi) {
@@ -970,6 +980,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
               </label>
               <Chips rotulo="Add" opcoes={[3, 5, 8, 10].map((n) => ({ id: String(n), rotulo: `${n} s` }))} valor={String(segExt)} aoMudar={(v) => setSegExt(Number(v))} />
             </>}
+            {app.id === 'hdr' && (
+              <label>Model
+                <select className="hf-select" value={`${naNuvem && escolhaHdr === 'hdr_ltx' ? 'nuvem' : 'local'}:${naNuvem && escolhaHdr === 'hdr_ltx' ? 'hdr_ltx' : 'ltxhdr'}`} onChange={(e) => escolherHdr(e.target.value)}>
+                  <optgroup label="Local · your GPU"><option value="local:ltxhdr">LTX SDR → HDR</option></optgroup>
+                  <optgroup label="Comfy Cloud · credits"><option value="nuvem:hdr_ltx">LTX API SDR → HDR (no sound kept)</option></optgroup>
+                </select>
+              </label>
+            )}
             {app.id === 'expandir' && (
               <label>Model
                 <select className="hf-select" value={`${naNuvem && escolhaExp === 'reframe_luma' ? 'nuvem' : 'local'}:${naNuvem && escolhaExp === 'reframe_luma' ? 'reframe_luma' : 'ltxexp'}`} onChange={(e) => escolherExp(e.target.value)}>

@@ -89,6 +89,11 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(g["gera"]["class_type"], "LumaRay32VideoReframeNode")
         self.assertEqual(g["gera"]["inputs"]["aspect_ratio"], "9:16")
 
+    def test_hdr_ltx_api(self):
+        g = workflows.hdr_video_api("v.mp4", 3)
+        self.assertEqual(g["gera"]["class_type"], "LtxApiVideoSdrToHdr")
+        self.assertEqual(g["salva"]["inputs"]["video"], ["gera", 0])
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

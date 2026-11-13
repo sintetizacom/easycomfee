@@ -1786,6 +1786,14 @@ def reframe_video_api(entrada, aspecto="16:9", prompt="", seed=42, prefixo="vide
                                                             "format": "auto", "codec": "auto"}}}
 
 
+def hdr_video_api(entrada, seed=42, prefixo="video_hdr_api"):
+    """SDR -> HDR pela API do LTX (Comfy Cloud). O no nao mantem o audio."""
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "gera": {"class_type": "LtxApiVideoSdrToHdr", "inputs": {"video": ["carga", 0], "seed": seed % 4294967295}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

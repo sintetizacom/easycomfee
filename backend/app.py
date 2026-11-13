@@ -1487,6 +1487,8 @@ async def _montar(tarefa: Tarefa):
                 tarefa.prompt_final = p.prompt
                 return workflows.dublar_video_api(entrada, p.metodo_video, p.idioma_destino, seed,
                                                   prefixo="editor/video_dublado")
+            if p.metodo_video in presets.METODOS_HDR_API:
+                return workflows.hdr_video_api(entrada, seed, prefixo="editor/video_hdr_api")
             if p.metodo_video in presets.METODOS_REFRAME:
                 tarefa.prompt_final = p.prompt
                 return workflows.reframe_video_api(entrada, p.formato_saida, p.prompt.strip(), seed,
