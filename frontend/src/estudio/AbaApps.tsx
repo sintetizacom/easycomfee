@@ -309,6 +309,7 @@ export const APPS: App[] = [
   { id: 'alpha', nome: 'Remove background', frase: 'Cuts out the subject with a clean alpha matte, no green screen: hair, smoke and glass included. Up to 6 s. Download it as a transparent video.', semTexto: true },
   { id: 'relight', nome: 'Relight', frase: 'Changes the light of an outdoor shot: pick the kind of light and where it comes from.', luz: true, semTexto: true, beta: true },
   { id: 'chroma', nome: 'Green screen', frase: 'Replaces the background with a flat chroma-key color and keeps the subject, so you can key it in any editor. Comfy Cloud (Bria), credits.', semTexto: true, beta: true },
+  { id: 'fundo', nome: 'Swap background', frase: 'Keeps the subject and puts your image behind it, with matching edges. Comfy Cloud (Bria), credits.', semTexto: true, imagem: 'New background', beta: true },
   { id: 'foley', nome: 'Add sound (foley)', frase: 'Creates the sound effects of a silent clip: steps, doors, rain. No speech or music. Up to 7 s.', textoObrigatorio: true, dica: 'What makes sound and on what: boots crunching on gravel, a wooden door slams shut, light rain on a car roof', beta: true },
   { id: 'cinemagraph', nome: 'Cinemagraph', frase: 'Brings one thing in a still to life in a seamless loop while the rest stays frozen. Best on scenes without people.', imagem: 'Still image', video: false, textoObrigatorio: true, dica: 'What moves, and only that: only the water in the fountain flows', beta: true },
   { id: 'ampliar2x', nome: 'Upscale 2×', frase: 'Doubles the resolution by inventing fine detail (not a faithful restoration). Up to 2 s.', semTexto: true, beta: true },
@@ -369,6 +370,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   // Green screen (Bria): so na Comfy Cloud; a cor do fundo.
   const [corChroma, setCorChroma] = useState<'green' | 'broadcast' | 'blue'>('green')
   const chromaApi = app?.id === 'chroma'
+  const fundoApi = app?.id === 'fundo'
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -615,11 +617,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
   const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi
-  const soNuvem = chromaApi && !naNuvem
+  const soNuvem = (chromaApi || fundoApi) && !naNuvem
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : chromaApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : fundoApi
+    ? { modelo: 'limpar_video', metodo_video: 'fundo_bria', prompt: '', proporcao: '1:1',
+        referencias: video && imagem ? [`entrada:${video.nome}`, imagem.nome] : [] }
+    : chromaApi
     ? { modelo: 'limpar_video', metodo_video: 'chroma_bria', prompt: corChroma, proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : somApi
@@ -640,7 +645,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (chromaApi) {
+      if (fundoApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: 'fundo_bria', prompt: '', proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`, imagem!.nome] } as Parameters<typeof api.gerar>[0])
+      } else if (chromaApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: 'chroma_bria', prompt: corChroma, proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (somApi) {
@@ -933,7 +941,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
             {semPlaca && <span className="hf-erro" role="alert">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
             {app.formatos && <Chips rotulo="Output format" opcoes={['16:9', '9:16', '1:1'].map((f) => ({ id: f, rotulo: f }))} valor={formato} aoMudar={setFormato} />}
             {semPacote && <span className="hf-dica">Install “Video depth map” in Config Models to use this app.</span>}
-            {soNuvem && <span className="hf-dica">Green screen runs on Comfy Cloud: switch the engine to Comfy Cloud to use it.</span>}
+            {soNuvem && <span className="hf-dica">This app runs on Comfy Cloud: switch the engine to Comfy Cloud to use it.</span>}
             {bloqueado && <span className="hf-dica">This effect is not on Comfy Cloud yet. Switch to Local to use it.</span>}
             <BotaoGerar rotulo={app.id === 'maquete' && modoMaquete === 'avancado' ? 'Generate video ✦' : '✦ Apply effect'} est={custo} desligado={!pronto} aoClicar={aplicar} />
           </div>}

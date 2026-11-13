@@ -65,6 +65,11 @@ class AmpliarVideoApiTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             workflows.chroma_video_api("v.mp4", "outro")
 
+    def test_trocar_fundo_bria(self):
+        g = workflows.trocar_fundo_video_api("v.mp4", "fundo.png", 3)
+        self.assertEqual(g["gera"]["class_type"], "BriaVideoReplaceBackground")
+        self.assertEqual(g["gera"]["inputs"]["background_image"], ["fundo", 0])
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

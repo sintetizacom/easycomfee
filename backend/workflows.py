@@ -1736,6 +1736,16 @@ def chroma_video_api(entrada, metodo="chroma_bria", cor="green", seed=42, prefix
                                                             "format": "auto", "codec": "auto"}}}
 
 
+def trocar_fundo_video_api(entrada, imagem_fundo, seed=42, prefixo="video_fundo"):
+    """Troca o fundo do video por uma imagem (Bria): o sujeito fica, o fundo vem da imagem."""
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "fundo": {"class_type": "LoadImage", "inputs": {"image": imagem_fundo}},
+            "gera": {"class_type": "BriaVideoReplaceBackground", "inputs": {
+                "video": ["carga", 0], "background_image": ["fundo", 0], "seed": seed % 2147483647}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

@@ -1487,6 +1487,11 @@ async def _montar(tarefa: Tarefa):
                 tarefa.prompt_final = p.prompt
                 return workflows.dublar_video_api(entrada, p.metodo_video, p.idioma_destino, seed,
                                                   prefixo="editor/video_dublado")
+            if p.metodo_video == "fundo_bria":
+                if len(p.referencias) < 2:
+                    raise ValueError("envie a imagem do novo fundo")
+                return workflows.trocar_fundo_video_api(entrada, p.referencias[1], seed,
+                                                        prefixo="editor/video_fundo")
             if p.metodo_video in presets.METODOS_CHROMA:
                 return workflows.chroma_video_api(entrada, p.metodo_video, p.prompt.strip() or "green", seed,
                                                   prefixo="editor/video_chroma")
