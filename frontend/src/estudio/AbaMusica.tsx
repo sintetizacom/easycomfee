@@ -10,7 +10,7 @@ import { Contador, BotaoGerar, CartaoTarefa, Chips, mensagem, useCusto, useTaref
 // your GPU or on Comfy Cloud, plus YuE2 and YuE2 Cover through Plenio (this
 // computer's second engine), with their lyrics and score review (BlocoYue).
 
-type ModeloMusica = { id: string; rotulo: string; letra: boolean; maximo: number; disponivel: boolean; motivo: string; plenio?: boolean
+type ModeloMusica = { id: string; rotulo: string; letra: boolean; maximo: number; minimo?: number; disponivel: boolean; motivo: string; plenio?: boolean
   estilos?: string[]; cover?: boolean; ordem?: string[]
   /** Where it exists: this machine (installed) and Comfy Cloud. */
   local?: boolean; nuvem?: boolean; motivo_local?: string }
@@ -112,7 +112,9 @@ export default function AbaMusica() {
   }
   const inserir = (marca: string) => setLetra((l) => (l && !l.endsWith('\n') ? l + '\n' : l) + marca + '\n')
   const comVoz = !!cfg?.letra && vocal
-  const durOk = Math.min(duracao, cfg?.maximo ?? duracao)
+  const minDur = cfg?.minimo ?? 10
+  const ehSfx = minDur < 10
+  const durOk = Math.max(minDur, Math.min(duracao, cfg?.maximo ?? duracao))
 
   // Versao do ACE-Step 1.5 (Turbo ou XL), so as que estao neste PC.
   const versoes = useVersoes()
@@ -232,15 +234,15 @@ export default function AbaMusica() {
               (antes aparecia um "max 3 min" inventado que depois virava 5 ou 10 min). */}
           {/* Duracao e final na mesma caixa: o final fica logo abaixo do controle deslizante. */}
           <div className="hf-ctrl hf-mun-duracao">
-          {!(modelo === 'ace-step15' && guia) && <label className="hf-ctrl-largo"><small>Length · {Math.floor(durOk / 60)}:{String(durOk % 60).padStart(2, '0')}
-            {cfg ? ` (max ${Math.round(cfg.maximo / 60)} min)` : ' (checking the limit…)'}</small>
-            <input type="range" min={10} max={cfg?.maximo ?? duracao} step={5} value={durOk} disabled={!cfg}
+          {!(modelo === 'ace-step15' && guia) && <label className="hf-ctrl-largo"><small>Length · {ehSfx ? `${durOk} s` : `${Math.floor(durOk / 60)}:${String(durOk % 60).padStart(2, '0')}`}
+            {cfg ? (ehSfx ? ` (max ${cfg.maximo} s)` : ` (max ${Math.round(cfg.maximo / 60)} min)`) : ' (checking the limit…)'}</small>
+            <input type="range" min={minDur} max={cfg?.maximo ?? duracao} step={ehSfx ? 0.5 : 5} value={durOk} disabled={!cfg}
               onChange={(e) => setDuracao(Number(e.target.value))} aria-label="Length in seconds" />
-            {cfg && duracao > cfg.maximo && <small className="hf-ctrl-nota">{cfg.rotulo} goes up to {Math.round(cfg.maximo / 60)} min, so the song is {Math.round(cfg.maximo / 60)} min.</small>}</label>}
-          <label className="hf-mun-final" title="Natural looks for a pause near the length; fade out fades the last seconds."><small>Ending</small>
+            {cfg && duracao > cfg.maximo && <small className="hf-ctrl-nota">{cfg.rotulo} goes up to {ehSfx ? `${cfg.maximo} s` : `${Math.round(cfg.maximo / 60)} min`}, so the {ehSfx ? 'sound' : 'song'} is {ehSfx ? `${cfg.maximo} s` : `${Math.round(cfg.maximo / 60)} min`}.</small>}</label>}
+          {!ehSfx && <label className="hf-mun-final" title="Natural looks for a pause near the length; fade out fades the last seconds."><small>Ending</small>
             <select value={final} onChange={(e) => setFinal(e.target.value)}>
               <option value="natural">Natural ending</option><option value="fade">Fade out</option><option value="original">Keep as generated</option>
-            </select></label>
+            </select></label>}
           </div>
           {versaoOk && versoesVisiveis(versoes['ace-step15']).length > 1 && (
             <Chips rotulo="Speed" valor={versaoOk} aoMudar={setVersao}

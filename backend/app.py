@@ -253,7 +253,7 @@ class PedidoGeracao(Pedido):
 
     encerramento_musica: str = Field("original", pattern="^(original|natural|fade)$")
     margem_musica: float = Field(10.0, ge=0, le=10)
-    modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover|sonilo15|pika-music)$")
+    modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover|sonilo15|pika-music|elevenlabs-sfx)$")
     # So o YuE2 (Plenio): um dos estilos prontos do pedido, ou "none".
     estilo_musica: str = Field("none", max_length=120)
     # Revisao antes de gerar (YuE2): "direto" gera sem parar; "letra" e
@@ -267,7 +267,7 @@ class PedidoGeracao(Pedido):
     docs_musica: dict[str, str] = {}
     letra_musica: str = Field("", max_length=12000)
     vocal_musica: bool = False
-    duracao_musica: float = Field(30.0, ge=10, le=600)
+    duracao_musica: float = Field(30.0, ge=0.5, le=600)
     referencia_musica: str = ""
     projeto_musica: str = Field("", max_length=120)
     titulo_musica: str = Field("", max_length=120)

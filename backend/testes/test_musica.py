@@ -55,6 +55,13 @@ class MusicaTests(unittest.TestCase):
         self.assertEqual(pika['gera']['inputs']['mode.duration'],30.0)
         sem_voz=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='pika-music',prompt='x',letra_musica='antiga',vocal_musica=False,duracao_musica=30),42,{})
         self.assertEqual(sem_voz['gera']['inputs']['mode.lyrics'],'')
+    def test_efeito_sonoro_elevenlabs(self):
+        g=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='elevenlabs-sfx',prompt='door slam',duracao_musica=2.5),42,{})
+        self.assertEqual(g['gera']['class_type'],'ElevenLabsTextToSoundEffects')
+        self.assertEqual(g['gera']['inputs']['text'],'door slam')
+        self.assertEqual(g['gera']['inputs']['model.duration'],2.5)
+        longo=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='elevenlabs-sfx',prompt='x',duracao_musica=90),42,{})
+        self.assertEqual(longo['gera']['inputs']['model.duration'],30.0)
     def test_instrumental_nao_envia_letra_antiga(self):
         p=app.PedidoGeracao(modelo='musica',prompt='Instrumental',letra_musica='Texto antigo',vocal_musica=False)
         g=musica.grafo(p,42,{'unet':'u','clip':'c','vae':'v'})

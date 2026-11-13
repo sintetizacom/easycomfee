@@ -28,6 +28,9 @@ MODELOS = {
     # 12/11/2026, ainda nao gerados. O preco vem do price_badge de cada no.
     "sonilo15": {"rotulo": "Sonilo Music 1.5 (API)", "letra": False, "maximo": 360, "api": True,
                  "nos": ["SoniloMusic15"], "pesos": {}},
+    # Efeitos sonoros por texto (ElevenLabs, 0,5 a 30 s): mesmo menu, mas sem letra nem final de musica.
+    "elevenlabs-sfx": {"rotulo": "ElevenLabs Sound Effects (API)", "letra": False, "maximo": 30, "minimo": 0.5, "api": True,
+                       "sfx": True, "nos": ["ElevenLabsTextToSoundEffects"], "pesos": {}},
     "pika-music": {"rotulo": "Pika Music (API)", "letra": True, "maximo": 360, "api": True,
                    "nos": ["PikaMusicNode"], "pesos": {}},
     # YuE2 pelo modelo pronto "1 . YuE2 . Song" do Plenio (v1.0.2), no SEGUNDO
@@ -101,7 +104,7 @@ def resolver(info, ident, preferir_alt=False):
             pesos, faltam_pesos = p_alt, []
             break
     faltam += faltam_pesos
-    return {"id": ident, "rotulo": cfg["rotulo"], "letra": cfg["letra"], "maximo": cfg["maximo"],
+    return {"id": ident, "rotulo": cfg["rotulo"], "letra": cfg["letra"], "maximo": cfg["maximo"], "minimo": cfg.get("minimo", 10),
             "disponivel": not faltam, "motivo": "Missing: " + ", ".join(faltam) if faltam else "", "pesos": pesos}
 
 async def catalogo():
@@ -328,7 +331,7 @@ def configuracao_geracao(p):
     descricao=p.prompt
     if p.modelo_musica == "ace-step15" and p.vocal_musica and p.genero_vocal_musica in GENEROS_VOCAIS:
         descricao += "\n" + GENEROS_VOCAIS[p.genero_vocal_musica]
-    if p.encerramento_musica != "original" and not p.vocal_musica and not p.referencia_musica:
+    if p.encerramento_musica != "original" and not p.vocal_musica and not p.referencia_musica and not MODELOS[p.modelo_musica].get("sfx"):
         dur=min(MODELOS[p.modelo_musica]["maximo"], dur+p.margem_musica)
         descricao += "\nFinish with a brief outro and a resolved ending, allowing the instruments to decay into silence."
     return descricao, dur
@@ -339,6 +342,11 @@ def grafo_api(p, seed):
     Pika: descricao, letra (se a pessoa quer voz) e duracao."""
     def node(tipo, **inputs): return {"class_type": tipo, "inputs": inputs}
     descricao, dur = configuracao_geracao(p)
+    if p.modelo_musica == "elevenlabs-sfx":
+        return {"gera": node("ElevenLabsTextToSoundEffects", text=p.prompt, model="eleven_sfx_v2",
+                             **{"model.duration": float(max(0.5, min(30, p.duracao_musica))), "model.loop": False,
+                                "model.prompt_influence": 0.3}, output_format="mp3_44100_192"),
+                "salva": node("SaveAudio", audio=["gera", 0], filename_prefix=f"editor/{nome_musica(p)}")}
     if p.modelo_musica == "sonilo15":
         ent = {"prompt": descricao, "duration": "custom", "duration.seconds": max(10, min(360, int(dur))),
                "seed": seed}
@@ -421,7 +429,8 @@ async def finalizar_saida(p, saida):
         # O Plenio ja masterizou e encerrou a musica: nada a cortar.
         return [dict(saida, musica={"versao": "Original", "motivo": ""})], {"motivo": ""}
     dados = await comfy.imagem(saida["nome"], saida.get("subpasta", ""), saida.get("tipo", "output"))
-    final, rel = await asyncio.to_thread(finalizacao_musica.finalizar, dados, p.duracao_musica, p.margem_musica, p.encerramento_musica, p.vocal_musica)
+    final, rel = await asyncio.to_thread(finalizacao_musica.finalizar, dados, p.duracao_musica, p.margem_musica,
+                                        "original" if MODELOS.get(p.modelo_musica, {}).get("sfx") else p.encerramento_musica, p.vocal_musica)
     original = dict(saida, musica=rel | {"versao": "Original"})
     if final is None: return [original], rel
     FINALIZACOES.mkdir(parents=True, exist_ok=True)
