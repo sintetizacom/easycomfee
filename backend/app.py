@@ -1487,6 +1487,9 @@ async def _montar(tarefa: Tarefa):
                 tarefa.prompt_final = p.prompt
                 return workflows.dublar_video_api(entrada, p.metodo_video, p.idioma_destino, seed,
                                                   prefixo="editor/video_dublado")
+            if p.metodo_video in presets.METODOS_CHROMA:
+                return workflows.chroma_video_api(entrada, p.metodo_video, p.prompt.strip() or "green", seed,
+                                                  prefixo="editor/video_chroma")
             if p.metodo_video in presets.METODOS_SOM_VIDEO:
                 tarefa.prompt_final = p.prompt
                 return workflows.som_video_api(entrada, p.metodo_video, p.prompt, seed,

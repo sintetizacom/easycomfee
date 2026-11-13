@@ -1723,6 +1723,19 @@ def dublar_video_api(entrada, metodo, idioma="English", seed=42, prefixo="video_
     return g
 
 
+def chroma_video_api(entrada, metodo="chroma_bria", cor="green", seed=42, prefixo="video_chroma"):
+    """Green screen por API (Bria): o fundo vira uma cor lisa de chroma key, o sujeito fica."""
+    if metodo != "chroma_bria":
+        raise ValueError("método de green screen desconhecido")
+    from presets import CORES_CHROMA
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "gera": {"class_type": "BriaVideoGreenScreen", "inputs": {
+                "video": ["carga", 0], "green_shade": CORES_CHROMA.get(cor, "chroma_green"),
+                "seed": seed % 2147483647}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

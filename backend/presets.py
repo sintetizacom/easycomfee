@@ -2944,6 +2944,10 @@ METODOS_SOM_VIDEO = {"mirelo", "sonilo"}
 # Dublagem: traduz a fala, clona a voz e refaz a boca (aba Lip Sync, "Dub a video").
 METODOS_DUB = {"dub_veed": "VeedDubbingNode", "dub_heygen": "HeyGenVideoTranslateNode"}
 METODOS_API_VIDEO.update(METODOS_DUB)
+# Green screen: troca o fundo por uma cor de chroma key (Bria, Comfy Cloud). Cores = opcoes do no.
+METODOS_CHROMA = {"chroma_bria": "BriaVideoGreenScreen"}
+CORES_CHROMA = {"green": "chroma_green", "broadcast": "broadcast_green", "blue": "blue_screen"}
+METODOS_API_VIDEO.update(METODOS_CHROMA)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

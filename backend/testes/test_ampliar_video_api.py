@@ -56,6 +56,15 @@ class AmpliarVideoApiTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             workflows.dublar_video_api("v.mp4", "outro")
 
+    def test_green_screen_bria(self):
+        g = workflows.chroma_video_api("v.mp4", "chroma_bria", "blue", 3)
+        self.assertEqual(g["gera"]["class_type"], "BriaVideoGreenScreen")
+        self.assertEqual(g["gera"]["inputs"]["green_shade"], "blue_screen")
+        self.assertEqual(g["salva"]["inputs"]["video"], ["gera", 0])
+        self.assertEqual(workflows.chroma_video_api("v.mp4")["gera"]["inputs"]["green_shade"], "chroma_green")
+        with self.assertRaises(ValueError):
+            workflows.chroma_video_api("v.mp4", "outro")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")
