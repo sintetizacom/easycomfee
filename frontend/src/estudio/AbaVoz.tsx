@@ -44,6 +44,8 @@ const segundosDe = (texto: string) => Math.round(texto.trim().length / 15)
 // aceitava qualquer tamanho e so o Generate falhava.
 const MAX_TEXTO = 12000
 const IDIOMAS = ['English', 'Portuguese', 'Spanish', 'French', 'German', 'Italian', 'Japanese', 'Chinese', 'Korean']
+const VOZES_ELEVEN = ['Roger', 'Sarah', 'Laura', 'Charlie', 'George', 'Callum', 'River', 'Harry', 'Liam', 'Alice', 'Matilda', 'Will',
+  'Jessica', 'Eric', 'Bella', 'Chris', 'Brian', 'Daniel', 'Lily', 'Adam', 'Bill']
 const FALANTES = ['Ryan', 'Aiden', 'Dylan', 'Eric', 'Serena', 'Vivian', 'Ono_anna', 'Sohee', 'Uncle_fu']
 
 export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
@@ -91,14 +93,21 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const [erro, setErro] = useState<string | null>(null)
   // The model follows the engine: OmniVoice on your GPU, Qwen3-TTS on Comfy Cloud.
   // Picking the other one in the menu switches the engine.
-  const escolher = useEscolha(() => {})
+  // Na nuvem ha dois modelos: Qwen3-TTS (3 modos) e ElevenLabs (so Narrate, vozes prontas, creditos).
+  const [modeloNuvem, setModeloNuvem] = useState('qwen3tts')
+  const eleven = naNuvem && modeloNuvem === 'elevenlabs'
+  const [vozEleven, setVozEleven] = useState('Roger')
+  const escolher = useEscolha((id) => { if (id === 'qwen3tts' || id === 'elevenlabs') setModeloNuvem(id) })
 
   // Narrate local com voz pronta = Voice Design com as tags e a seed dela.
   const pronta = modo === 'narrar' && !naNuvem ? VOZES_LOCAIS.find((v) => v.id === vozLocal && v.tags) : undefined
   // Voz salva: refaz o Design (descricao + seed) ou o Clone (gravacao + transcricao).
   const minhasVisiveis = vozesMinhas.filter((v) => v.nome.toLowerCase().includes(busca.trim().toLowerCase()))
   const minha = modo === 'narrar' && !naNuvem ? vozesMinhas.find((v) => `minha:${v.id}` === vozLocal) : undefined
-  const pedido = minha ? {
+  const pedido = eleven ? {
+    modelo: 'voz', modelo_voz: 'elevenlabs', modo_voz: 'narrar', prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
+    falante_voz: vozEleven, instrucao_voz: comoDizer.trim().replace(/[\[\]]/g, ''),
+  } : minha ? {
     modelo: 'voz', modo_voz: minha.tipo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma, falante_voz: falante,
     ...(minha.tipo === 'criar' ? { instrucao_voz: minha.instrucao, seed: minha.seed }
       : { instrucao_voz: '', referencia_voz: minha.referencia, transcricao_voz: minha.transcricao ?? '' }),
@@ -116,11 +125,12 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
     setCaps(null)
     fetch('/api/voz').then((r) => r.json()).then(setCaps).catch(() => setCaps(null))
   }, [naNuvem])
-  const semMotor = !!caps && (!caps.disponivel || (modo === 'criar' && caps.design === false))
-  const pronto = !semMotor && !!texto.trim() && (modo !== 'criar' || !!instrucao.trim())
+  const semMotor = !eleven && !!caps && (!caps.disponivel || (modo === 'criar' && caps.design === false))
+  const pronto = !semMotor && !!texto.trim() && (!eleven || modo === 'narrar') && (modo !== 'criar' || !!instrucao.trim())
     && (modo !== 'clonar' || (!!ref && (naNuvem || !!transcricao.trim())))
   // O que falta para o Generate ligar (antes ficava desligado sem dizer por que).
   const falta = semMotor ? null
+    : eleven && modo !== 'narrar' ? 'ElevenLabs only narrates with its ready voices: switch to Narrate, or pick Qwen3-TTS.'
     : modo === 'criar' && !instrucao.trim() ? 'Describe the voice (or pick an example) to design it.'
     : modo === 'clonar' && !ref ? 'Add a voice sample to clone.'
     : modo === 'clonar' && !naNuvem && !transcricao.trim() ? 'Type what the sample says, word for word (needed on your GPU).'
@@ -167,14 +177,15 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
             {modo === 'narrar' && (naNuvem ? (
               <>
                 <div className="hf-vzn-lista" role="radiogroup" aria-label="Speaker">
-                  {FALANTES.filter((f) => f.toLowerCase().includes(busca.trim().toLowerCase())).map((f) => (
-                    <button key={f} type="button" role="radio" aria-checked={falante === f} data-ativo={falante === f} onClick={() => setFalante(f)}>
+                  {(eleven ? VOZES_ELEVEN : FALANTES).filter((f) => f.toLowerCase().includes(busca.trim().toLowerCase())).map((f) => (
+                    <button key={f} type="button" role="radio" aria-checked={(eleven ? vozEleven : falante) === f} data-ativo={(eleven ? vozEleven : falante) === f}
+                      onClick={() => (eleven ? setVozEleven(f) : setFalante(f))}>
                       <i aria-hidden>{f[0]}</i><b>{f.replace('_', ' ')}</b>
                     </button>
                   ))}
                 </div>
                 <input className="hf-campo" value={comoDizer} onChange={(e) => setComoDizer(e.target.value)} aria-label="How to say it"
-                  placeholder="Optional: how to say it, e.g. excited, whispering, sad" />
+                  placeholder={eleven ? 'Optional: an emotion tag, e.g. whispers, excited, sad' : 'Optional: how to say it, e.g. excited, whispering, sad'} />
               </>
             ) : (
               <>
@@ -263,9 +274,10 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
 
           <aside className="hf-vz-coluna hf-vzn-dir" aria-label="Settings">
             <span className="hf-grupo-rotulo">Settings</span>
-          <label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? 'nuvem:qwen3tts' : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          <label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? `nuvem:${modeloNuvem}` : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true, naoInstalado: !naNuvem && !!caps && !caps.disponivel, falta: 'nodes missing' },
-              { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true }]} />
+              { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true },
+              { id: 'elevenlabs', rotulo: 'ElevenLabs v3 (API)', soNuvem: true }]} />
           </select></label>
           <label className="hf-campo"><span>Language</span><select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
             {IDIOMAS.map((i) => <option key={i}>{i}</option>)}

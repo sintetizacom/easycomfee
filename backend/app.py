@@ -279,6 +279,8 @@ class PedidoGeracao(Pedido):
     idioma_voz: str = Field("Portuguese", pattern="^(Portuguese|English|Spanish|German|Italian|French|Japanese|Chinese|Korean)$")
     idioma_referencia_voz: str = Field("Portuguese", pattern="^(Portuguese|English|Spanish|German|Italian|French|Japanese|Chinese|Korean)$")
     modo_voz: str = Field("narrar", pattern="^(narrar|criar|clonar)$")
+    # "auto": a voz segue o motor (OmniVoice local, Qwen3-TTS na nuvem). "elevenlabs": so na Comfy Cloud.
+    modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs)$")
     referencia_voz: str = ""
     nome_voz: str = Field("", max_length=120)
     titulo_audio_voz: str = Field("", max_length=120)
@@ -892,6 +894,10 @@ async def _montar(tarefa: Tarefa):
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0
         tarefa.prompt_final = p.prompt
+        if p.modelo_voz == "elevenlabs":
+            if not comfy.na_nuvem():
+                raise ValueError("ElevenLabs runs on Comfy Cloud: switch the engine to Comfy Cloud.")
+            return voz.grafo_elevenlabs(p, seed)
         return voz.grafo_nuvem(p, seed) if comfy.na_nuvem() else voz.grafo(p, seed)
 
     if p.modelo in presets.NUVEM:
@@ -2912,6 +2918,7 @@ def _eh_api(p: PedidoGeracao) -> bool:
         p.modelo == "reluz" and p.metodo_luz == "nuvem") or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
         p.modelo == "limpar_video" and p.metodo_video in presets.METODOS_API_VIDEO) or (
+        p.modelo == "voz" and p.modelo_voz == "elevenlabs") or (
         p.modelo == "musica" and bool(musica.MODELOS.get(p.modelo_musica, {}).get("api"))) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
@@ -4145,6 +4152,8 @@ async def gerar(pedido: PedidoGeracao):
     if pedido.modelo == "voz":
         if len(pedido.prompt) > 12000:
             raise HTTPException(400, "Use up to 12,000 characters per narration.")
+        if pedido.modelo_voz == "elevenlabs" and (pedido.modo_voz != "narrar" or len(pedido.prompt) > 5000):
+            raise HTTPException(400, "ElevenLabs narrates with its ready voices, up to 5,000 characters.")
         if pedido.modo_voz == "clonar" and (not pedido.referencia_voz
                                             or (not pedido.transcricao_voz.strip() and not comfy.na_nuvem())):
             raise HTTPException(400, "Envie a referência de voz e sua transcrição.")

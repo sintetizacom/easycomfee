@@ -116,6 +116,37 @@ def grafo_nuvem(p, seed):
     return g
 
 
+# ElevenLabs (no de parceiro da Comfy Cloud, creditos): so a locucao com as vozes prontas. Nos
+# lidos da nuvem em 13/11/2026. O seletor de voz recebe o rotulo completo; a tela guarda so o nome.
+VOZES_ELEVENLABS = {
+    "Roger": "Roger (male, american)", "Sarah": "Sarah (female, american)", "Laura": "Laura (female, american)",
+    "Charlie": "Charlie (male, australian)", "George": "George (male, british)", "Callum": "Callum (male, american)",
+    "River": "River (neutral, american)", "Harry": "Harry (male, american)", "Liam": "Liam (male, american)",
+    "Alice": "Alice (female, british)", "Matilda": "Matilda (female, american)", "Will": "Will (male, american)",
+    "Jessica": "Jessica (female, american)", "Eric": "Eric (male, american)", "Bella": "Bella (female, american)",
+    "Chris": "Chris (male, american)", "Brian": "Brian (male, american)", "Daniel": "Daniel (male, british)",
+    "Lily": "Lily (female, british)", "Adam": "Adam (male, american)", "Bill": "Bill (male, american)"}
+_CODIGO_IDIOMA = {"Portuguese": "pt", "English": "en", "Spanish": "es", "German": "de", "Italian": "it",
+                  "French": "fr", "Japanese": "ja", "Chinese": "zh", "Korean": "ko"}
+
+
+def grafo_elevenlabs(p, seed):
+    """Locucao pelo ElevenLabs v3. `instrucao_voz` vira uma etiqueta de emocao no inicio do texto
+    ([whispers], [excited]...), que o v3 entende."""
+    nome = p.falante_voz if p.falante_voz in VOZES_ELEVENLABS else "Roger"
+    texto = p.prompt.strip()
+    if p.instrucao_voz.strip():
+        texto = f"[{p.instrucao_voz.strip().strip('[]')}] {texto}"
+    return {"voz": {"class_type": "ElevenLabsVoiceSelector", "inputs": {"voice": VOZES_ELEVENLABS[nome]}},
+            "fala": {"class_type": "ElevenLabsTextToSpeech", "inputs": {
+                "voice": ["voz", 0], "text": texto, "stability": 0.5, "apply_text_normalization": "auto",
+                "model": "eleven_v3", "model.speed": 1.0, "model.similarity_boost": 0.75,
+                "language_code": _CODIGO_IDIOMA.get(p.idioma_voz, ""), "seed": seed % 2147483647,
+                "output_format": "mp3_44100_192"}},
+            "salva": {"class_type": "SaveAudio", "inputs": {
+                "audio": ["fala", 0], "filename_prefix": "editor/" + nome_audio((p.nome_voz, p.titulo_audio_voz), "voz")}}}
+
+
 # O Voice Design do OmniVoice (local) so aceita itens de uma lista fixa; uma descricao
 # livre ("Powerful deep male voice, dramatic...") derrubava a geracao. Aqui a descricao
 # vira esses itens: genero, idade, tom, sussurro e sotaque. (A nuvem, Qwen3-TTS, le texto livre.)

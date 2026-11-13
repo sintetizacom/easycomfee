@@ -1,5 +1,7 @@
 import unittest
 
+import app
+import voz
 import workflows
 
 
@@ -30,6 +32,18 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(g["gera"]["inputs"]["video"], ["carga", 0])
         with self.assertRaises(ValueError):
             workflows.som_video_api("v.mp4", "outro")
+
+    def test_elevenlabs_leva_voz_idioma_e_etiqueta_de_emocao(self):
+        p = app.PedidoGeracao(modelo="voz", modelo_voz="elevenlabs", prompt="Hello there", falante_voz="Sarah",
+                              idioma_voz="Portuguese", instrucao_voz="[whispers]", proporcao="1:1")
+        g = voz.grafo_elevenlabs(p, 9)
+        self.assertEqual(g["voz"]["inputs"]["voice"], "Sarah (female, american)")
+        self.assertEqual(g["fala"]["inputs"]["text"], "[whispers] Hello there")
+        self.assertEqual(g["fala"]["inputs"]["language_code"], "pt")
+        self.assertEqual(g["salva"]["inputs"]["audio"], ["fala", 0])
+        sem = voz.grafo_elevenlabs(app.PedidoGeracao(modelo="voz", modelo_voz="elevenlabs", prompt="x",
+                                                       falante_voz="Inexistente", proporcao="1:1"), 1)
+        self.assertEqual(sem["voz"]["inputs"]["voice"], "Roger (male, american)")
 
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
