@@ -1701,6 +1701,28 @@ def som_video_api(entrada, metodo, prompt="", seed=42, prefixo="video_som_api"):
     return g
 
 
+_IDIOMAS_DUB = {"VEED": {"Chinese": "Chinese (Mandarin)"}, "HeyGen": {"Chinese": "Chinese (Mandarin, Simplified)"}}
+
+
+def dublar_video_api(entrada, metodo, idioma="English", seed=42, prefixo="video_dublado"):
+    """Dublagem por API: VEED (standard) ou HeyGen (speed). O video volta traduzido, com a voz clonada."""
+    g = {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}}}
+    if metodo == "dub_veed":
+        g["gera"] = {"class_type": "VeedDubbingNode", "inputs": {
+            "model": "standard", "model.video": ["carga", 0],
+            "model.target_language": _IDIOMAS_DUB["VEED"].get(idioma, idioma),
+            "model.source_language": "auto", "model.seed": seed % 2147483647}}
+    elif metodo == "dub_heygen":
+        g["gera"] = {"class_type": "HeyGenVideoTranslateNode", "inputs": {
+            "video": ["carga", 0], "output_language": _IDIOMAS_DUB["HeyGen"].get(idioma, idioma),
+            "mode": "speed", "translate_audio_only": False, "speaker_count": 0, "seed": seed % 2147483647}}
+    else:
+        raise ValueError("método de dublagem desconhecido")
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

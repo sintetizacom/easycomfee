@@ -412,6 +412,8 @@ class PedidoGeracao(Pedido):
     resolucao_limpeza: int = Field(1088, ge=256, le=2160)
     # "seedvr" amplia em pixels; "ltx" amplia no latente. Ver o preset.
     metodo_video: str = "ltx"
+    # Idioma de destino da dublagem (dub_veed / dub_heygen).
+    idioma_destino: str = Field("English", pattern="^(English|Portuguese|Spanish|French|German|Italian|Japanese|Chinese|Korean)$")
     # Resolucao final dos ampliadores por API (flashvsr / topaz).
     resolucao_video_api: str = Field("1080p", pattern="^(720p|1080p|2k|4k|2K|4K)$")
     # Especificos do metodo Magnific dentro do Reluz.
@@ -1481,6 +1483,10 @@ async def _montar(tarefa: Tarefa):
             entrada = await comfy.enviar_imagem(
                 f"ampapi_{uuid.uuid4().hex[:12]}{pathlib.Path(caminho).suffix}", origem)
             tarefa.largura, tarefa.altura = d["largura"], d["altura"]
+            if p.metodo_video in presets.METODOS_DUB:
+                tarefa.prompt_final = p.prompt
+                return workflows.dublar_video_api(entrada, p.metodo_video, p.idioma_destino, seed,
+                                                  prefixo="editor/video_dublado")
             if p.metodo_video in presets.METODOS_SOM_VIDEO:
                 tarefa.prompt_final = p.prompt
                 return workflows.som_video_api(entrada, p.metodo_video, p.prompt, seed,

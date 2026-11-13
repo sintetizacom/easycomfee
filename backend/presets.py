@@ -2941,6 +2941,9 @@ METODOS_API_VIDEO = {"flashvsr": "WavespeedFlashVSRNode", "topaz": "TopazVideoEn
                      # Som para o video (o video original fica, o audio vem do no): efeitos ou musica.
                      "mirelo": "MireloVideoToSFX", "sonilo": "SoniloVideoToMusic"}
 METODOS_SOM_VIDEO = {"mirelo", "sonilo"}
+# Dublagem: traduz a fala, clona a voz e refaz a boca (aba Lip Sync, "Dub a video").
+METODOS_DUB = {"dub_veed": "VeedDubbingNode", "dub_heygen": "HeyGenVideoTranslateNode"}
+METODOS_API_VIDEO.update(METODOS_DUB)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

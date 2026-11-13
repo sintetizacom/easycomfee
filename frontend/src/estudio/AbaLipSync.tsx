@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 import { api, type Referencia } from '../api'
+import DublarVideo from './DublarVideo'
 import { Contador, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
 
 // Lip Sync: a portrait and a voice track become a talking video. LTX 2.3 is the
@@ -27,7 +28,7 @@ const DESCRICOES: Record<string, string> = {
 // A foto e a voz ficam guardadas enquanto a pessoa anda pelas abas (useLembrado):
 // mandar a voz pelo menu de um audio e depois o rosto pelo de uma imagem nao pode perder a voz.
 
-export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
+function RetratoFalante({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
   const tarefas = useTarefas()
   const [foto, setFoto] = useLembrado<{ nome: string; url: string } | null>('lipsync.foto', null)
   const [fala, setFala] = useLembrado<{ nome: string; url: string; segundos: number } | null>('lipsync.fala', null)
@@ -170,5 +171,19 @@ export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[]
       </Galeria>
       </section>
     </div>
+  )
+}
+
+// Two tools in the tab: a talking portrait (photo + voice) and the dubbing of a video.
+export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
+  const [ferramenta, setFerramenta] = useState<'retrato' | 'dublar'>('retrato')
+  return (
+    <>
+      <div className="hf-linha-controles" style={{ justifyContent: 'center', margin: '8px 0 0' }}>
+        <Chips rotulo="Tool" opcoes={[{ id: 'retrato', rotulo: 'Talking portrait' }, { id: 'dublar', rotulo: 'Dub a video' }]}
+          valor={ferramenta} aoMudar={(v) => setFerramenta(v as 'retrato' | 'dublar')} />
+      </div>
+      {ferramenta === 'retrato' ? <RetratoFalante apiModelos={apiModelos} /> : <DublarVideo />}
+    </>
   )
 }

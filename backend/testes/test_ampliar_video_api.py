@@ -45,6 +45,17 @@ class AmpliarVideoApiTests(unittest.TestCase):
                                                        falante_voz="Inexistente", proporcao="1:1"), 1)
         self.assertEqual(sem["voz"]["inputs"]["voice"], "Roger (male, american)")
 
+    def test_dublagem_traduz_para_o_idioma_pedido(self):
+        veed = workflows.dublar_video_api("v.mp4", "dub_veed", "Chinese", 3)
+        self.assertEqual(veed["gera"]["class_type"], "VeedDubbingNode")
+        self.assertEqual(veed["gera"]["inputs"]["model.target_language"], "Chinese (Mandarin)")
+        self.assertEqual(veed["salva"]["inputs"]["video"], ["gera", 0])
+        hey = workflows.dublar_video_api("v.mp4", "dub_heygen", "Portuguese", 3)
+        self.assertEqual(hey["gera"]["class_type"], "HeyGenVideoTranslateNode")
+        self.assertEqual(hey["gera"]["inputs"]["output_language"], "Portuguese")
+        with self.assertRaises(ValueError):
+            workflows.dublar_video_api("v.mp4", "outro")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")
