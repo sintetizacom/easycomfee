@@ -406,25 +406,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
         )}
         {/* O conteudo da aba escolhida: as abas acima apontam para ele (aria-controls). */}
         <div role={conta ? 'tabpanel' : undefined} id="mq-painel" aria-labelledby={conta ? `mq-aba-${aba}` : undefined}>
-        {aba === 'api' ? conta : <>
-        <InicioComWindows />
-        <ModoSeguro />
-        <PastaResultados />
-        <Relatorio />
-
-        <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
-        <EscanearModelos aoTerminar={recarregar} />
-        {/* Os pacotes so aparecem depois de confirmar a maquina; antes nada dizia isso (02/11/2026). */}
-        {!perfil && <p className="mq-aviso mq-aviso-passo" role="status">↑ Press <b>Confirm</b> in “Your machine” to see the model packages you can download with one click.</p>}
-
-        {!motor && <p className="mq-aviso">ComfyUI is not responding, so installed files can't be checked.</p>}
-        {erro && <p className="mq-aviso erro">{erro}</p>}
-        {aviso && <p className="mq-aviso" role="status">{aviso}</p>}
-        {nos?.ativo && <p className="mq-aviso">Installing ComfyUI nodes: {nos.atual}…</p>}
-        {nos && !nos.ativo && nos.erros.length > 0 && <p className="mq-aviso erro">Node errors: {nos.erros.join('; ')}</p>}
-        {nos && !nos.ativo && nos.religado && <p className="mq-aviso" role="status">New nodes installed ({nos.feitos.join(', ')}). ComfyUI was restarted to load them; it takes a minute or two to come back.</p>}
-        {nos && !nos.ativo && nos.reiniciar && <p className="mq-aviso">New nodes installed ({nos.feitos.join(', ')}). Restart ComfyUI to load them.</p>}
-
+        {aba === 'api' ? <>{conta}
         {perfil && !perfil.so_nuvem && precisaToken && (
           <section className="mq-cartao">
             <span className="mq-rotulo">Hugging Face access</span>
@@ -443,6 +425,25 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
             </div>
           </section>
         )}
+        </> : <>
+        <InicioComWindows />
+        <ModoSeguro />
+        <PastaResultados />
+        <Relatorio />
+
+        <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
+        <EscanearModelos aoTerminar={recarregar} />
+        {/* Os pacotes so aparecem depois de confirmar a maquina; antes nada dizia isso (02/11/2026). */}
+        {!perfil && <p className="mq-aviso mq-aviso-passo" role="status">↑ Press <b>Confirm</b> in “Your machine” to see the model packages you can download with one click.</p>}
+
+        {!motor && <p className="mq-aviso">ComfyUI is not responding, so installed files can't be checked.</p>}
+        {erro && <p className="mq-aviso erro">{erro}</p>}
+        {aviso && <p className="mq-aviso" role="status">{aviso}</p>}
+        {nos?.ativo && <p className="mq-aviso">Installing ComfyUI nodes: {nos.atual}…</p>}
+        {nos && !nos.ativo && nos.erros.length > 0 && <p className="mq-aviso erro">Node errors: {nos.erros.join('; ')}</p>}
+        {nos && !nos.ativo && nos.religado && <p className="mq-aviso" role="status">New nodes installed ({nos.feitos.join(', ')}). ComfyUI was restarted to load them; it takes a minute or two to come back.</p>}
+        {nos && !nos.ativo && nos.reiniciar && <p className="mq-aviso">New nodes installed ({nos.feitos.join(', ')}). Restart ComfyUI to load them.</p>}
+
 
         <Atualizacoes />
         <BlenderBridge />

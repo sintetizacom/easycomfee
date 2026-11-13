@@ -24,7 +24,7 @@ import AbaMusica from './AbaMusica'
 import AbaVideo from './AbaVideo'
 import AbaVoz from './AbaVoz'
 import { CHAVE_OCULTAR, EVENTO_AVISO_MOTOR, MotorCtx } from './motor'
-import ContaApi from './ContaApi'
+import ContaApi, { ModelosPagos } from './ContaApi'
 import PainelConta from './PainelConta'
 import Visualizador from './Visualizador'
 import './estudio.css'
@@ -288,9 +288,10 @@ export default function Estudio() {
         </div>
       )}
       {verModelos && <TelaModelos abaInicial={verModelos}
-        topoLocais={<label className="mq-filtro"><input type="checkbox" checked={ocultar} onChange={(e) => mudarOcultar(e.target.checked)} />
-          Hide the models that are not installed from the model menus (otherwise they show greyed out)</label>} fechar={() => { setVerModelos(false); setVersao((v) => v + 1) }}
-        conta={<ContaApi temChave={temChave} soAbertos={soAbertos} linkRecarga={linkRecarga} aoMudar={() => setRecarga((r) => r + 1)} />} />}
+        topoLocais={<><ModelosPagos soAbertos={soAbertos} aoMudar={() => setRecarga((r) => r + 1)} />
+          <label className="mq-filtro"><input type="checkbox" checked={ocultar} onChange={(e) => mudarOcultar(e.target.checked)} />
+          Hide the models that are not installed from the model menus (otherwise they show greyed out)</label></>} fechar={() => { setVerModelos(false); setVersao((v) => v + 1) }}
+        conta={<ContaApi temChave={temChave} linkRecarga={linkRecarga} aoMudar={() => setRecarga((r) => r + 1)} />} />}
     </div>
     </MotorCtx.Provider>
   )

@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { textoDoDetalhe } from './comum'
 
-// "Comfy Cloud API" tab of Config Models: the key, the balance and whether the
-// paid API models show up in the menus. The key is typed by the user and goes
+// "Comfy Cloud API" tab of Config Models: the balance, the key and (in TelaModelos) the
+// Hugging Face token. The key is typed by the user and goes
 // straight to backend/chaves.json; the backend never sends it back.
 
 type Saldo = Awaited<ReturnType<typeof api.saldoNuvem>>
 
-export default function ContaApi({ temChave, soAbertos, linkRecarga, aoMudar }: {
-  temChave: boolean; soAbertos: boolean; linkRecarga?: string; aoMudar: () => void
+export default function ContaApi({ temChave, linkRecarga, aoMudar }: {
+  temChave: boolean; linkRecarga?: string; aoMudar: () => void
 }) {
   const [saldo, setSaldo] = useState<Saldo | null>(null)
   const [chave, setChave] = useState('')
@@ -32,13 +32,21 @@ export default function ContaApi({ temChave, soAbertos, linkRecarga, aoMudar }: 
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)) } finally { setSalvando(false) }
   }
 
-  const abertos = async (valor: boolean) => {
-    await fetch('/api/abertos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) })
-    aoMudar()
-  }
-
   return (
     <>
+      {temChave && (
+        <section className="mq-cartao mq-resumo">
+          <div>
+            <span className="mq-rotulo">Balance</span>
+            <p className="mq-linha">
+              {saldo?.ok && saldo.usd != null ? `$${saldo.usd.toFixed(2)} available` : saldo ? `Unavailable: ${saldo.motivo ?? ''}` : 'Reading…'}
+              {saldo?.gasto && saldo.gasto.usd > 0 && ` · $${saldo.gasto.usd.toFixed(2)} spent in this app`}
+            </p>
+          </div>
+          {linkRecarga && <a className="mq-botao-sec" href={linkRecarga} target="_blank" rel="noreferrer">Top up ↗</a>}
+        </section>
+      )}
+
       <section className="mq-cartao">
         <span className="mq-rotulo">Comfy API key</span>
         <p className="mq-sub">
@@ -64,20 +72,18 @@ export default function ContaApi({ temChave, soAbertos, linkRecarga, aoMudar }: 
         </form>
         {erro && <p className="mq-aviso erro">{erro}</p>}
       </section>
+    </>
+  )
+}
 
-      {temChave && (
-        <section className="mq-cartao mq-resumo">
-          <div>
-            <span className="mq-rotulo">Balance</span>
-            <p className="mq-linha">
-              {saldo?.ok && saldo.usd != null ? `$${saldo.usd.toFixed(2)} available` : saldo ? `Unavailable: ${saldo.motivo ?? ''}` : 'Reading…'}
-              {saldo?.gasto && saldo.gasto.usd > 0 && ` · $${saldo.gasto.usd.toFixed(2)} spent in this app`}
-            </p>
-          </div>
-          {linkRecarga && <a className="mq-botao-sec" href={linkRecarga} target="_blank" rel="noreferrer">Top up ↗</a>}
-        </section>
-      )}
-
+// "Paid API models" checkbox. It lives in the Local models tab of Config Models.
+export function ModelosPagos({ soAbertos, aoMudar }: { soAbertos: boolean; aoMudar: () => void }) {
+  const abertos = async (valor: boolean) => {
+    await fetch('/api/abertos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) })
+    aoMudar()
+  }
+  return (
+    <>
       <section className="mq-cartao">
         <span className="mq-rotulo">Paid API models</span>
         <label className="mq-check">

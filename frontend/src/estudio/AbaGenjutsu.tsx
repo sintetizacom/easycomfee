@@ -52,7 +52,7 @@ const RESOLUCOES: Record<string, string[]> = {
   luma_edit: ['360p', '540p', '720p', '1080p'], kling4_edit: ['720p', '1080p'], wan27_edit: ['720p', '1080p'], beeble_edit: ['720p', '1080p'],
 }
 const FOTOS: Record<string, string> = { recast: 'gj_recast', wan_animate2: 'gj_wan_animate', wan22_replace: 'gj_wan_replace',
-  h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway', luma_edit: 'gj_runway', kling4_edit: 'gj_kling', beeble_edit: 'gj_runway', wan27_edit: 'gj_runway', grok_edit: 'gj_runway' }
+  h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway', luma_edit: 'gj_luma_edit', kling4_edit: 'gj_kling4_edit', beeble_edit: 'gj_beeble', wan27_edit: 'gj_wan27_edit', grok_edit: 'gj_grok_edit' }
 
 const ETIQUETAS: Record<string, string[]> = {
   recast: ['New cast + place', 'Up to 14 s'],
