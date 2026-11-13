@@ -1815,6 +1815,37 @@ NUVEM.update({
                        campos={"model": "ideogram-4.5", "model.quality": "medium", "model.magic_prompt": "auto"},
                        prompt="model.prompt", seed="model.seed", formato=("px", "model.size", _IDEOGRAM45_PX),
                        nivel=("", ["2K"])),
+    # Modelos que so EDITAM (o no exige imagem): "so_edita" faz o app recusar sem imagem.
+    # Nos lidos da nuvem em 12/11/2026; ainda nao gerados de verdade.
+    "qwen3edit": _api("Qwen Image 3 Edit", "Alibaba. Edit one or more images with a prompt. Needs an image.",
+                      "QwenImageEditApi",
+                      campos={"model": "qwen-image-3.0-pro", "model.negative_prompt": "", "size": "match input",
+                              "n": 1, "prompt_extend": True, "watermark": False},
+                      prompt="model.prompt", seed="seed", nivel=("", ["1K"]), so_edita=True,
+                      refs=("autogrow", "model.images", 6)),
+    "hunyuanedit": _api("Tencent HY Image Edit", "Tencent. Edit with up to 4 references. Needs an image.",
+                        "HunyuanImageEditApi",
+                        campos={"model": "hy-image-3.5-preview", "model.reference_detail": "standard",
+                                "model.watermark": False, "model.width": 2048, "model.height": 2048},
+                        prompt="model.prompt", seed="model.seed",
+                        formato=("ar", "model.aspect_ratio", ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9", "9:21"]),
+                        nivel=("model.resolution", ["1K", "2K", "4K"]), so_edita=True,
+                        refs=("autogrow", "model.images", 4)),
+    "museedit": _api("Meta Muse Edit", "Meta. Edit with reasoning; follows long instructions. Needs an image.",
+                     "MetaMuseImageEditApi",
+                     campos={"model": "muse-image-1.0", "model.reasoning_strength": "low",
+                             "model.enable_web_search": False, "model.enable_image_search": False,
+                             "model.enable_shell": False},
+                     prompt="model.prompt", seed="model.seed",
+                     formato=("ar", "model.aspect_ratio", ["1:1", "3:2", "2:3", "4:3", "3:4", "5:4", "4:5", "16:9", "9:16",
+                                                           "21:9", "9:21", "2:1", "1:2"]),
+                     nivel=("", ["1K"]), so_edita=True, refs=("autogrow", "model.images", 4)),
+    "grokedit": _api("Grok Imagine Edit", "xAI. Fast edits and image mixing. Needs an image.",
+                     "GrokImageEditNodeV2",
+                     campos={"model": "grok-imagine-image-2.0", "model.number_of_images": 1, "model.quality": "medium"},
+                     prompt="prompt", seed="seed",
+                     formato=("ar", "model.aspect_ratio", ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "1:2", "2:1"]),
+                     nivel=("model.resolution", ["1K", "2K"]), so_edita=True, refs=("autogrow", "model.images", 5)),
     "kling3img": _api("Kling 3.0 Image", "Kuaishou. Cinematic stills; can follow one subject image.",
                       "KlingImageGenerationNode",
                       campos={"model_name": "kling-v3", "negative_prompt": "", "image_type": "subject",
@@ -2467,10 +2498,14 @@ VIDEO_API = {
 #   audio  entrada booleana do som
 #   img    entrada da imagem inicial ("autogrow:" = lista de quadros-chave)
 #   fim    entrada da imagem final (primeiro e ultimo quadro)
-def _vid(rotulo, modos, proporcoes, resolucoes, dmin, dmax, sem_audio=False, **nos):
-    return {"familia": "generico", "rotulo": rotulo, "modos": modos, "proporcoes": proporcoes,
-            "resolucoes": resolucoes, "duracao_min": dmin, "duracao_max": dmax,
-            "sem_audio": sem_audio, "nos": nos}
+def _vid(rotulo, modos, proporcoes, resolucoes, dmin, dmax, sem_audio=False, max_referencias=None, **nos):
+    # ref=(entrada, nome do encaixe com {}) no modo "referencia": lista de imagens do no.
+    ficha = {"familia": "generico", "rotulo": rotulo, "modos": modos, "proporcoes": proporcoes,
+             "resolucoes": resolucoes, "duracao_min": dmin, "duracao_max": dmax,
+             "sem_audio": sem_audio, "nos": nos}
+    if max_referencias:
+        ficha["max_referencias"] = max_referencias
+    return ficha
 
 
 _FLUX3_AR = ["21:9", "2:1", "16:9", "4:3", "1:1", "3:4", "9:16"]
@@ -2516,7 +2551,7 @@ VIDEO_API.update({
                     prompt="model.prompt", seed="seed", res=("model.resolution", ["720P", "1080P"]),
                     dur=("model.duration", "int", 3, 15), img="first_frame")),
     "pixverse6": _vid(
-        "PixVerse V6", ["texto", "imagem"], ["16:9", "4:3", "1:1", "3:4", "9:16", "2:3", "3:2", "21:9"],
+        "PixVerse V6", ["texto", "imagem", "primeiro_ultimo"],["16:9", "4:3", "1:1", "3:4", "9:16", "2:3", "3:2", "21:9"],
         ["360p", "540p", "720p", "1080p"], 1, 15,
         texto=dict(no="PixverseV6TextToVideoNode",
                    campos={"model": "PixVerse V6", "model.multi_clip": False, "model.negative_prompt": "", "model.style": "none"},
@@ -2527,7 +2562,32 @@ VIDEO_API.update({
         imagem=dict(no="PixverseV6ImageToVideoNode",
                     campos={"model": "PixVerse V6", "model.multi_clip": False, "model.negative_prompt": "", "model.style": "none"},
                     prompt="model.prompt", seed="model.seed", res=("model.quality", ["360p", "540p", "720p", "1080p"]),
-                    dur=("model.duration_seconds", "int", 1, 15), audio="model.generate_audio", img="image")),
+                    dur=("model.duration_seconds", "int", 1, 15), audio="model.generate_audio", img="image"),
+        primeiro_ultimo=dict(no="PixverseV6FirstLastFrameNode",
+                             campos={"model": "PixVerse V6", "model.negative_prompt": "", "model.style": "none"},
+                             prompt="model.prompt", seed="model.seed",
+                             res=("model.quality", ["360p", "540p", "720p", "1080p"]),
+                             dur=("model.duration_seconds", "int", 1, 15), audio="model.generate_audio",
+                             img="first_frame", fim="last_frame")),
+    # Kling 4.0 (nos lidos da nuvem em 12/11/2026): ate 30 s, sem audio. Texto, imagem
+    # inicial e primeiro+ultimo quadro (o no de imagem aceita os dois).
+    "kling4": _vid(
+        "Kling 4.0", ["texto", "imagem", "primeiro_ultimo"], ["16:9", "9:16", "1:1", "21:9"], ["720p", "1080p"], 3, 30,
+        sem_audio=True,
+        texto=dict(no="Kling4TextToVideoNode", campos={"model": "kling-4.0"}, prompt="model.prompt", seed="model.seed",
+                   ar=("model.aspect_ratio", ["16:9", "9:16", "1:1", "21:9"]),
+                   res=("model.resolution", ["720p", "1080p"]), dur=("model.duration", "int", 3, 30)),
+        imagem=dict(no="Kling4ImageToVideoNode", campos={"model": "kling-4.0"}, prompt="model.prompt",
+                    seed="model.seed", res=("model.resolution", ["720p", "1080p"]),
+                    dur=("model.duration", "int", 3, 30), img="first_frame"),
+        primeiro_ultimo=dict(no="Kling4ImageToVideoNode", campos={"model": "kling-4.0"}, prompt="model.prompt",
+                             seed="model.seed", res=("model.resolution", ["720p", "1080p"]),
+                             dur=("model.duration", "int", 3, 30), img="first_frame", fim="last_frame")),
+    # Luma Ray 3.2: o no de video recebe uma CADEIA de nos "Keyframe" (workflows.gerar_luma32);
+    # por isso a familia propria. Nos lidos da nuvem em 12/11/2026, ainda nao gerado.
+    "luma32": {"familia": "luma32", "rotulo": "Luma Ray 3.2", "modos": ["imagem", "primeiro_ultimo"],
+               "proporcoes": ["16:9"], "resolucoes": ["360p", "540p", "720p", "1080p"],
+               "duracao_min": 5, "duracao_max": 10, "sem_audio": True},
     "viduq3": _vid(
         "Vidu Q3 Pro", ["texto", "imagem"], ["16:9", "9:16", "3:4", "4:3", "1:1"], ["720p", "1080p"], 1, 16,
         texto=dict(no="Vidu3TextToVideoNode", campos={"model": "viduq3-pro"}, prompt="prompt", seed="seed",
@@ -2537,13 +2597,24 @@ VIDEO_API.update({
                     res=("model.resolution", ["720p", "1080p", "2K"]), dur=("model.duration", "int", 1, 16),
                     audio="model.audio", img="image")),
     "viduq4": _vid(
-        "Vidu Q4", ["imagem"], ["16:9", "9:16", "1:1"], ["540p", "720p", "1080p", "2K", "4K"], 3, 16,
+        "Vidu Q4", ["imagem", "referencia"], ["16:9", "9:16", "1:1", "4:3", "3:4"], ["540p", "720p", "1080p", "2K", "4K"], 3, 16,
+        max_referencias=7,
+        referencia=dict(no="Vidu4ReferenceVideoNode", campos={"model": "Vidu Q4 Preview"}, prompt="model.prompt",
+                        seed="model.seed", ar=("model.aspect_ratio", ["16:9", "9:16", "1:1", "3:4", "4:3"]),
+                        res=("model.resolution", ["540p", "720p", "1080p", "2K", "4K"]),
+                        dur=("model.duration", "int", 3, 16), audio="model.audio",
+                        ref=("model.reference_images", "image_{}")),
         imagem=dict(no="Vidu4ImageToVideoNode", campos={"model": "Vidu Q4 Preview"}, prompt="model.prompt",
                     seed="model.seed", res=("model.resolution", ["540p", "720p", "1080p", "2K", "4K"]),
                     dur=("model.duration", "int", 3, 16), audio="model.audio", img="image")),
     "wan27": _vid(
-        "Wan 2.7", ["texto", "imagem", "primeiro_ultimo"], ["16:9", "9:16", "1:1", "4:3", "3:4"], ["720p", "1080p"], 2, 15,
-        sem_audio=True,
+        "Wan 2.7", ["texto", "imagem", "primeiro_ultimo", "referencia"], ["16:9", "9:16", "1:1", "4:3", "3:4"], ["720p", "1080p"], 2, 15,
+        sem_audio=True, max_referencias=5,
+        referencia=dict(no="Wan2ReferenceVideoApi", campos={"model": "wan2.7-r2v", "model.negative_prompt": "",
+                                                            "watermark": False},
+                        prompt="model.prompt", seed="seed", ar=("model.ratio", ["16:9", "9:16", "1:1", "4:3", "3:4"]),
+                        res=("model.resolution", ["720P", "1080P"]), dur=("model.duration", "int", 2, 10),
+                        ref=("model.reference_images", "image{}")),
         texto=dict(no="Wan2TextToVideoApi", campos={"model": "wan2.7-t2v", "model.negative_prompt": "",
                                                     "prompt_extend": True, "watermark": False},
                    prompt="model.prompt", seed="seed", ar=("model.ratio", ["16:9", "9:16", "1:1", "4:3", "3:4"]),
@@ -2864,6 +2935,9 @@ MODELOS_MOTOR_FLUX3 = {"flux3", "flux3ref", "moss", "mossedit", "fibo2", "fibo2e
 # contra o original no rosto (SeedVR2: 33,8 dB, e mudou a abertura da boca);
 # 24->48 fps em 12,3 s, sem fantasma na boca em quadros seguidos.
 METODOS_RTX = {"rtx", "rtx48"}
+# Ampliadores de video por API (Comfy Cloud, creditos): um no de parceiro entre LoadVideo e SaveVideo.
+# Nos lidos da nuvem em 13/11/2026, ainda nao gerados.
+METODOS_API_VIDEO = {"flashvsr": "WavespeedFlashVSRNode", "topaz": "TopazVideoEnhanceV2"}
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "
@@ -3018,6 +3092,16 @@ VIDEO_TRANSFORMAR = {
                      "texto": "",
                      "formatos": {"16:9": (1024, 576), "9:16": (576, 1024), "1:1": (768, 768)},
                      "max_quadros": 353},
+        # Instant Shave (LoRA oficial do LTX 2.3): re-renderiza o rosto sem barba, mantendo
+        # identidade e movimento. Palavra-gatilho obrigatoria. Treinado em 960x544, 33 a 121 quadros.
+        "barba": {"rotulo": "Tirar a barba",
+                  "lora_completo": "LTX/2.3/ltx-2.3-22b-ic-lora-instant-shave-0.9.safetensors",
+                  "nota": "Remove barba, bigode e barba por fazer de quem aparece no vídeo; mantém rosto e movimento.",
+                  "texto": ("REMOVEBEARD completely smooth and clean-shaven, bare skin, "
+                            "no beard, no stubble, no facial hair"),
+                  "max_quadros": 121,
+                  # Fora do menu ate o teste real com o LoRA instalado (12/11/2026).
+                  "oculto": True},
         "restaurar": {"rotulo": "Restaurar (criativo)",
                       "lora": "ltx-2.5-22b-ic-lora-restore-1.0.safetensors",
                       "nota": ("Para material muito ruim. Inventa: no teste mudou a cor "

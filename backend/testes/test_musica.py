@@ -36,7 +36,7 @@ class MusicaTests(unittest.TestCase):
         self.assertEqual(g['guia']['inputs']['audio'],'refaudio_teste.flac')
     def test_grafos_preservam_prompt_letra_duracao(self):
         pesos={'unet':'u','clip':'c','clip1':'c1','clip2':'c2','vae':'v','checkpoint':'cp'}
-        for ident in [i for i in musica.MODELOS if not musica.MODELOS[i].get('plenio')]:  # YuE2 vai pelo Plenio, sem este grafo
+        for ident in [i for i in musica.MODELOS if not musica.MODELOS[i].get('plenio') and not musica.MODELOS[i].get('api')]:  # YuE2 vai pelo Plenio; os de API tem teste proprio
             p=app.PedidoGeracao(modelo='musica',modelo_musica=ident,prompt='Estilo exato',letra_musica='Letra exata',vocal_musica=True,duracao_musica=30)
             g=musica.grafo(p,42,pesos)
             self.assertEqual(g['latente']['inputs']['seconds'],['cond_musica',1] if ident == 'minimax-music3' else 30)
@@ -44,6 +44,17 @@ class MusicaTests(unittest.TestCase):
             self.assertEqual(g['salva']['inputs']['audio'],['audio_musica',0])
             if ident != 'stable-audio3':self.assertEqual(g['cond_musica']['inputs']['lyrics'],'Letra exata')
             else:self.assertEqual(g['pos']['inputs']['text'],'Estilo exato')
+    def test_grafos_de_api_levam_prompt_letra_duracao(self):
+        sonilo=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='sonilo15',prompt='Estilo exato',duracao_musica=30),42,{})
+        self.assertEqual(sonilo['gera']['class_type'],'SoniloMusic15')
+        self.assertEqual(sonilo['gera']['inputs']['prompt'],'Estilo exato')
+        self.assertEqual(sonilo['gera']['inputs']['duration.seconds'],30)
+        self.assertEqual(sonilo['salva']['inputs']['audio'],['gera',0])
+        pika=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='pika-music',prompt='Estilo exato',letra_musica='Letra exata',vocal_musica=True,duracao_musica=30),42,{})
+        self.assertEqual(pika['gera']['inputs']['mode.lyrics'],'Letra exata')
+        self.assertEqual(pika['gera']['inputs']['mode.duration'],30.0)
+        sem_voz=musica.grafo(app.PedidoGeracao(modelo='musica',modelo_musica='pika-music',prompt='x',letra_musica='antiga',vocal_musica=False,duracao_musica=30),42,{})
+        self.assertEqual(sem_voz['gera']['inputs']['mode.lyrics'],'')
     def test_instrumental_nao_envia_letra_antiga(self):
         p=app.PedidoGeracao(modelo='musica',prompt='Instrumental',letra_musica='Texto antigo',vocal_musica=False)
         g=musica.grafo(p,42,{'unet':'u','clip':'c','vae':'v'})

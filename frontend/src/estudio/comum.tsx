@@ -590,7 +590,7 @@ const LIMITES_PROMPT: Record<string, number> = {
   // imagem
   flux3api: 15000, recraft4: 10000, ideogram45: 10000, kling3img: 500, luma1: 6000,
   // genjutsu
-  higgsfield: 10000, kling_omni: 2500, aleph2: 1000,
+  higgsfield: 10000, kling_omni: 2500, aleph2: 1000, luma_edit: 5000, kling4_edit: 2500, wan27_edit: 5000, grok_edit: 4000, beeble_edit: 2000,
 }
 export const limitePrompt = (id: string, extra?: Record<string, number>) =>
   Math.min((extra ?? LIMITES_PROMPT)[id] ?? MAX_PROMPT, MAX_PROMPT)

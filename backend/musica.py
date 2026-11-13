@@ -24,6 +24,12 @@ MODELOS = {
         # O 1.5 XL Turbo (template oficial audio_ace_step1_5_xl_turbo): mesmos passos e sampler,
         # outro modelo e o codificador de 4B. Quem tem so o XL tambem gera (02/11/2026).
         "alternativas": [{"unet": "acestep_v1.5_xl_turbo_bf16.safetensors", "clip2": "qwen_4b_ace15.safetensors"}]},
+    # Modelos de API (nos de parceiro da Comfy, creditos; so na nuvem). Nos lidos da nuvem em
+    # 12/11/2026, ainda nao gerados. O preco vem do price_badge de cada no.
+    "sonilo15": {"rotulo": "Sonilo Music 1.5 (API)", "letra": False, "maximo": 360, "api": True,
+                 "nos": ["SoniloMusic15"], "pesos": {}},
+    "pika-music": {"rotulo": "Pika Music (API)", "letra": True, "maximo": 360, "api": True,
+                   "nos": ["PikaMusicNode"], "pesos": {}},
     # YuE2 pelo modelo pronto "1 . YuE2 . Song" do Plenio (v1.0.2), no SEGUNDO
     # motor (v0.41, onde o Plenio esta instalado): o Gemma 4 escreve titulo,
     # estilo e letra, o YuE2 planeja a partitura e canta, o Plenio masteriza a
@@ -83,7 +89,8 @@ def _achar_pesos(info, pesos_cfg):
 
 def resolver(info, ident, preferir_alt=False):
     cfg = MODELOS[ident]
-    faltam = [n for n in cfg["nos"] + ["KSampler", "VAEDecodeAudio", "SaveAudio"] if n not in info]
+    comuns = ["SaveAudio"] if cfg.get("api") else ["KSampler", "VAEDecodeAudio", "SaveAudio"]
+    faltam = [n for n in cfg["nos"] + comuns if n not in info]
     pesos, faltam_pesos = _achar_pesos(info, cfg["pesos"])
     # Variantes do mesmo modelo (ex.: ACE-Step 1.5 XL): vale a primeira que estiver completa.
     # preferir_alt: a pessoa escolheu a variante (chave Version); ela vem antes do padrao.
@@ -327,9 +334,30 @@ def configuracao_geracao(p):
     return descricao, dur
 
 
+def grafo_api(p, seed):
+    """Um no de parceiro de musica + SaveAudio. Sonilo: so descricao e duracao (10 a 360 s).
+    Pika: descricao, letra (se a pessoa quer voz) e duracao."""
+    def node(tipo, **inputs): return {"class_type": tipo, "inputs": inputs}
+    descricao, dur = configuracao_geracao(p)
+    if p.modelo_musica == "sonilo15":
+        ent = {"prompt": descricao, "duration": "custom", "duration.seconds": max(10, min(360, int(dur))),
+               "seed": seed}
+        no = "SoniloMusic15"
+    else:
+        ent = {"mode": "text to music", "mode.prompt": descricao,
+               "mode.lyrics": p.letra_musica if p.vocal_musica else "",
+               "mode.duration": float(max(10, min(360, dur))), "mode.rewrite_prompt": False,
+               "mode.seed": seed % 2147483647}
+        no = "PikaMusicNode"
+    return {"gera": node(no, **ent),
+            "salva": node("SaveAudio", audio=["gera", 0], filename_prefix=f"editor/{nome_musica(p)}")}
+
+
 def grafo(p, seed, pesos):
     def node(tipo, **inputs): return {"class_type": tipo, "inputs": inputs}
     ident=p.modelo_musica
+    if MODELOS[ident].get("api"):
+        return grafo_api(p, seed)
     descricao,dur=configuracao_geracao(p)
     g={}
     if ident == "stable-audio3":

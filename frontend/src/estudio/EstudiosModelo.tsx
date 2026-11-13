@@ -84,7 +84,7 @@ const NOMES: Record<string, string> = {
   flux3: 'FLUX 3 Klein', flux3ref: 'FLUX 3 Klein · edit', flux3api: 'FLUX 3', klein: 'FLUX 2 Klein', flux2dev: 'FLUX.2 dev',
   flux1krea: 'FLUX.1 Krea dev', flux1s: 'FLUX.1 schnell', ltx: 'LTX 2.5', minimax: 'MiniMax H3', fasth3: 'FastH3',
   transformar_video: 'LTX VFX', avatar: 'Lip Sync', genjutsu: 'Genjutsu', wan22_14b: 'Wan 2.2 14B', wan22_5b: 'Wan 2.2 5B',
-  wan21_13b: 'Wan 2.1 1.3B', wan3: 'Wan 3.0', wan27: 'Wan 2.7', flux3video: 'FLUX 3 Video', flux3max: 'FLUX 3 Max Video',
+  wan21_13b: 'Wan 2.1 1.3B', wan3: 'Wan 3.0', wan27: 'Wan 2.7', kling4: 'Kling 4.0',flux3video: 'FLUX 3 Video', flux3max: 'FLUX 3 Max Video',
 }
 const nomeDe = (r: ItemGaleria) => {
   const id = r.modelo === 'video' ? String(r.parametros?.modelo_video ?? 'video') : r.modelo

@@ -31,6 +31,16 @@ const MODELOS: Modelo[] = [
     dica: 'Video to video guided by text and reference images. 720p, 3 to 10 s.' },
   { id: 'aleph2', rotulo: 'Runway Aleph2', aberto: false, refs: [],
     dica: 'Restyle, relight, add or remove things, described in text. Up to 30 s.' },
+  { id: 'beeble_edit', rotulo: 'Beeble SwitchX', aberto: false, refs: ['Look reference (optional)'],
+    dica: 'Switch the background, light or costume while the subject’s own pixels and motion stay. Text and/or a reference image. 720p or 1080p. Comfy Cloud, credits.' },
+  { id: 'kling4_edit', rotulo: 'Kling 4.0 Edit', aberto: false, refs: [],
+    dica: 'Edit a video with text, keeping its own sound. 720p or 1080p. Comfy Cloud, credits.' },
+  { id: 'wan27_edit', rotulo: 'Wan 2.7 Edit', aberto: false, refs: [],
+    dica: 'Edit a video with text, keeping its own sound. Up to 10 s. Comfy Cloud, credits.' },
+  { id: 'grok_edit', rotulo: 'Grok Imagine Edit', aberto: false, refs: [],
+    dica: 'Quick edits of a video described in text. Comfy Cloud, credits.' },
+  { id: 'luma_edit', rotulo: 'Luma Ray 3.2 Edit', aberto: false, refs: [],
+    dica: 'Edit a video with text: change the look, the light or what is in it. Up to 10 s. Comfy Cloud, credits: the priciest editor here, about US$ 1 to 2 per second of video.' },
 ]
 
 // Etiquetas dos cartoes: o essencial de cada modelo num relance.
@@ -39,9 +49,10 @@ const MODELOS: Modelo[] = [
 const RESOLUCOES: Record<string, string[]> = {
   wan_animate2: ['480p', '720p'], wan22_replace: ['480p', '720p'], h3_swap: ['480p', '720p'],
   higgsfield: ['480p', '720p', '1080p'], kling_omni: ['720p', '1080p'],
+  luma_edit: ['360p', '540p', '720p', '1080p'], kling4_edit: ['720p', '1080p'], wan27_edit: ['720p', '1080p'], beeble_edit: ['720p', '1080p'],
 }
 const FOTOS: Record<string, string> = { recast: 'gj_recast', wan_animate2: 'gj_wan_animate', wan22_replace: 'gj_wan_replace',
-  h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway' }
+  h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway', luma_edit: 'gj_runway', kling4_edit: 'gj_kling', beeble_edit: 'gj_runway', wan27_edit: 'gj_runway', grok_edit: 'gj_runway' }
 
 const ETIQUETAS: Record<string, string[]> = {
   recast: ['New cast + place', 'Up to 14 s'],
@@ -51,6 +62,11 @@ const ETIQUETAS: Record<string, string[]> = {
   higgsfield: ['Up to 30 s', '8 references'],
   kling_omni: ['3–10 s'],
   aleph2: ['Text only', 'Up to 30 s'],
+  luma_edit: ['Text only', 'Up to 10 s'],
+  kling4_edit: ['Text only', 'Original sound'],
+  wan27_edit: ['Text only', 'Up to 10 s'],
+  grok_edit: ['Text only'],
+  beeble_edit: ['Keeps the subject', 'Up to 10 s'],
 }
 
 const ROTULO_CUSTO = (a: Estimativa | null, b: Estimativa | null): Estimativa | null =>

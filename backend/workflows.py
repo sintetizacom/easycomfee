@@ -1530,6 +1530,8 @@ def gerar_api_generico(ficha, prompt, seed, proporcao, nivel, referencias=None, 
     if len(referencias) > ficha["max_referencias"]:
         raise ValueError(f'{ficha["rotulo"]} aceita no maximo {ficha["max_referencias"]} imagens; '
                          f"foram {len(referencias)}")
+    if ficha.get("so_edita") and not referencias:
+        raise ValueError(f'{ficha["rotulo"]} edits images: add at least one image')
     g = {f"img{i}": {"class_type": "LoadImage", "inputs": {"image": n}} for i, n in enumerate(referencias)}
     ent = dict(ficha["campos"])
     ent[ficha["prompt"]] = prompt
@@ -1538,8 +1540,10 @@ def gerar_api_generico(ficha, prompt, seed, proporcao, nivel, referencias=None, 
     # Um nivel que o modelo nao tem (2K no Wan 2.5, que vai ate 1440 px) cai no primeiro que ele tem.
     if ficha.get("resolucoes") and nivel not in ficha["resolucoes"]:
         nivel = ficha["resolucoes"][0]
-    tipo, *args = ficha["formato"]
-    if tipo == "ar":
+    tipo, *args = ficha.get("formato") or ("nenhum",)
+    if tipo == "nenhum":
+        pass  # o no segue o tamanho da imagem de entrada
+    elif tipo == "ar":
         ent[args[0]] = _mais_proxima(args[1], proporcao)
     elif tipo == "px":
         ent[args[0]] = _mais_proxima(args[1], proporcao, nivel)
@@ -1576,7 +1580,7 @@ def gerar_api_generico(ficha, prompt, seed, proporcao, nivel, referencias=None, 
 
 
 def gerar_video_generico(cfg, modo, prompt, seed, proporcao, resolucao, duracao,
-                         imagem=None, imagem_final=None, com_audio=True, prefixo="video"):
+                         imagem=None, imagem_final=None, com_audio=True, prefixo="video", referencias=()):
     """Grafo de UM no de parceiro de video, a partir da ficha do modo em
     presets.VIDEO_API (familia "generico")."""
     f = cfg["nos"].get(modo)
@@ -1614,7 +1618,63 @@ def gerar_video_generico(cfg, modo, prompt, seed, proporcao, resolucao, duracao,
             ent[f"{alvo.split(':', 1)[1]}.image_1"] = [papel, 0]
         else:
             ent[alvo] = [papel, 0]
+    if f.get("ref"):
+        if not referencias:
+            raise ValueError("envie ao menos uma imagem de referência")
+        limite = cfg.get("max_referencias") or len(referencias)
+        base, molde = f["ref"]
+        for i, nome in enumerate(list(referencias)[:limite]):
+            g[f"ref{i}"] = {"class_type": "LoadImage", "inputs": {"image": nome}}
+            ent[f"{base}.{molde.format(i + 1)}"] = [f"ref{i}", 0]
     g["gera"] = {"class_type": f["no"], "inputs": ent}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
+def gerar_luma32(modo, prompt, seed, resolucao, duracao, imagem, imagem_final=None, prefixo="video"):
+    """Luma Ray 3.2 por quadros-chave: um no Keyframe por imagem (0.0 = inicio, 1.0 = fim),
+    encadeados pela entrada `keyframes`, e o no de video recebe o ultimo da cadeia.
+    A duracao so existe em 5 s e 10 s; a proporcao segue a das imagens."""
+    if not imagem:
+        raise ValueError("este modo precisa da imagem")
+    quadros = [(imagem, 0.0)]
+    if modo == "primeiro_ultimo":
+        if not imagem_final:
+            raise ValueError("este modo precisa da imagem final")
+        quadros.append((imagem_final, 1.0))
+    g, anterior = {}, None
+    for i, (nome, pos) in enumerate(quadros):
+        g[f"img{i}"] = {"class_type": "LoadImage", "inputs": {"image": nome}}
+        ent = {"image": [f"img{i}", 0], "position": "Fraction of duration (0.0-1.0)", "position.fraction": pos}
+        if anterior:
+            ent["keyframes"] = [anterior, 0]
+        g[f"chave{i}"] = {"class_type": "LumaRay32KeyframeNode", "inputs": ent}
+        anterior = f"chave{i}"
+    res = resolucao if resolucao in ("360p", "540p", "720p", "1080p") else "720p"
+    g["gera"] = {"class_type": "LumaRay32KeyframesToVideoNode",
+                 "inputs": {"prompt": prompt, "resolution": res, "duration": "10s" if duracao >= 8 else "5s",
+                            "seed": seed % 2147483646, "keyframes": [anterior, 0]}}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
+def ampliar_video_api(entrada, metodo, resolucao="1080p", prefixo="video_ampliado_api"):
+    """Ampliacao de video por um no de parceiro. `resolucao`: 1080p ou 4k (o FlashVSR tambem 720p e 2K)."""
+    g = {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}}}
+    if metodo == "flashvsr":
+        alvo = {"720p": "720p", "1080p": "1080p", "2k": "2K", "4k": "4K"}.get(resolucao.lower(), "1080p")
+        g["gera"] = {"class_type": "WavespeedFlashVSRNode",
+                     "inputs": {"video": ["carga", 0], "target_resolution": alvo}}
+    elif metodo == "topaz":
+        alvo = "4K (2160p)" if resolucao.lower() in ("4k", "2k") else "FullHD (1080p)"
+        g["gera"] = {"class_type": "TopazVideoEnhanceV2",
+                     "inputs": {"video": ["carga", 0], "upscaler_model": "Starlight (Astra) Fast",
+                                "upscaler_model.upscaler_resolution": alvo, "interpolation_model": "Disabled",
+                                "dynamic_compression_level": "Low"}}
+    else:
+        raise ValueError("método de ampliação por API desconhecido")
     g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
                                                         "format": "auto", "codec": "auto"}}
     return g

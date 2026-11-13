@@ -308,13 +308,14 @@
    "id": "ltx23",
    "nome": "LTX 2.3 add-ons",
    "tipo": "video",
-   "descricao": "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight and Foley.",
+   "descricao": "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight, Foley and Remove beard.",
    "vram_min_gb": 16,
    "modos": [
     "expand frame",
     "character swap (video)",
     "relight",
-    "foley"
+    "foley",
+    "remove beard"
    ],
    "nos_extras": [],
    "requisitos": {
@@ -373,6 +374,18 @@
      "opcional": true,
      "rotulo": "Foley (video to sound) LoRA",
      "tamanho": 226709270,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.3-22b-ic-lora-instant-shave-0.9.safetensors",
+     "pasta": "loras",
+     "subpasta": "LTX/2.3",
+     "repo": "Lightricks/LTX-2.3-22b-IC-LoRA-Instant-Shave",
+     "caminho": "ltx-2.3-22b-ic-lora-instant-shave-0.9.safetensors",
+     "opcional": true,
+     "rotulo": "Instant Shave IC-LoRA",
+     "tamanho": 654465349,
      "licenca": "other",
      "requer_aceite": true
     },
@@ -1615,7 +1628,7 @@
     "nota_limitado": "Needs a 32 GB card for good speed; on 24 GB it spills into RAM. Comfy Cloud runs it as is."
    },
    "licenca": {
-    "nome": "other, unknown",
+    "nome": "other",
     "url": "https://huggingface.co/Comfy-Org/MiniMax-H3"
    },
    "arquivos": [
@@ -1688,7 +1701,7 @@
      "opcional": true,
      "rotulo": "Turbo LoRA (Ref2V)",
      "tamanho": 1956193000,
-     "licenca": "unknown",
+     "licenca": "other",
      "requer_aceite": false
     }
    ]

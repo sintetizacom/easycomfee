@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { MotorCtx } from './motor'
+import { MotorCtx, useEscolha } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Popup } from './AbaCinema'
@@ -330,7 +330,7 @@ export const APPS: App[] = [
 // Comfy Cloud has the LTX 2.3 version of most of these LoRAs (nuvem.SUBSTITUTOS);
 // these two exist only in the 2.5 Creative Lab, so they need your own GPU.
 // The layout-to-render LoRA (3D render → Video) is a 2.5 one too.
-const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha', 'relight', 'foley', 'cinemagraph', 'ampliar2x', 'hdr'])
+const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha', 'relight', 'foley', 'cinemagraph', 'hdr'])
 
 export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const tarefas = useTarefas()
@@ -355,6 +355,11 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const semPacote = ehMapa && !!instalados && !instalados.has('profundidade')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Upscale: o modelo escolhido na caixa. LTX (sua placa) ou um ampliador da Comfy Cloud, que troca o motor.
+  const [escolhaAmpliar, setEscolhaAmpliar] = useState('ltx2x')
+  const modeloAmpliar = naNuvem ? (['flashvsr', 'topaz'].includes(escolhaAmpliar) ? escolhaAmpliar : 'flashvsr') : 'ltx2x'
+  const ampliarApi = app?.id === 'ampliar2x' && modeloAmpliar !== 'ltx2x'
+  const escolherAmpliar = useEscolha(setEscolhaAmpliar)
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -600,11 +605,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     try { setVideo(await api.enviarReferencia(f)) } catch (x) { setErro(mensagem(x)) } finally { setEnviando(false) }
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
-  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id)
+  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado ? null : ehMapa
+  const custo = useCusto(!app || bloqueado ? null : ampliarApi
+    ? { modelo: 'limpar_video', metodo_video: modeloAmpliar, resolucao_video_api: '1080p', prompt: '', proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : ehMapa
     ? { modelo: 'profundidade_video', prompt: '', proporcao: '1:1', referencias: video ? [`entrada:${video.nome}`] : [] }
     : app.id === 'slowmo' || app.id === 'cinemagraph'
     ? { modelo: 'video', modelo_video: 'ltx', modo_video: 'imagem', prompt: 'x', proporcao: '1:1',
@@ -616,7 +624,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (ehMapa) {
+      if (ampliarApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: modeloAmpliar, resolucao_video_api: '1080p', prompt: '',
+          proporcao: '1:1', referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (ehMapa) {
         await api.gerar({ modelo: 'profundidade_video', prompt: '', proporcao: '1:1', mapa_cor: corMapa, exr,
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (app.id === 'cinemagraph') {
@@ -647,7 +658,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   // Os quadros realistas do 3D render -> Video (FLUX 3, Qwen ou API) tambem aparecem aqui, para reaproveitar.
   const quadroMaquete = (prompt: string) => prompt.includes('a grey 3D blockout of a film shot')
   // Os prints cinza do render (quadros_maquete) ficam nos passos e em Assets, nao aqui: enchiam a galeria.
-  const minhas = tarefas.filter((t) => t.modelo === 'transformar_video' || t.modelo === 'profundidade_video'
+  const minhas = tarefas.filter((t) => t.modelo === 'transformar_video' || t.modelo === 'profundidade_video' || t.modelo === 'limpar_video'
     || (t.modelo === 'video' && (t.prompt.includes('Slow motion') || t.prompt.includes('CINEMAGRAPH_MOTION'))) || quadroMaquete(t.prompt))
 
   const tarefaFeita = aplicadoEm ? minhas.find((t) => t.estado === 'pronto' && t.criada_em >= aplicadoEm) : undefined
@@ -864,9 +875,21 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           </div>}
           {!ehMapa && !app.semTexto && !(app.id === 'maquete' && modoMaquete === 'avancado') && <><textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
             placeholder={app.dica ?? 'Optional: describe what you want to see…'} /><Contador texto={texto} limite={MAX_PROMPT} /></>}
+          {ampliarApi && <p className="hf-dica">Hosted upscaler on Comfy Cloud (credits): enlarges to Full HD, keeps the sound, no 2 s limit. The cost shows on the button.</p>}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           {!(app.id === 'maquete' && modoMaquete === 'avancado') && <div className="hf-linha-controles">
             {ehMapa && <Chips rotulo="Look" opcoes={[{ id: 'gray', rotulo: 'Gray' }, { id: 'inferno', rotulo: 'Color' }]} valor={corMapa} aoMudar={setCorMapa} />}
+            {app.id === 'ampliar2x' && (
+              <label>Model
+                <select className="hf-select" value={`${naNuvem ? 'nuvem' : 'local'}:${modeloAmpliar}`} onChange={(e) => escolherAmpliar(e.target.value)}>
+                  <optgroup label="Local · your GPU"><option value="local:ltx2x">LTX Pixel Upscaler 2× (up to 2 s)</option></optgroup>
+                  <optgroup label="Comfy Cloud · credits">
+                    <option value="nuvem:flashvsr">FlashVSR (WaveSpeed)</option>
+                    <option value="nuvem:topaz">Topaz Starlight Fast</option>
+                  </optgroup>
+                </select>
+              </label>
+            )}
             {ehMapa && <label className="hf-toggle"><input type="checkbox" checked={exr} onChange={(e) => setExr(e.target.checked)} /> EXR too</label>}
             {app.id === 'maquete' && ladosTela.length > 0 && (
               <Chips rotulo="Resolution" opcoes={ladosTela} valor={lado} aoMudar={setLadoEscolhido} />

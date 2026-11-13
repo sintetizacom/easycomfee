@@ -34,6 +34,14 @@ MODELOS = {
     "higgsfield": {"rotulo": "Higgsfield Genjutsu", "aberto": False, "max_refs": 8, "max_segundos": 30},
     "kling_omni": {"rotulo": "Kling 3.0 Omni", "aberto": False, "max_refs": 4, "max_segundos": 10},
     "aleph2": {"rotulo": "Runway Aleph2", "aberto": False, "max_refs": 0, "max_segundos": 30},
+    # Luma Ray 3.2 Video Edit (no lido da nuvem em 12/11/2026, ainda nao gerado): so texto.
+    "luma_edit": {"rotulo": "Luma Ray 3.2 Edit", "aberto": False, "max_refs": 0, "max_segundos": 10},
+    # Edicao de video por texto de outros parceiros (nos lidos em 12/11/2026, ainda nao gerados).
+    # Beeble SwitchX: troca fundo, luz e figurino mantendo os pixels do sujeito. Texto e/ou uma imagem de look.
+    "beeble_edit": {"rotulo": "Beeble SwitchX", "aberto": False, "max_refs": 1, "max_segundos": 10},
+    "kling4_edit": {"rotulo": "Kling 4.0 Edit", "aberto": False, "max_refs": 0, "max_segundos": 15},
+    "wan27_edit": {"rotulo": "Wan 2.7 Edit", "aberto": False, "max_refs": 0, "max_segundos": 10},
+    "grok_edit": {"rotulo": "Grok Imagine Edit", "aberto": False, "max_refs": 0, "max_segundos": 15},
     # Workflow do MDMZ (ver grafo_h3_swap). So na Comfy Cloud; tempo de GPU a medir.
     "h3_swap": {"rotulo": "MiniMax H3 Character Swap", "aberto": True, "max_refs": 1, "max_segundos": 8,
                 "pacote": "h3_swap", "segundos_gpu": 240},
@@ -89,9 +97,12 @@ def video_minimo(caminho: str, largura: int, altura: int, minimo: int = KLING_MI
 # Os de API aceitam estas (object_info da Comfy Cloud, 02/11/2026); o Aleph2 nao tem opcao.
 RESOLUCOES = {"wan_animate2": ["480p", "720p"], "wan22_replace": ["480p", "720p"],
               "h3_swap": ["480p", "720p"], "higgsfield": ["480p", "720p", "1080p"],
-              "kling_omni": ["720p", "1080p"]}
+              "kling_omni": ["720p", "1080p"],
+              "luma_edit": ["360p", "540p", "720p", "1080p"],
+              "beeble_edit": ["720p", "1080p"], "kling4_edit": ["720p", "1080p"], "wan27_edit": ["720p", "1080p"]}
 PADRAO_RESOLUCAO = {"wan_animate2": "480p", "wan22_replace": "480p", "h3_swap": "480p",
-                    "higgsfield": "720p", "kling_omni": "720p"}
+                    "higgsfield": "720p", "kling_omni": "720p", "luma_edit": "720p",
+                    "kling4_edit": "720p", "wan27_edit": "720p", "beeble_edit": "1080p"}
 
 
 def resolucao(modelo: str, pedida: str) -> str:
@@ -182,6 +193,31 @@ def grafo_api(modelo, video, refs, prompt, seed, duracao, proporcao, prefixo, re
     elif modelo == "aleph2":
         g["gera"] = no("RunwayAleph2VideoToVideoNode", prompt=prompt, video=["carga", 0],
                        seed=seed % 2147483647, public_figure_threshold="auto")
+    elif modelo == "luma_edit":
+        g["gera"] = no("LumaRay32VideoEditNode", prompt=prompt, video=["carga", 0],
+                       resolution=resolucao(modelo, resolucao_pedida), strength="auto", seed=seed % 2147483647)
+    elif modelo == "beeble_edit":
+        if not refs and not prompt.strip():
+            raise ValueError("escreva o que mudar ou envie uma imagem de referência")
+        ent = {"video": ["carga", 0], "prompt": prompt, "alpha_mode": "auto",
+               "max_resolution": resolucao(modelo, resolucao_pedida), "seed": seed % 2147483647}
+        if refs:
+            ent["reference_image"] = ["ref0", 0]
+        g["gera"] = no("BeebleSwitchXVideoEdit", **ent)
+    elif modelo == "kling4_edit":
+        g["gera"] = no("Kling4EditVideoNode", **{"model": "kling-4.0", "model.video_1": ["carga", 0],
+                                                  "model.prompt": prompt, "model.aspect_ratio": "adaptive",
+                                                  "model.resolution": resolucao(modelo, resolucao_pedida),
+                                                  "model.audio": "original", "model.seed": seed % 2147483647})
+    elif modelo == "wan27_edit":
+        g["gera"] = no("Wan2VideoEditApi", **{"model": "wan2.7-videoedit", "video": ["carga", 0],
+                                               "model.prompt": prompt, "model.ratio": proporcao,
+                                               "model.resolution": resolucao(modelo, resolucao_pedida).upper(),
+                                               "model.duration": "auto", "audio_setting": "origin",
+                                               "watermark": False, "seed": seed % 2147483647})
+    elif modelo == "grok_edit":
+        g["gera"] = no("GrokVideoEditNode", model="grok-imagine-video", prompt=prompt, video=["carga", 0],
+                       seed=seed % 2147483647)
     else:
         raise ValueError("modelo de Genjutsu desconhecido")
     g["salva"] = no("SaveVideo", video=["gera", 0], filename_prefix=prefixo, format="auto", codec="auto")

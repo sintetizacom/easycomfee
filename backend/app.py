@@ -253,7 +253,7 @@ class PedidoGeracao(Pedido):
 
     encerramento_musica: str = Field("original", pattern="^(original|natural|fade)$")
     margem_musica: float = Field(10.0, ge=0, le=10)
-    modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover)$")
+    modelo_musica: str = Field("minimax-music3", pattern="^(minimax-music3|stable-audio3|ace-step15|yue2|yue2-cover|sonilo15|pika-music)$")
     # So o YuE2 (Plenio): um dos estilos prontos do pedido, ou "none".
     estilo_musica: str = Field("none", max_length=120)
     # Revisao antes de gerar (YuE2): "direto" gera sem parar; "letra" e
@@ -307,7 +307,7 @@ class PedidoGeracao(Pedido):
     instrucao_voz: str = ""
     falante_voz: str = Field("Ryan", max_length=20)  # so na nuvem (Qwen3-TTS)
     # Genjutsu: referencias[0] e o video ("entrada:..."), o resto sao imagens.
-    modelo_genjutsu: str = Field("wan_animate2", pattern="^(wan_animate2|wan22_replace|h3_swap|higgsfield|kling_omni|aleph2)$")
+    modelo_genjutsu: str = Field("wan_animate2", pattern="^(wan_animate2|wan22_replace|h3_swap|higgsfield|kling_omni|aleph2|luma_edit|kling4_edit|wan27_edit|grok_edit|beeble_edit)$")
     # So o MiniMax H3 Character Swap: quem sai do video (texto para o SAM 3),
     # se o Gemini escreve o prompt (pago, centavos) e o atalho Turbo.
     alvo_genjutsu: str = Field("person", max_length=120)
@@ -410,6 +410,8 @@ class PedidoGeracao(Pedido):
     resolucao_limpeza: int = Field(1088, ge=256, le=2160)
     # "seedvr" amplia em pixels; "ltx" amplia no latente. Ver o preset.
     metodo_video: str = "ltx"
+    # Resolucao final dos ampliadores por API (flashvsr / topaz).
+    resolucao_video_api: str = Field("1080p", pattern="^(720p|1080p|2k|4k|2K|4K)$")
     # Especificos do metodo Magnific dentro do Reluz.
     estilo_luz: str = "standard"
     forca_luz: int = Field(100, ge=0, le=100)
@@ -1023,6 +1025,12 @@ async def _montar(tarefa: Tarefa):
         tarefa.prompt_final = p.prompt
         if p.modelo_video == "seedance" and p.rascunho_id:
             return workflows.seedance_final(p.rascunho_id, prefixo=prefixo)
+        if cfg.get("familia") == "luma32":
+            return workflows.gerar_luma32(
+                p.modo_video, p.prompt, seed,
+                p.resolucao_video if p.resolucao_video in cfg["resolucoes"] else cfg["resolucoes"][0],
+                max(cfg["duracao_min"], min(cfg["duracao_max"], p.duracao_video)),
+                refs[0] if refs else None, refs[1] if len(refs) > 1 else None, prefixo=prefixo)
         if cfg.get("familia") == "generico":
             return workflows.gerar_video_generico(
                 cfg, p.modo_video, p.prompt, seed,
@@ -1030,7 +1038,8 @@ async def _montar(tarefa: Tarefa):
                 p.resolucao_video if p.resolucao_video in cfg["resolucoes"] else cfg["resolucoes"][0],
                 max(cfg["duracao_min"], min(cfg["duracao_max"], p.duracao_video)),
                 imagem=refs[0] if refs else None, imagem_final=refs[1] if len(refs) > 1 else None,
-                com_audio=p.com_audio and not cfg.get("sem_audio"), prefixo=prefixo)
+                com_audio=p.com_audio and not cfg.get("sem_audio"), prefixo=prefixo,
+                referencias=refs if p.modo_video == "referencia" else ())
         return workflows.gerar_video_api(
             p.modelo_video, p.prompt, seed, p.modo_video,
             p.proporcao_video if p.proporcao_video in cfg["proporcoes"] else cfg["proporcoes"][0],
@@ -1459,6 +1468,15 @@ async def _montar(tarefa: Tarefa):
                             "(ffprobe não encontrado); a ampliação seguiu "
                             "sem a trilha original.")
         tarefa.prompt_final = ""
+
+        if p.metodo_video in presets.METODOS_API_VIDEO:
+            if not comfy.na_nuvem():
+                raise ValueError("This upscaler runs on Comfy Cloud: switch the engine to Comfy Cloud.")
+            entrada = await comfy.enviar_imagem(
+                f"ampapi_{uuid.uuid4().hex[:12]}{pathlib.Path(caminho).suffix}", origem)
+            tarefa.largura, tarefa.altura = d["largura"], d["altura"]
+            return workflows.ampliar_video_api(entrada, p.metodo_video, p.resolucao_video_api,
+                                               prefixo="editor/video_ampliado_api")
 
         if p.metodo_video in presets.METODOS_RTX:
             # O LoadVideo do v0.41 so le da pasta de entrada: o video da
@@ -2889,6 +2907,8 @@ def _eh_api(p: PedidoGeracao) -> bool:
     return p.modelo in presets.NUVEM or p.modelo == "recorte" or (
         p.modelo == "reluz" and p.metodo_luz == "nuvem") or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
+        p.modelo == "limpar_video" and p.metodo_video in presets.METODOS_API_VIDEO) or (
+        p.modelo == "musica" and bool(musica.MODELOS.get(p.modelo_musica, {}).get("api"))) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
                                  or p.modelo_video in ("wan3", "minimax-nuvem", "minimax-ref-nuvem")))
 
@@ -3825,7 +3845,7 @@ async def _modelos_base():
                              "formatos": list(v.get("formatos", {})),
                              "controles": [{"id": c, "rotulo": r} for c, r in v.get("controles", {}).items()],
                              "max_segundos": round(v.get("max_quadros", presets.VIDEO_TRANSFORMAR["max_quadros"]) / 24, 1)}
-                            for k, v in presets.VIDEO_TRANSFORMAR["efeitos"].items()],
+                            for k, v in presets.VIDEO_TRANSFORMAR["efeitos"].items() if not v.get("oculto")],
             } if motor_flux3.instalado() else None)}
 
 

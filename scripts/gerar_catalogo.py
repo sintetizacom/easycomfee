@@ -138,12 +138,13 @@ pacote("ltx25", "LTX 2.5 Video", "video",
 ])
 
 pacote("ltx23", "LTX 2.3 add-ons", "video",
-       "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight and Foley.",
-       16, ["expand frame", "character swap (video)", "relight", "foley"], [
+       "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight, Foley and Remove beard.",
+       16, ["expand frame", "character swap (video)", "relight", "foley", "remove beard"], [
     ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-in-outpainting-0.9.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-In-Outpainting", "ltx-2.3-22b-ic-lora-in-outpainting-0.9.safetensors", False, "In/Outpainting IC-LoRA"),
     ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control", "ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors", False, "Union Control IC-LoRA"),
     ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-relight-1.0.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-Relight", "ltx-2.3-22b-ic-lora-relight-1.0.safetensors", True, "Relight IC-LoRA"),
     ("loras", "LTX/2.3/ltx-2.3-22b-lora-foley-v2a-1.0.safetensors", "Lightricks/LTX-2.3-22b-LoRA-Foley-V2A", "ltx-2.3-22b-lora-foley-v2a-1.0.safetensors", True, "Foley (video to sound) LoRA"),
+    ("loras", "LTX/2.3/ltx-2.3-22b-ic-lora-instant-shave-0.9.safetensors", "Lightricks/LTX-2.3-22b-IC-LoRA-Instant-Shave", "ltx-2.3-22b-ic-lora-instant-shave-0.9.safetensors", True, "Instant Shave IC-LoRA"),
     # O "Follow depth" calcula a profundidade com ele (no segundo motor).
     ("videodepthanything", "video_depth_anything_vits.pth", "depth-anything/Video-Depth-Anything-Small", "video_depth_anything_vits.pth", False, "Video Depth Anything Small"),
 ])
