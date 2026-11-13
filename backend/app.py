@@ -2964,6 +2964,20 @@ async def estimar(p: PedidoGeracao):
             except Exception:
                 fala = 10.0
             faixa = (faixa[0] * fala, faixa[1] * fala)
+        if faixa is None and p.modelo == "limpar_video" and p.metodo_video == "topaz":
+            # O no do Topaz informa o preco em TEXTO (creditos por quadro de origem), que o avaliador
+            # nao le. Starlight Fast: 0,43 credito/quadro em Full HD e 0,85 em 4K; 211 creditos = US$ 1
+            # (docs.comfy.org, Partner Nodes pricing, conferido em 13/11/2026).
+            try:
+                caminho = _video_de_referencia(p.referencias[0])
+                d = await asyncio.to_thread(
+                    lambda: miniaturas.dados_do_video(pathlib.Path(caminho).read_bytes()))
+                quadros = (d["duracao"] or 5.0) * (d["fps"] or 24)
+            except Exception:
+                quadros = 5.0 * 24
+            por_quadro = 0.85 if p.resolucao_video_api.lower() in ("2k", "4k") else 0.43
+            usd = round(quadros * por_quadro / 211, 4)
+            return {"tipo": "api", "min": usd, "max": usd}
         if faixa is None:
             if p.modelo_video == "minimax-nuvem":
                 seg = presets.VIDEO_MINIMAX_NUVEM["segundos_estimados"] * max(1.0, p.duracao_video / 5)
