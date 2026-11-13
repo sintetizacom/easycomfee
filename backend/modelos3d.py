@@ -10,6 +10,9 @@ MODELOS = {
     # Texto -> 3D (sem imagem): o mesmo Tripo, com o no de texto.
     "tripo_texto": {"rotulo": "Tripo 3.1 (text)", "no": "TripoTextToModelNodeV2", "saida_glb": 1, "texto": True,
                     "dica": "Describe the object; no image needed."},
+    # Hunyuan 3D (Tencent): imagem -> GLB; "Normal" com PBR opcional.
+    "tencent": {"rotulo": "Hunyuan 3D 3.1", "no": "TencentImageToModelNode", "saida_glb": 1,
+                "dica": "Tencent's Hunyuan 3D: detailed geometry, optional PBR."},
     "meshy": {"rotulo": "Meshy 7.1", "no": "MeshyImageToModelNode", "saida_glb": 2,
               "dica": "Clean topology, textures up to 8K."},
 }
@@ -34,6 +37,10 @@ def grafo(modelo, imagem, texturizar=True, seed=42, prefixo="editor/modelo3d", p
         g["gera"] = {"class_type": cfg["no"], "inputs": {
             "image": ["imagem", 0], "model_version": "v3.1-20260211", "texture": bool(texturizar),
             "pbr": bool(texturizar), "model_seed": seed % 2147483647, "face_limit": -1}}
+    elif modelo == "tencent":
+        g["gera"] = {"class_type": cfg["no"], "inputs": {
+            "model": "3.1", "image": ["imagem", 0], "face_count": 500000, "generate_type": "Normal",
+            "generate_type.pbr": bool(texturizar), "seed": seed % 2147483647}}
     else:
         textura = {"should_texture": "true", "should_texture.enable_pbr": True,
                    "should_texture.texture_prompt": "", "should_texture.texture_resolution": "2k"} \

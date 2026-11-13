@@ -30,6 +30,13 @@ class TestModelos3D(unittest.TestCase):
         with self.assertRaises(ValueError):
             modelos3d.grafo("tripo_texto", "", True, 7, prompt="  ")
 
+    def test_hunyuan_tencent(self):
+        g = modelos3d.grafo("tencent", "a.png", True, 7)
+        self.assertEqual(g["gera"]["class_type"], "TencentImageToModelNode")
+        self.assertEqual(g["gera"]["inputs"]["generate_type"], "Normal")
+        self.assertTrue(g["gera"]["inputs"]["generate_type.pbr"])
+        self.assertEqual(g["salva"]["inputs"]["mesh"], ["gera", 1])
+
     def test_modelo_desconhecido(self):
         with self.assertRaises(ValueError):
             modelos3d.grafo("outro", "a.png")

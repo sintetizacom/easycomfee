@@ -8,6 +8,7 @@ import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCus
 const MODELOS = [
   { id: 'tripo', rotulo: 'Tripo 3.1', dica: 'Textured model with PBR materials. A good all-rounder.' },
   { id: 'tripo_texto', rotulo: 'Tripo 3.1 · from text', dica: 'Describe the object; no image needed.' },
+  { id: 'tencent', rotulo: 'Hunyuan 3D 3.1', dica: 'Tencent: detailed geometry, optional PBR.' },
   { id: 'meshy', rotulo: 'Meshy 7.1', dica: 'Clean topology, textures up to 2K here.' },
 ]
 
