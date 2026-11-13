@@ -2948,6 +2948,10 @@ METODOS_API_VIDEO.update(METODOS_DUB)
 METODOS_CHROMA = {"chroma_bria": "BriaVideoGreenScreen", "fundo_bria": "BriaVideoReplaceBackground"}
 CORES_CHROMA = {"green": "chroma_green", "broadcast": "broadcast_green", "blue": "blue_screen"}
 METODOS_API_VIDEO.update(METODOS_CHROMA)
+# Estender um video (continua o clipe com um prompt): Grok e PixVerse V6. Limites de duracao da extensao.
+METODOS_ESTENDER = {"ext_grok": "GrokVideoExtendNode", "ext_pixverse": "PixverseV6ExtendVideoNode"}
+DURACAO_ESTENDER = {"ext_grok": (2, 10), "ext_pixverse": (1, 15)}
+METODOS_API_VIDEO.update(METODOS_ESTENDER)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

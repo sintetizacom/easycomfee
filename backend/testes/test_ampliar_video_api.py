@@ -70,6 +70,15 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(g["gera"]["class_type"], "BriaVideoReplaceBackground")
         self.assertEqual(g["gera"]["inputs"]["background_image"], ["fundo", 0])
 
+    def test_estender_video(self):
+        g = workflows.estender_video_api("v.mp4", "ext_grok", "she walks away", 30, 3)
+        self.assertEqual(g["gera"]["inputs"]["model.duration"], 10)
+        p = workflows.estender_video_api("v.mp4", "ext_pixverse", "she walks away", 0, 3)
+        self.assertEqual(p["gera"]["inputs"]["model.duration_seconds"], 1)
+        self.assertEqual(p["gera"]["class_type"], "PixverseV6ExtendVideoNode")
+        with self.assertRaises(ValueError):
+            workflows.estender_video_api("v.mp4", "outro", "x")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

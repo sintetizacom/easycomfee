@@ -1746,6 +1746,27 @@ def trocar_fundo_video_api(entrada, imagem_fundo, seed=42, prefixo="video_fundo"
                                                             "format": "auto", "codec": "auto"}}}
 
 
+def estender_video_api(entrada, metodo, prompt, duracao=5, seed=42, prefixo="video_estendido"):
+    """Continua um video por API (Grok ou PixVerse V6): o no devolve o clipe com a continuacao."""
+    from presets import DURACAO_ESTENDER
+    if metodo not in DURACAO_ESTENDER:
+        raise ValueError("método de extensão desconhecido")
+    lo, hi = DURACAO_ESTENDER[metodo]
+    dur = max(lo, min(hi, int(duracao)))
+    g = {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}}}
+    if metodo == "ext_grok":
+        g["gera"] = {"class_type": "GrokVideoExtendNode", "inputs": {
+            "prompt": prompt, "video": ["carga", 0], "model": "grok-imagine-video", "model.duration": dur,
+            "seed": seed % 2147483647}}
+    else:
+        g["gera"] = {"class_type": "PixverseV6ExtendVideoNode", "inputs": {
+            "video": ["carga", 0], "model": "PixVerse V6", "model.prompt": prompt, "model.quality": "720p",
+            "model.duration_seconds": dur, "model.generate_audio": True, "model.seed": seed % 2147483647}}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):

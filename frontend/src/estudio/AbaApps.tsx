@@ -310,6 +310,7 @@ export const APPS: App[] = [
   { id: 'relight', nome: 'Relight', frase: 'Changes the light of an outdoor shot: pick the kind of light and where it comes from.', luz: true, semTexto: true, beta: true },
   { id: 'chroma', nome: 'Green screen', frase: 'Replaces the background with a flat chroma-key color and keeps the subject, so you can key it in any editor. Comfy Cloud (Bria), credits.', semTexto: true, beta: true },
   { id: 'fundo', nome: 'Swap background', frase: 'Keeps the subject and puts your image behind it, with matching edges. Comfy Cloud (Bria), credits.', semTexto: true, imagem: 'New background', beta: true },
+  { id: 'estender', nome: 'Extend video', frase: 'Continues your clip with new footage that follows what you describe. Comfy Cloud (Grok or PixVerse), credits.', textoObrigatorio: true, dica: 'What happens next: she turns and walks down the street as the lights come on', beta: true },
   { id: 'foley', nome: 'Add sound (foley)', frase: 'Creates the sound effects of a silent clip: steps, doors, rain. No speech or music. Up to 7 s.', textoObrigatorio: true, dica: 'What makes sound and on what: boots crunching on gravel, a wooden door slams shut, light rain on a car roof', beta: true },
   { id: 'cinemagraph', nome: 'Cinemagraph', frase: 'Brings one thing in a still to life in a seamless loop while the rest stays frozen. Best on scenes without people.', imagem: 'Still image', video: false, textoObrigatorio: true, dica: 'What moves, and only that: only the water in the fountain flows', beta: true },
   { id: 'ampliar2x', nome: 'Upscale 2×', frase: 'Doubles the resolution by inventing fine detail (not a faithful restoration). Up to 2 s.', semTexto: true, beta: true },
@@ -371,6 +372,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [corChroma, setCorChroma] = useState<'green' | 'broadcast' | 'blue'>('green')
   const chromaApi = app?.id === 'chroma'
   const fundoApi = app?.id === 'fundo'
+  // Extend video: Grok ou PixVerse V6 (Comfy Cloud) e quantos segundos acrescentar.
+  const [modeloExt, setModeloExt] = useState<'ext_grok' | 'ext_pixverse'>('ext_grok')
+  const [segExt, setSegExt] = useState(5)
+  const estenderApi = app?.id === 'estender'
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -617,11 +622,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
   const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi
-  const soNuvem = (chromaApi || fundoApi) && !naNuvem
+  const soNuvem = (chromaApi || fundoApi || estenderApi) && !naNuvem
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
   const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : fundoApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : estenderApi
+    ? { modelo: 'limpar_video', metodo_video: modeloExt, prompt: texto.trim() || 'x', duracao_video: segExt, proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : fundoApi
     ? { modelo: 'limpar_video', metodo_video: 'fundo_bria', prompt: '', proporcao: '1:1',
         referencias: video && imagem ? [`entrada:${video.nome}`, imagem.nome] : [] }
     : chromaApi
@@ -645,7 +653,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (fundoApi) {
+      if (estenderApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: modeloExt, prompt: texto.trim(), duracao_video: segExt, proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (fundoApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: 'fundo_bria', prompt: '', proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`, imagem!.nome] } as Parameters<typeof api.gerar>[0])
       } else if (chromaApi) {
@@ -932,6 +943,15 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                 </select>
               </label>
             )}
+            {estenderApi && <>
+              <label>Model
+                <select className="hf-select" value={modeloExt} onChange={(e) => setModeloExt(e.target.value as 'ext_grok' | 'ext_pixverse')}>
+                  <option value="ext_grok">Grok Imagine (2–10 s)</option>
+                  <option value="ext_pixverse">PixVerse V6 (1–15 s, with sound)</option>
+                </select>
+              </label>
+              <Chips rotulo="Add" opcoes={[3, 5, 8, 10].map((n) => ({ id: String(n), rotulo: `${n} s` }))} valor={String(segExt)} aoMudar={(v) => setSegExt(Number(v))} />
+            </>}
             {chromaApi && <Chips rotulo="Background" opcoes={[{ id: 'green', rotulo: 'Green' }, { id: 'broadcast', rotulo: 'Broadcast green' }, { id: 'blue', rotulo: 'Blue' }]} valor={corChroma} aoMudar={setCorChroma} />}
             {ehMapa && <label className="hf-toggle"><input type="checkbox" checked={exr} onChange={(e) => setExr(e.target.checked)} /> EXR too</label>}
             {app.id === 'maquete' && ladosTela.length > 0 && (
