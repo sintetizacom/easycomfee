@@ -1471,10 +1471,14 @@ async def _montar(tarefa: Tarefa):
 
         if p.metodo_video in presets.METODOS_API_VIDEO:
             if not comfy.na_nuvem():
-                raise ValueError("This upscaler runs on Comfy Cloud: switch the engine to Comfy Cloud.")
+                raise ValueError("This tool runs on Comfy Cloud: switch the engine to Comfy Cloud.")
             entrada = await comfy.enviar_imagem(
                 f"ampapi_{uuid.uuid4().hex[:12]}{pathlib.Path(caminho).suffix}", origem)
             tarefa.largura, tarefa.altura = d["largura"], d["altura"]
+            if p.metodo_video in presets.METODOS_SOM_VIDEO:
+                tarefa.prompt_final = p.prompt
+                return workflows.som_video_api(entrada, p.metodo_video, p.prompt, seed,
+                                               prefixo="editor/video_som_api")
             return workflows.ampliar_video_api(entrada, p.metodo_video, p.resolucao_video_api,
                                                prefixo="editor/video_ampliado_api")
 

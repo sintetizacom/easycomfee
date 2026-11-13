@@ -2937,7 +2937,10 @@ MODELOS_MOTOR_FLUX3 = {"flux3", "flux3ref", "moss", "mossedit", "fibo2", "fibo2e
 METODOS_RTX = {"rtx", "rtx48"}
 # Ampliadores de video por API (Comfy Cloud, creditos): um no de parceiro entre LoadVideo e SaveVideo.
 # Nos lidos da nuvem em 13/11/2026, ainda nao gerados.
-METODOS_API_VIDEO = {"flashvsr": "WavespeedFlashVSRNode", "topaz": "TopazVideoEnhanceV2"}
+METODOS_API_VIDEO = {"flashvsr": "WavespeedFlashVSRNode", "topaz": "TopazVideoEnhanceV2",
+                     # Som para o video (o video original fica, o audio vem do no): efeitos ou musica.
+                     "mirelo": "MireloVideoToSFX", "sonilo": "SoniloVideoToMusic"}
+METODOS_SOM_VIDEO = {"mirelo", "sonilo"}
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

@@ -16,6 +16,21 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(ent["upscaler_model"], "Starlight (Astra) Fast")
         self.assertEqual(ent["upscaler_model.upscaler_resolution"], "FullHD (1080p)")
 
+    def test_som_mirelo_mantem_o_video_e_troca_o_audio(self):
+        g = workflows.som_video_api("v.mp4", "mirelo", "steps on gravel", 7)
+        self.assertEqual(g["gera"]["class_type"], "MireloVideoToSFX")
+        self.assertEqual(g["gera"]["inputs"]["model.prompt"], "steps on gravel")
+        self.assertEqual(g["junta"]["inputs"]["images"], ["partes", 0])
+        self.assertEqual(g["junta"]["inputs"]["audio"], ["gera", 0])
+        self.assertEqual(g["salva"]["inputs"]["video"], ["junta", 0])
+
+    def test_som_sonilo_usa_o_video_de_entrada(self):
+        g = workflows.som_video_api("v.mp4", "sonilo", "", 7)
+        self.assertEqual(g["gera"]["class_type"], "SoniloVideoToMusic")
+        self.assertEqual(g["gera"]["inputs"]["video"], ["carga", 0])
+        with self.assertRaises(ValueError):
+            workflows.som_video_api("v.mp4", "outro")
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

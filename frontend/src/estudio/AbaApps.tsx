@@ -330,7 +330,7 @@ export const APPS: App[] = [
 // Comfy Cloud has the LTX 2.3 version of most of these LoRAs (nuvem.SUBSTITUTOS);
 // these two exist only in the 2.5 Creative Lab, so they need your own GPU.
 // The layout-to-render LoRA (3D render → Video) is a 2.5 one too.
-const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha', 'relight', 'foley', 'cinemagraph', 'hdr'])
+const SO_LOCAL = new Set(['restaurar', 'slowmo', 'maquete', 'mapa_profundidade', 'alpha', 'relight', 'cinemagraph', 'hdr'])
 
 export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const tarefas = useTarefas()
@@ -360,6 +360,11 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const modeloAmpliar = naNuvem ? (['flashvsr', 'topaz'].includes(escolhaAmpliar) ? escolhaAmpliar : 'flashvsr') : 'ltx2x'
   const ampliarApi = app?.id === 'ampliar2x' && modeloAmpliar !== 'ltx2x'
   const escolherAmpliar = useEscolha(setEscolhaAmpliar)
+  // Foley: o som do LTX (sua placa) ou, na Comfy Cloud, efeitos (Mirelo) ou musica (Sonilo) para o video.
+  const [escolhaFoley, setEscolhaFoley] = useState('ltxfoley')
+  const modeloFoley = naNuvem ? (['mirelo', 'sonilo'].includes(escolhaFoley) ? escolhaFoley : 'mirelo') : 'ltxfoley'
+  const somApi = app?.id === 'foley' && modeloFoley !== 'ltxfoley'
+  const escolherFoley = useEscolha(setEscolhaFoley)
   // "Send to VFX Studio" num video da galeria: vira o video de entrada do app escolhido.
   useVideoRecebido(setVideo, setErro)
   // 3D render → Video: keyframes, each at a frame number (from 1, 24 fps, as in Blender).
@@ -605,11 +610,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     try { setVideo(await api.enviarReferencia(f)) } catch (x) { setErro(mensagem(x)) } finally { setEnviando(false) }
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
-  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi
+  const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
-  const pronto = app && !bloqueado && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || !!texto.trim())
+  const pronto = app && !bloqueado && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado ? null : ampliarApi
+  const custo = useCusto(!app || bloqueado ? null : somApi
+    ? { modelo: 'limpar_video', metodo_video: modeloFoley, prompt: texto.trim(), proporcao: '1:1',
+        referencias: video ? [`entrada:${video.nome}`] : [] }
+    : ampliarApi
     ? { modelo: 'limpar_video', metodo_video: modeloAmpliar, resolucao_video_api: '1080p', prompt: '', proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : ehMapa
@@ -624,7 +632,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (ampliarApi) {
+      if (somApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: modeloFoley, prompt: texto.trim(), proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
+      } else if (ampliarApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: modeloAmpliar, resolucao_video_api: '1080p', prompt: '',
           proporcao: '1:1', referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (ehMapa) {
@@ -875,6 +886,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           </div>}
           {!ehMapa && !app.semTexto && !(app.id === 'maquete' && modoMaquete === 'avancado') && <><textarea aria-label="Prompt" maxLength={MAX_PROMPT} value={texto} onChange={(e) => setTexto(e.target.value)} rows={1}
             placeholder={app.dica ?? 'Optional: describe what you want to see…'} /><Contador texto={texto} limite={MAX_PROMPT} /></>}
+          {somApi && <p className="hf-dica">{modeloFoley === 'mirelo' ? 'Mirelo makes sound effects synced to the video (speech is kept).' : 'Sonilo composes music that fits the video.'} Comfy Cloud, credits: the cost shows on the button. Text is optional.</p>}
           {ampliarApi && <p className="hf-dica">Hosted upscaler on Comfy Cloud (credits): enlarges to Full HD, keeps the sound, no 2 s limit. The cost shows on the button.</p>}
           {ehMapa && <p className="hf-dica">Up to the first 20 seconds of the video. EXR keeps the real depth values (32-bit, Z channel), one file per frame.</p>}
           {!(app.id === 'maquete' && modoMaquete === 'avancado') && <div className="hf-linha-controles">
@@ -886,6 +898,17 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
                   <optgroup label="Comfy Cloud · credits">
                     <option value="nuvem:flashvsr">FlashVSR (WaveSpeed)</option>
                     <option value="nuvem:topaz">Topaz Starlight Fast</option>
+                  </optgroup>
+                </select>
+              </label>
+            )}
+            {app.id === 'foley' && (
+              <label>Model
+                <select className="hf-select" value={`${naNuvem ? 'nuvem' : 'local'}:${modeloFoley}`} onChange={(e) => escolherFoley(e.target.value)}>
+                  <optgroup label="Local · your GPU"><option value="local:ltxfoley">LTX Foley (sound effects, up to 7 s)</option></optgroup>
+                  <optgroup label="Comfy Cloud · credits">
+                    <option value="nuvem:mirelo">Mirelo SFX (sound effects)</option>
+                    <option value="nuvem:sonilo">Sonilo (music for the video)</option>
                   </optgroup>
                 </select>
               </label>

@@ -1680,6 +1680,27 @@ def ampliar_video_api(entrada, metodo, resolucao="1080p", prefixo="video_ampliad
     return g
 
 
+def som_video_api(entrada, metodo, prompt="", seed=42, prefixo="video_som_api"):
+    """Som para um video por API: Mirelo (efeitos sonoros) ou Sonilo (musica). O video original
+    e mantido (GetVideoComponents) e o audio gerado entra no lugar do dele (CreateVideo)."""
+    g = {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+         "partes": {"class_type": "GetVideoComponents", "inputs": {"video": ["carga", 0]}}}
+    if metodo == "mirelo":
+        g["gera"] = {"class_type": "MireloVideoToSFX", "inputs": {
+            "model": "sfx-2.0", "model.video": ["carga", 0], "model.prompt": prompt, "model.negative_prompt": "",
+            "model.preserve_speech": True, "model.seed": seed % 4294967295}}
+    elif metodo == "sonilo":
+        g["gera"] = {"class_type": "SoniloVideoToMusic", "inputs": {
+            "video": ["carga", 0], "prompt": prompt, "seed": seed}}
+    else:
+        raise ValueError("método de som por API desconhecido")
+    g["junta"] = {"class_type": "CreateVideo", "inputs": {"images": ["partes", 0], "fps": ["partes", 2],
+                                                           "audio": ["gera", 0]}}
+    g["salva"] = {"class_type": "SaveVideo", "inputs": {"video": ["junta", 0], "filename_prefix": prefixo,
+                                                        "format": "auto", "codec": "auto"}}
+    return g
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):
