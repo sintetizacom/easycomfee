@@ -99,6 +99,7 @@ export default function AbaMusica() {
   }, [naNuvem, tentativa])  // availability depends on the engine: reread when it switches
 
   const cfg = modelos.find((m) => m.id === modelo)
+  const carregandoCatalogo = modelos.length === 0 && !falhaCarga
   // Link com um modelo que nao existe (#music/xyz): nenhum cartao escolhido e o
   // Generate desligado sem motivo. Agora a aba diz o que fazer.
   const modeloDesconhecido = modelos.length > 0 && !cfg
@@ -163,13 +164,20 @@ export default function AbaMusica() {
         </div>
       </TituloPagina>
       {funcao === 'separar' ? <BlocoSeparar naNuvem={naNuvem} /> : <>
+      {carregandoCatalogo ? (
+        <section className="hf-mun-carregando" role="status" aria-live="polite">
+          <span className="hf-mun-carregando-icone" aria-hidden="true" />
+          <div>
+            <b>Checking your music models…</b>
+            <p>{demorando
+              ? 'Still checking. ComfyUI can take a minute the first time it starts.'
+              : 'Looking on this computer and on Comfy Cloud.'}</p>
+          </div>
+        </section>
+      ) : (
       <div className="hf-mun-grade">
       <div className="hf-mun-esq">
       <div className="hf-mu-modelos">
-        {modelos.length === 0 && !falhaCarga && [0, 1, 2, 3, 4].map((k) => (
-          <div key={k} className="hf-mu-modelo" data-carregando="true"><b>Checking models…</b>
-            <small>{demorando ? 'Still checking: ComfyUI can take a minute the first time.' : 'On this computer and on Comfy Cloud'}</small></div>
-        ))}
         {modelos.length === 0 && falhaCarga && (
           <p className="hf-erro" role="alert" style={{ gridColumn: "1 / -1" }}>{falhaCarga} Check that ComfyUI is running.{' '}
             <button type="button" className="hf-link" onClick={() => setTentativa((t) => t + 1)}>Try again</button></p>
@@ -300,6 +308,7 @@ export default function AbaMusica() {
         {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </aside>
       </div>
+      )}
       </>}
 
       <h3 className="hf-lsn-sub">Recent songs</h3>

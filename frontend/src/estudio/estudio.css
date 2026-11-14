@@ -934,7 +934,7 @@ button.hf-onde { font-family: inherit; line-height: inherit; }
 .hf-aviso-partida { margin: 0; padding: 8px 16px; text-align: center; font-size: 13px; color: var(--hf-texto);
   background: #2A2133; border-bottom: 1px solid var(--hf-linha); }
 
-/* Botao seletor (Config Models > Start ComfyUI with Windows): trilho com bolinha e On/Off. */
+/* Botao seletor (Config Models > Start ComfyUI when you log in): trilho com bolinha e On/Off. */
 html .mq-interruptor { display: flex; align-items: center; gap: 16px; justify-content: space-between; }
 html .mq-seletor { flex: none; position: relative; display: inline-flex; align-items: center; width: 74px; height: 34px;
   padding: 0 10px; border-radius: 999px; border: 1px solid #5A4F66; background: #2A2133; cursor: pointer; transition: background .2s, border-color .2s; }
@@ -1853,6 +1853,14 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-mun-dir .hf-linha-controles { flex-direction: column; align-items: stretch; }
 .hf-mun-dir .hf-espaco { display: none; }
 .hf-mun-dir .hf-gerar { width: 100%; justify-content: center; min-height: 50px; font-size: 16px; }
+.hf-mun-carregando { min-height: 360px; display: flex; align-items: center; justify-content: center; gap: 18px;
+  padding: 32px; box-sizing: border-box; border: 1px solid var(--hf-linha); border-radius: 16px;
+  background: var(--hf-cartao); color: var(--hf-texto); text-align: left; }
+.hf-mun-carregando-icone { width: 34px; height: 34px; flex: none; box-sizing: border-box; border-radius: 50%;
+  border: 3px solid rgba(242, 255, 61, .16); border-top-color: var(--hf-neon); animation: hf-girar .85s linear infinite; }
+.hf-mun-carregando b { display: block; margin-bottom: 5px; font-size: 16px; }
+.hf-mun-carregando p { margin: 0; color: var(--hf-apagado); font-size: 13px; }
+@keyframes hf-girar { to { transform: rotate(360deg); } }
 @media (max-width: 1024px) { .hf-mun-grade { grid-template-columns: 1fr; } .hf-mun-dir { position: static; } }
 
 /* ===== Assets no layout novo (31/10/2026) ===== */
@@ -2946,6 +2954,8 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 @media (max-width: 1024px) {
   .hf-img-grade, .hf-edt-grade, .hf-vid-grade, .hf-vfx-grade { grid-template-columns: minmax(0, 1fr); }
   .hf-img-grade > .hf-img-col { height: auto; min-height: 0; max-height: none; }
+  /* Video empilhado: a altura sincronizada com o palco so serve para duas colunas. */
+  .hf-vid-grade > .hf-vid-dir { height: auto; min-height: 0; max-height: none; }
   .hf-img-palco { height: auto; min-height: 300px; }
 }
 /* Celular: a coluna unica nao pode crescer com o conteudo (a barra de abas rola por dentro). */
@@ -2962,8 +2972,22 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 }
 @media (max-width: 720px) {
   .hf-vz-modos, .hf-vzn .hf-vz-modos { grid-template-columns: minmax(0, 1fr); }
-  .hf-lsn-etapas { flex-wrap: wrap; margin: 10px 0 14px; }
-  .hf-lsn-etapas > li { min-width: 0; }
+  .hf-lsn-etapas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 10px 0 14px; }
+  .hf-lsn-etapas > li { position: relative; min-width: 0; justify-content: center; gap: 6px; font-size: 13px; }
+  .hf-lsn-etapas li + li::before {
+    position: absolute;
+    z-index: 0;
+    left: calc(-50% + 22px);
+    right: calc(50% + 22px);
+    width: auto;
+    margin: 0;
+  }
+  .hf-lsn-etapas i, .hf-lsn-etapas li { isolation: isolate; }
+  .hf-lsn-etapas i { background: var(--hf-fundo); }
+}
+/* Voice: em navegadores estreitos ainda cabem dois modos legiveis por linha. */
+@media (min-width: 481px) and (max-width: 720px) {
+  .hf-vzn .hf-vz-modos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
   /* O topo (saldo, Config Models) e absoluto no desktop e cobria o titulo no celular: entra no fluxo. */
@@ -2972,6 +2996,52 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 @media (max-width: 1024px) { .hf-titulo-pag { margin-right: 2px; } .hf-topo.hf-topo-direita { position: static; justify-content: flex-end; padding: 8px 12px 0; } }
 @media (max-width: 720px) { .hf-titulo-pag h1 { font-size: 24px; } }
 @media (max-width: 1024px) { .hf-topo.hf-topo-direita { height: auto; min-height: 44px; align-items: center; } }
+
+/* Celular e navegador estreito: navegacao e acoes dividem uma unica faixa.
+   O cabecalho de acoes deixa de criar uma segunda linha acima do titulo. */
+@media (max-width: 720px) {
+  /* Reserva o pior caso: saldo, Config Models, Start ComfyUI e desligar. */
+  .hf-lateral { padding-right: 350px; min-height: 60px; }
+  .hf-topo.hf-topo-direita,
+  .hf-principal:has(> .hf-aviso-comfy) > .hf-topo.hf-topo-direita {
+    position: absolute;
+    top: -60px;
+    right: 0;
+    left: auto;
+    z-index: 31;
+    width: auto;
+    height: 60px;
+    min-height: 0;
+    padding: 0;
+    align-items: flex-start;
+    overflow: visible;
+  }
+  .hf-topo.hf-topo-direita > .hf-direita {
+    gap: 8px;
+    margin: 8px 10px 0 0;
+  }
+  .hf-topo.hf-topo-direita .hf-botao-modelos { padding-inline: 10px; }
+}
+
+/* Image no celular: os looks deixam de ocupar varias telas antes do prompt. */
+@media (max-width: 720px) {
+  .hf-aba.hf-img:not(.hf-vid):not(.hf-edt) .hf-img-esq { overflow: visible; }
+  .hf-aba.hf-img:not(.hf-vid):not(.hf-edt) .hf-img-esq .hf-looks-grade {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .hf-aba.hf-img:not(.hf-vid):not(.hf-edt) .hf-img-esq .hf-looks-grade::-webkit-scrollbar { display: none; }
+  .hf-aba.hf-img:not(.hf-vid):not(.hf-edt) .hf-img-esq .hf-look {
+    flex: 0 0 calc((100% - 15px) / 2.5);
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+}
 /* Tablet: lista de looks em 5 colunas (antes 3 miniaturas enormes). */
 @media (min-width: 721px) and (max-width: 1024px) { .hf-aba.hf-img .hf-img-esq .hf-looks-grade { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 /* Cinema Studio: as areas nomeadas (esq/palco/dir/planos/rodape) ficavam em 3 colunas; em tela estreita empilham. */
@@ -3058,6 +3128,24 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-m3d .hf-vz-corpo { grid-template-columns: minmax(0, 1fr); }
   .hf-vzn .hf-m3d-partida { grid-template-columns: minmax(0, 1fr); }
 }
+@media (max-width: 720px) {
+  /* 3D: os modelos viram uma faixa curta; a selecao nao empurra os ajustes para longe. */
+  .hf-m3d-modelos {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(190px, 44%);
+    grid-auto-rows: minmax(140px, auto);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .hf-m3d-modelos::-webkit-scrollbar { display: none; }
+  .hf-m3d-modelos > .hf-m3d-modelo { scroll-snap-align: start; }
+  .hf-m3d-modelos > .hf-m3d-modelo:only-child { grid-column: auto; }
+}
 
 /* Erase object: tela de pintura sobre o primeiro quadro; a barra fica sobre o video, no rodape */
 .hf-mask { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #000; }
@@ -3119,12 +3207,29 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-gj-cartao[data-m='recast'], .hf-gj-cartao[data-m='wan_animate2'] { grid-column: span 6; }
   .hf-gj-cartao[data-m='higgsfield'], .hf-gj-cartao[data-m='kling_omni'], .hf-gj-bloco[data-bloco='edicao'] .hf-gj-cartao { grid-column: span 3; }
 }
-/* Janelas estreitas: 2 colunas (abertos: 2x2 + 2 + 1 + 1; os demais 1 + 1) */
+/* Janelas estreitas: cada grupo vira uma faixa curta, sem empurrar o formulario para longe. */
 @media (max-width: 720px) {
-  .hf-gj-bloco { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 140px; }
-  .hf-gj-cartao[data-m='recast'], .hf-gj-cartao[data-m='wan_animate2'] { grid-column: span 2; }
-  .hf-gj-cartao[data-m='wan22_replace'], .hf-gj-cartao[data-m='h3_swap'], .hf-gj-cartao[data-m='higgsfield'], .hf-gj-cartao[data-m='kling_omni'],
-  .hf-gj-bloco[data-bloco='edicao'] .hf-gj-cartao { grid-column: span 1; }
+  .hf-gj-bloco {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(250px, 58%);
+    grid-auto-rows: 180px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .hf-gj-bloco::-webkit-scrollbar { display: none; }
+  .hf-gj-bloco .hf-gj-cartao,
+  .hf-gj-cartao[data-m='recast'], .hf-gj-cartao[data-m='wan_animate2'],
+  .hf-gj-cartao[data-m='wan22_replace'], .hf-gj-cartao[data-m='h3_swap'],
+  .hf-gj-cartao[data-m='higgsfield'], .hf-gj-cartao[data-m='kling_omni'],
+  .hf-gj-bloco[data-bloco='edicao'] .hf-gj-cartao {
+    grid-column: auto;
+    grid-row: auto;
+    scroll-snap-align: start;
+  }
   .hf-gj-escolher .hf-gj-faz { display: none; }
 }
 
