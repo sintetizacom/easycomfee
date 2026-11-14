@@ -283,40 +283,51 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
                 ? 'Describe the character and the background'
                 : modelo === 'h3_swap' ? 'e.g. the performer is singing; keep the original voice'
                 : 'What changes, e.g. the dancer becomes a snow queen in an ice palace'} /><Contador texto={texto} limite={limitePrompt(modelo)} />
-            {modelo === 'recast' && (
-              <label className="hf-ctrl"><small>The new video follows</small>
-                <Chips rotulo="Follow" opcoes={[{ id: 'pose', rotulo: 'Body pose' }, { id: 'profundidade', rotulo: 'Depth' }]}
-                  valor={controle} aoMudar={setControle} /></label>
-            )}
-            {(modelo === 'wan22_replace' || modelo === 'h3_swap') && (
-              <label className="hf-ctrl hf-gj-alvo" title="Who leaves the video. 'person' for one person; 'woman in red:1' to pick one of several.">
-                <small>Who to replace in the video</small>
-                <input className="hf-campo" value={alvo} onChange={(e) => setAlvo(e.target.value)} placeholder="person" />
-                <span className="hf-dica">"person" for one person. With several, describe one: "man in the green shirt".</span>
-              </label>
-            )}
-            {modelo === 'h3_swap' && <>
-              <Chips rotulo="Prompt" opcoes={[{ id: 'g', rotulo: 'Gemini writes it (API)' }, { id: 'p', rotulo: 'Standard' }]}
-                valor={gemini ? 'g' : 'p'} aoMudar={(v) => setGemini(v === 'g')} />
-              <Chips rotulo="Speed" opcoes={[{ id: 'n', rotulo: 'Quality · 20 steps' }, { id: 't', rotulo: 'Turbo · 8 steps' }]}
-                valor={turbo ? 't' : 'n'} aoMudar={(v) => setTurbo(v === 't')} />
-            </>}
-            {opcoesRes && (
-              <label className="hf-ctrl hf-gj-res" title="The final size of the video. Higher costs more credits and takes longer.">
-                <small>Resolution</small>
-                <Chips rotulo="Resolution" opcoes={opcoesRes.map((r) => ({ id: r, rotulo: r === '480p' ? '480p · faster' : r }))}
-                  valor={resEscolhida} aoMudar={setResolucao} />
-              </label>
-            )}
-            <div className="hf-gj-gerar">
-              {etapa && <span className="hf-dica">{etapa}</span>}
-              {cfg.aberto && !naNuvem && !instalado(modelo) && (
-                <span className="hf-erro" role="alert">{cfg.rotulo} is not installed on this computer. Install it in Config Models, or choose Cloud on its card.</span>
-              )}
-              <BotaoGerar rotulo="Generate →" est={custo} desligado={!pronto} aoClicar={gerar} />
-            </div>
           </section>
         </div>
+
+        {/* As opcoes ficam numa fileira de caixas iguais sob os tres boxes; o Generate e a ultima caixa. */}
+        <div className="hf-gj-opcoes">
+          {modelo === 'recast' && (
+            <div className="hf-gj-opc">
+              <Chips rotulo="The new video follows" opcoes={[{ id: 'pose', rotulo: 'Body pose' }, { id: 'profundidade', rotulo: 'Depth' }]}
+                valor={controle} aoMudar={setControle} />
+            </div>
+          )}
+          {(modelo === 'wan22_replace' || modelo === 'h3_swap') && (
+            <div className="hf-gj-opc hf-gj-opc-larga" title="Who leaves the video. 'person' for one person; 'woman in red:1' to pick one of several.">
+              <div className="hf-campo"><span>Who to replace in the video</span>
+                <input className="hf-campo-texto" aria-label="Who to replace in the video" value={alvo} onChange={(e) => setAlvo(e.target.value)} placeholder="person" /></div>
+              <small className="hf-dica">"person" for one person. With several, describe one: "man in the green shirt".</small>
+            </div>
+          )}
+          {modelo === 'h3_swap' && <>
+            <div className="hf-gj-opc">
+              <Chips rotulo="Prompt" opcoes={[{ id: 'g', rotulo: 'Gemini writes it (API)' }, { id: 'p', rotulo: 'Standard' }]}
+                valor={gemini ? 'g' : 'p'} aoMudar={(v) => setGemini(v === 'g')} />
+            </div>
+            <div className="hf-gj-opc">
+              <Chips rotulo="Speed" opcoes={[{ id: 'n', rotulo: 'Quality · 20 steps' }, { id: 't', rotulo: 'Turbo · 8 steps' }]}
+                valor={turbo ? 't' : 'n'} aoMudar={(v) => setTurbo(v === 't')} />
+            </div>
+          </>}
+          {/* A resolucao fica ao lado do Generate, na ponta direita */}
+          <div className="hf-gj-direita">
+            {opcoesRes && (
+              <div className="hf-gj-opc" title="The final size of the video. Higher costs more credits and takes longer.">
+                <Chips rotulo="Resolution" opcoes={opcoesRes.map((r) => ({ id: r, rotulo: r === '480p' ? '480p · faster' : r }))}
+                  valor={resEscolhida} aoMudar={setResolucao} />
+              </div>
+            )}
+            <div className="hf-gj-opc hf-gj-opc-gerar">
+              <BotaoGerar rotulo="Generate →" est={custo} desligado={!pronto} aoClicar={gerar} />
+            </div>
+          </div>
+        </div>
+        {etapa && <p className="hf-dica hf-gj-aviso">{etapa}</p>}
+        {cfg.aberto && !naNuvem && !instalado(modelo) && (
+          <p className="hf-erro hf-gj-aviso" role="alert">{cfg.rotulo} is not installed on this computer. Install it in Config Models, or choose Cloud on its card.</p>
+        )}
         {erro && <p className="hf-erro" role="alert">{erro}</p>}
         {aprovar && (
           <section className="hf-gj-aprovar" aria-label="Approve the new first frame">
