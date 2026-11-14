@@ -77,7 +77,7 @@ export default function ContaApi({ temChave, linkRecarga, aoMudar }: {
 }
 
 // "Paid API models" checkbox. It lives in the Local models tab of Config Models.
-/** Cartao com chave seletora (liga/desliga), no mesmo estilo de "Start ComfyUI with Windows". */
+/** Cartao com chave seletora (liga/desliga), no mesmo estilo de "Start ComfyUI when you log in". */
 export function InterruptorCartao({ id, rotulo, texto, extra, ligado, aoMudar }: {
   id: string; rotulo: string; texto: string; extra?: string; ligado: boolean; aoMudar: (v: boolean) => void
 }) {

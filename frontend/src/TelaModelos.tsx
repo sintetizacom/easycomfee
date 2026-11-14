@@ -79,9 +79,9 @@ function InicioComWindows() {
   return (
     <section className="mq-cartao mq-interruptor">
       <div>
-        <span className="mq-rotulo" id="mq-inicio-rotulo">Start ComfyUI with Windows</span>
+        <span className="mq-rotulo" id="mq-inicio-rotulo">Start ComfyUI when you log in</span>
         <p className="mq-sub">{est.disponivel
-          ? 'ComfyUI loads while the PC starts, so it is ready when you open EasyComfee. It uses some memory even on days you do not open the app.'
+          ? 'ComfyUI loads when you log in to the computer, so it is ready when you open EasyComfee. It uses some memory even on days you do not open the app.'
           : est.motivo}</p>
         {erro && <p className="mq-aviso erro">{erro}</p>}
       </div>

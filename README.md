@@ -209,7 +209,7 @@ Local generation was built and tested on **NVIDIA RTX cards on Windows** only.
 
 - **Comfy Cloud mode works on any computer** (AMD, Apple Silicon Mac, laptops without a GPU): generations run on Comfy's GPUs, billed to your credits.
 - **Locally on AMD or Mac**, ComfyUI itself runs, but many model files in the catalog use NVIDIA-oriented formats: *nvfp4* needs an RTX 50-series card, *fp8* is fast only on RTX 40/50 and may fail on Mac, and the *int8* files rely on ComfyUI kernels written for NVIDIA. The NVIDIA RTX video effects (RTX upscale and smooth motion) are NVIDIA-only. The light models (SD 1.5, SDXL) are the most likely to work, and video models are very slow on Mac.
-- `install.bat` is Windows-only; on Mac or Linux follow the manual setup below.
+- **Mac (Apple Silicon, M1 or newer):** use `install.command` (see *Quick start (Mac)* below). Intel Macs can only use Comfy Cloud. On Linux follow the manual setup below.
 
 **Config Models** says so: pick an AMD card in *Your machine* and the packages read *Not tested on AMD* instead of *Runs well here*. Reports from AMD and Mac users are welcome.
 
@@ -233,10 +233,28 @@ install.bat
 
 - If EasyComfee installed ComfyUI, it starts it for you. Right after turning the PC on, ComfyUI takes a minute or two to load; a strip at the top says *ComfyUI is starting* and goes away by itself, and the model menus fill in on their own.
 - If you use your own ComfyUI, start it first, as usual.
-- **Start ComfyUI with Windows** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI while the PC starts, so it is ready when you open the studio. Off removes it; it also shows in Task Manager → Startup apps.
+- **Start ComfyUI when you log in** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI when you log in, so it is ready when you open the studio. Off removes it; on Windows it also shows in Task Manager → Startup apps, on the Mac in Login Items.
 - **Safe mode** (Config Models → Local models, **on by default**): explicit prompts are refused, local models get an anti-nudity negative prompt, and any result a small on-device classifier (Falconsai NSFW detector, Apache-2.0, ONNX on the CPU) marks as NSFW is shown blurred; the file on disk is kept. Open-weight models have no filter of their own, so turning it off is your choice and your responsibility.
 
 Then open **Config Models**, press **Confirm** in *Your machine* (the packages only appear after that), and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
+
+## Quick start (Mac)
+
+*New and not yet tested on a real Mac: please report problems on GitHub.* You need an **Apple Silicon** Mac (M1 or newer), plus Python 3.11-3.13, Node.js 20+ and Git (`brew install python@3.12 node git`, or the installers from python.org and nodejs.org; macOS offers the Command Line Tools for Git by itself). In Terminal:
+
+```bash
+git clone https://github.com/sintetizacom/easycomfee.git easycomfee
+cd easycomfee
+./install.command
+```
+
+(If you downloaded a .zip instead, run `chmod +x *.command` once first, and right-click → Open the first time.) `install.command` does what `install.bat` does: finds your ComfyUI (Comfy Desktop or a manual install) or installs one for you inside the folder (ComfyUI v0.37.0 with PyTorch, about 3 GB, runs on the Apple GPU through MPS), creates the Python environment, builds the interface and puts an **EasyComfee** app on your Desktop and in `~/Applications`.
+
+- **Start:** open the EasyComfee app (no Terminal window; the browser opens by itself), or double-click `start.command`. Server messages go to `logs/servidor.log`; ComfyUI's go to `logs/comfyui.log`.
+- **Stop:** double-click `parar.command`.
+- **Uninstall:** double-click `uninstall.command`.
+- **Update** works like on Windows: it opens Terminal, runs `git pull`, updates the packages, rebuilds the interface and starts the studio again (needs a `git clone` install). *Start ComfyUI when you log in* becomes a login item on the Mac (it takes effect at your next login).
+- Local models: see *AMD, Mac and other GPUs* above. Many catalog files are NVIDIA-oriented; SD 1.5 and SDXL are the likeliest to work, video is slow. Comfy Cloud works fully.
 
 ### Updating
 

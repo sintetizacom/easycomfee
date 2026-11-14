@@ -11,6 +11,7 @@ import os
 import re
 import pathlib
 import subprocess
+import sys
 import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -62,6 +63,33 @@ def porta_do_bat(bat: pathlib.Path) -> int:
     return int(m.group(1)) if m else 8188
 
 
+def ligar_no_mac(cfg: dict, pasta: pathlib.Path, porta: str, app: str) -> None:
+    """Mac: liga o ComfyUI que o EasyComfee instalou (venv em <pasta>/venv) em segundo plano.
+    Sem janela: o que ele escreve vai para logs/comfyui.log (o relatorio de suporte pode levar)."""
+    py = pasta / "venv" / "bin" / "python"
+    if not py.is_file():
+        print("ComfyUI is not installed here yet: run install.command again.")
+        return
+    comando = [str(py), "main.py", "--listen", "127.0.0.1", "--port", porta,
+               "--disable-auto-launch", "--enable-cors-header", app]
+    if cfg.get("comfy_saida"):
+        saida = pathlib.Path(cfg["comfy_saida"])
+        saida.mkdir(parents=True, exist_ok=True)
+        comando += ["--output-directory", str(saida)]
+    (RAIZ / "logs").mkdir(exist_ok=True)
+    log = open(RAIZ / "logs" / "comfyui.log", "ab")
+    # Operacoes que a GPU da Apple (MPS) ainda nao tem caem para a CPU em vez de dar erro.
+    subprocess.Popen(comando, cwd=pasta / "ComfyUI", stdout=log, stderr=subprocess.STDOUT,
+                     env={**os.environ, "PYTORCH_ENABLE_MPS_FALLBACK": "1"}, start_new_session=True)
+    print("Starting ComfyUI in the background (log: logs/comfyui.log)...")
+
+
+def app_do_mac() -> bool:
+    """O aplicativo ComfyUI / Comfy Desktop esta instalado em /Applications ou ~/Applications?"""
+    pastas = (pathlib.Path("/Applications"), pathlib.Path.home() / "Applications")
+    return any((p / n).is_dir() for p in pastas for n in ("ComfyUI.app", "Comfy Desktop.app"))
+
+
 def desktop_exe() -> pathlib.Path | None:
     local = pathlib.Path(os.environ.get("LOCALAPPDATA", ""))
     for exe in (local / "Programs" / "Comfy Desktop" / "Comfy Desktop.exe",
@@ -89,6 +117,14 @@ def comfy_da_pessoa(cfg: dict) -> None:
     achada = porta_aberta(preferida)
     if achada:
         gravar_url(cfg, achada)
+        return
+    if sys.platform == "darwin":
+        if app_do_mac() and (cfg.get("comfy_desktop") or cfg.get("comfy_url", "").rstrip("/").endswith(":8000")):
+            for nome in ("Comfy Desktop", "ComfyUI"):
+                if subprocess.run(["open", "-a", nome], capture_output=True).returncode == 0:
+                    print(f"Starting {nome}...")
+                    return
+        print("Open your ComfyUI: EasyComfee connects by itself when it is up.")
         return
     pasta = pathlib.Path(cfg.get("comfy_dir") or ".")
     bats = [pasta.parent / n for n in ("run_nvidia_gpu.bat", "run_nvidia_gpu_fast_fp16_accumulation.bat", "run_cpu.bat")]
@@ -125,9 +161,12 @@ def main() -> None:
         return  # ja esta no ar
     except OSError:
         pass
-    pasta = pathlib.Path(cfg["comfy_dir"]).parent          # ...\ComfyUI_windows_portable
+    pasta = pathlib.Path(cfg["comfy_dir"]).parent          # ...\ComfyUI_windows_portable (Mac: ComfyUI_mac)
     porta = url.rsplit(":", 1)[-1]
     app = f"http://127.0.0.1:{cfg.get('app_porta', 8600)}"
+    if sys.platform == "darwin":
+        ligar_no_mac(cfg, pasta, porta, app)
+        return
     # Instalacao nova: as geracoes vao para a pasta "output" do EasyComfee (o instalador grava
     # comfy_saida). Sem a chave (instalado antes de 02/11/2026) fica a pasta do ComfyUI, onde
     # esta a galeria antiga.

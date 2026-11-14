@@ -80,8 +80,54 @@ def _baixar(url: str, arquivo: pathlib.Path, sha: str) -> None:
     parcial.replace(arquivo)
 
 
+def _instalar_mac() -> pathlib.Path | None:
+    """Mac (Apple Silicon): nao ha pacote portatil. Clona o ComfyUI na mesma versao FIXA do Windows,
+    cria um venv proprio e instala o PyTorch (o da PyPI ja traz o MPS, a GPU da Apple).
+    Layout igual ao do Windows: ComfyUI/ComfyUI_mac/{venv, ComfyUI/main.py}."""
+    import platform
+    if platform.machine() != "arm64":
+        print("\nLocal ComfyUI on a Mac needs an Apple Silicon chip (M1 or newer); this Mac has an Intel chip.\n"
+              "You can still use EasyComfee with Comfy Cloud: open Config Models > Comfy Cloud API.")
+        return None
+    base = DESTINO / "ComfyUI_mac"
+    pronto = base / "ComfyUI"
+    if (pronto / "main.py").is_file() and (base / "venv" / "bin" / "python").is_file():
+        print(f"ComfyUI is already installed in {pronto}")
+        return pronto
+    livre = shutil.disk_usage(RAIZ).free / 1e9
+    if livre < 10:
+        print(f"\nNot enough free disk space to install ComfyUI here ({livre:.1f} GB free, about 10 GB needed).")
+        return None
+    base.mkdir(parents=True, exist_ok=True)
+    print(f"\nInstalling ComfyUI {VERSAO} for Apple Silicon (about 3 GB, a few minutes)...")
+    if not (pronto / "main.py").is_file():
+        shutil.rmtree(pronto, ignore_errors=True)  # clone pela metade de uma tentativa anterior
+        r = subprocess.run(["git", "clone", "--depth", "1", "--branch", VERSAO,
+                            "https://github.com/Comfy-Org/ComfyUI.git", str(pronto)], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("Could not download ComfyUI (is git installed and the internet on?): "
+                               + (r.stderr.strip()[-300:] or "unknown error"))
+    py = base / "venv" / "bin" / "python"
+    if not py.is_file():
+        print("  Creating ComfyUI's own Python environment...")
+        r = subprocess.run([sys.executable, "-m", "venv", str(base / "venv")], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("Could not create the Python environment: " + r.stderr.strip()[-300:])
+    print("  Installing PyTorch and ComfyUI's packages (the longest step, a few minutes)...")
+    for args in (["install", "-q", "--upgrade", "pip"],
+                 ["install", "-q", "torch", "torchvision", "torchaudio"],
+                 ["install", "-q", "-r", str(pronto / "requirements.txt")]):
+        r = subprocess.run([str(py), "-m", "pip", *args], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("pip failed: " + (r.stderr.strip()[-400:] or "unknown error"))
+    print(f"  ComfyUI installed in {pronto}")
+    return pronto
+
+
 def instalar() -> pathlib.Path | None:
     """Baixa e descompacta o ComfyUI portatil. Devolve a pasta com main.py, ou None."""
+    if sys.platform == "darwin":
+        return _instalar_mac()
     placa = _placa()
     if placa is None:
         print("\nNo NVIDIA, AMD or Intel Arc graphics card found, so ComfyUI can't run on this computer.\n"

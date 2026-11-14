@@ -105,3 +105,39 @@ def test_pasta_digitada(tmp_path):
     assert dc.pasta_digitada(str(raiz)) == raiz
     assert dc.pasta_digitada(f'"{raiz.parent}"') == raiz
     assert dc.pasta_digitada(str(tmp_path)) is None
+
+
+def test_mac_usa_application_support_e_o_layout_proprio(tmp_path, monkeypatch):
+    """No Mac o Desktop mora em ~/Library/Application Support e o ComfyUI proprio em ComfyUI_mac."""
+    monkeypatch.setattr(dc, "MAC", True)
+    monkeypatch.setattr(dc.pathlib.Path, "home", classmethod(lambda cls: tmp_path))
+    assert dc._dados_do_usuario() == tmp_path / "Library" / "Application Support"
+    assert dc._pasta_do_app() == tmp_path / "Library" / "Application Support" / "Comfy Desktop"
+    monkeypatch.setattr(dc, "RAIZ", tmp_path / "app")
+    proprio = tmp_path / "app" / "ComfyUI" / "ComfyUI_mac" / "ComfyUI"
+    for sub in ("comfy", "models"):
+        (proprio / sub).mkdir(parents=True)
+    (proprio / "main.py").write_text("")
+    monkeypatch.setattr(dc, "_comfy_aberto", lambda: [])
+    achados = dc.candidatos()
+    assert achados[0]["pasta"] == proprio and achados[0]["proprio"]
+
+
+def test_mac_atualizar_command_tem_sintaxe_valida(tmp_path):
+    import subprocess
+    import atualizacao
+    import pytest
+    import shutil
+    bash = next((b for b in (r"C:\Program Files\Git\bin\bash.exe", shutil.which("bash")) if b and shutil.os.path.exists(b)), None)
+    if not bash:
+        pytest.skip("sem bash")
+    r = subprocess.run([bash, "-n"], input=atualizacao.SH.encode(), capture_output=True)
+    if b"\x00" in r.stdout:  # o bash.exe do Windows sem WSL instalado
+        pytest.skip("bash do Windows sem WSL")
+    assert r.returncode == 0, r.stderr
+
+
+def test_mac_agente_de_login_e_xml_valido():
+    import xml.dom.minidom
+    import inicializacao
+    xml.dom.minidom.parseString(inicializacao._plist_mac())

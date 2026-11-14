@@ -22,8 +22,35 @@ PASTA = pathlib.Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start M
 ATALHO = PASTA / "EasyComfee - ComfyUI.lnk"
 
 
+MAC = sys.platform == "darwin"
+# Mac: um LaunchAgent (roda ao entrar na conta). Aparece em Ajustes > Geral > Itens de Login.
+AGENTE = pathlib.Path.home() / "Library/LaunchAgents/com.easycomfee.comfyui.plist"
+AGENTE_PLIST = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.easycomfee.comfyui</string>
+<key>ProgramArguments</key><array><string>{python}</string><string>{script}</string></array>
+<key>WorkingDirectory</key><string>{pasta}</string>
+<key>RunAtLoad</key><true/>
+<key>AbandonProcessGroup</key><true/>
+</dict></plist>
+"""
+
+
+def _plist_mac() -> str:
+    from xml.sax.saxutils import escape
+    return AGENTE_PLIST.format(python=escape(sys.executable), pasta=escape(str(config.RAIZ)),
+                               script=escape(str(config.RAIZ / "backend" / "iniciar_comfy.py")))
+
+
+def _launchctl(*args: str) -> None:
+    subprocess.run(["launchctl", *args], capture_output=True, timeout=15)
+
+
 def _alvo() -> tuple[str, str] | None:
     """(programa, argumentos) que liga o ComfyUI, ou None se o app nao sabe ligar."""
+    if MAC:
+        return (sys.executable, "iniciar_comfy.py") if config._valor("comfy_iniciar") in (True, "true", "True", "1") else None
     if motores.RELANCADOR.exists():
         return "wscript.exe", f'//nologo "{motores.RELANCADOR}"'
     if config._valor("comfy_iniciar") in (True, "true", "True", "1"):
@@ -34,12 +61,25 @@ def _alvo() -> tuple[str, str] | None:
 
 def estado() -> dict:
     alvo = _alvo()
+    if MAC:
+        return {"disponivel": alvo is not None, "ativo": AGENTE.exists(),
+                "motivo": "" if alvo else "Only for the ComfyUI that EasyComfee starts itself."}
     return {"disponivel": alvo is not None and bool(os.environ.get("APPDATA")),
             "ativo": ATALHO.exists(),
             "motivo": "" if alvo else "Only for the ComfyUI that EasyComfee starts itself."}
 
 
 def mudar(ativo: bool) -> dict:
+    if MAC:
+        if not ativo:
+            _launchctl("bootout", f"gui/{os.getuid()}", str(AGENTE))
+            AGENTE.unlink(missing_ok=True)
+            return estado()
+        if _alvo() is None:
+            raise RuntimeError("EasyComfee does not start this ComfyUI, so it cannot start it with the Mac.")
+        AGENTE.parent.mkdir(parents=True, exist_ok=True)
+        AGENTE.write_text(_plist_mac(), encoding="utf-8")  # vale a partir do proximo login
+        return estado()
     if not ativo:
         ATALHO.unlink(missing_ok=True)
         return estado()

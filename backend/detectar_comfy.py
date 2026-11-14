@@ -41,8 +41,18 @@ def _e_comfy(p: pathlib.Path) -> bool:
     return (p / "main.py").is_file() and (p / "comfy").is_dir() and (p / "models").is_dir()
 
 
+MAC = sys.platform == "darwin"
+
+
+def _dados_do_usuario() -> pathlib.Path:
+    """Onde os apps guardam as configuracoes: %APPDATA% no Windows, ~/Library/Application Support no Mac."""
+    if MAC:
+        return pathlib.Path.home() / "Library" / "Application Support"
+    return pathlib.Path(os.environ.get("APPDATA", ""))
+
+
 def _desktop() -> list[dict]:
-    cfg = pathlib.Path(os.environ.get("APPDATA", "")) / "ComfyUI" / "config.json"
+    cfg = _dados_do_usuario() / "ComfyUI" / "config.json"
     try:
         base = pathlib.Path(json.loads(cfg.read_text(encoding="utf-8"))["basePath"])
     except (OSError, ValueError, KeyError, TypeError):
@@ -60,7 +70,7 @@ def _ler_json(arquivo: pathlib.Path):
 
 
 def _pasta_do_app() -> pathlib.Path:
-    return pathlib.Path(os.environ.get("APPDATA", "")) / "Comfy Desktop"
+    return _dados_do_usuario() / "Comfy Desktop"
 
 
 def _instalacoes_do_app() -> list[dict]:
@@ -151,7 +161,7 @@ def _procurar(raiz: pathlib.Path, fundo: int) -> list[pathlib.Path]:
     """Pastas com ComfyUI ate `fundo` niveis abaixo de `raiz` (sem entrar em lixo)."""
     achados, fila = [], [(raiz, 0)]
     pular = {"windows", "program files", "program files (x86)", "programdata", "$recycle.bin",
-             "appdata", "node_modules", ".git", ".venv", "venv", "site-packages", "models", "custom_nodes"}
+             "appdata", "node_modules", "library", "pictures", "movies", "music", ".git", ".venv", "venv", "site-packages", "models", "custom_nodes"}
     while fila:
         pasta, n = fila.pop()
         try:
@@ -181,7 +191,7 @@ def _sem_repetir(achados: list[dict], novos: list[dict]) -> list[dict]:
 def candidatos() -> list[dict]:
     achados = []
     # O ComfyUI que o proprio install.bat baixou (instalar_comfy.py) vem primeiro.
-    proprio = RAIZ / "ComfyUI" / "ComfyUI_windows_portable" / "ComfyUI"
+    proprio = RAIZ / "ComfyUI" / ("ComfyUI_mac" if MAC else "ComfyUI_windows_portable") / "ComfyUI"
     if _e_comfy(proprio):
         achados.append({"tipo": "ComfyUI (installed by EasyComfee)", "pasta": proprio,
                         "url": "http://127.0.0.1:8188", "proprio": True})
@@ -191,7 +201,10 @@ def candidatos() -> list[dict]:
     achados += _sem_repetir(achados, _comfy_aberto())
     casa = pathlib.Path.home()
     raizes = [(casa, 3), (casa / "Desktop", 3), (casa / "Documents", 3), (casa / "Downloads", 3)]
-    raizes += [(pathlib.Path(f"{d}:\\"), 3) for d in string.ascii_uppercase if pathlib.Path(f"{d}:\\").exists()]
+    if MAC:
+        raizes += [(casa / "Library" / "Application Support", 2), (pathlib.Path("/Applications"), 2)]
+    elif sys.platform == "win32":
+        raizes += [(pathlib.Path(f"{d}:\\"), 3) for d in string.ascii_uppercase if pathlib.Path(f"{d}:\\").exists()]
     vistos = {str(a["pasta"]).lower() for a in achados}
     for raiz, fundo in raizes:
         for p in _procurar(raiz, fundo):

@@ -13,6 +13,7 @@ A chave, a galeria, o config.json e os modelos ficam fora do git e nao mudam.
 import os
 import pathlib
 import subprocess
+import sys
 import time
 
 import config
@@ -153,13 +154,58 @@ exit /b 1
 """
 
 
+SH = r"""#!/bin/bash
+# Gerado pelo botao Update do EasyComfee. Pode fechar esta janela quando o app abrir.
+cd "$(dirname "$0")" || exit 1
+echo "Waiting for the studio to close..."
+sleep 4
+echo; echo "Checking the internet connection..."
+if ! git ls-remote --heads origin >/dev/null 2>&1; then
+  echo; echo "No internet connection. Nothing was changed."
+  echo "Connect to the internet, then double-click atualizar.command in this folder"
+  echo "(or open EasyComfee and press Update again)."
+  read -r -p "Press Enter to continue..." _
+  nohup ./start.command noopen >/dev/null 2>&1 &
+  exit 1
+fi
+erro() {
+  echo; echo "The update did not finish. Nothing of yours was deleted."
+  echo "Usually the internet connection dropped. Double-click atualizar.command in this folder"
+  echo "to try again (it continues from where it stopped), then start.command opens the studio."
+  read -r -p "Press Enter to close..." _
+  exit 1
+}
+tentar() { for n in 1 2 3; do "$@" && return 0; echo "Connection problem. Trying again..."; sleep 5; done; return 1; }
+echo; echo "Downloading the new version..."
+# Arquivos do app editados a mao travam o git pull: vao para o "git stash" (nada se perde).
+git diff --quiet HEAD -- || { echo 'Saving your local edits to the app files with "git stash"...'; git stash push -q -m "EasyComfee: local edits before update" || erro; }
+tentar git pull --ff-only || erro
+echo; echo "Updating Python packages..."
+tentar backend/.venv/bin/python -m pip install -q --retries 10 --timeout 60 -r backend/requirements.txt || erro
+echo; echo "Building the interface..."
+( cd frontend && { npm ci --no-audit --no-fund || npm ci --no-audit --no-fund; } && npm run build ) || erro
+chmod +x ./*.command 2>/dev/null
+./criar-atalho.command >/dev/null 2>&1
+echo; echo "Update done. EasyComfee is starting in the background; you can close this window."
+nohup ./start.command noopen >> logs/servidor.log 2>&1 &
+sleep 3
+exit 0
+"""
+
+
 def aplicar() -> None:
-    """Grava atualizar.bat, abre numa janela propria e encerra este servidor."""
+    """Grava atualizar.bat (Mac: atualizar.command), abre numa janela propria e encerra este servidor."""
     agora = estado(forcar=True)
     if agora["sem_internet"]:
         raise SemInternet(SEM_INTERNET)
     if not agora["disponivel"]:
         raise RuntimeError("no update available")
+    if sys.platform == "darwin":
+        caminho = RAIZ / "atualizar.command"
+        caminho.write_text(SH, encoding="utf-8")
+        caminho.chmod(0o755)
+        subprocess.Popen(["open", "-a", "Terminal", str(caminho)], cwd=RAIZ)
+        return
     caminho = RAIZ / "atualizar.bat"
     caminho.write_text(BAT.replace("\n", "\r\n"), encoding="ascii")
     # "start" com um .bat abre "cmd /k" (a janela ficava aberta); com "cmd /c" ela fecha no fim.

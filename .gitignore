@@ -47,6 +47,7 @@ backend/terceiros/
 
 # Gerado pelo botao Update
 atualizar.bat
+atualizar.command
 
 # Receitas de nodes de cada resultado (grafos.py), geradas na maquina de cada um
 dados/grafos/
