@@ -94,6 +94,12 @@ class AmpliarVideoApiTests(unittest.TestCase):
         self.assertEqual(g["gera"]["class_type"], "LtxApiVideoSdrToHdr")
         self.assertEqual(g["salva"]["inputs"]["video"], ["gera", 0])
 
+    def test_apagar_objeto(self):
+        g = workflows.apagar_objeto_video_api("v.mp4", "m.mp4", False)
+        self.assertEqual(g["gera"]["class_type"], "BriaVideoEraser")
+        self.assertEqual(g["gera"]["inputs"]["mask_video"], ["mascara", 0])
+        self.assertFalse(g["gera"]["inputs"]["preserve_audio"])
+
     def test_metodo_desconhecido_e_recusado(self):
         with self.assertRaises(ValueError):
             workflows.ampliar_video_api("v.mp4", "outro")

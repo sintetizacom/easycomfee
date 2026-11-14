@@ -17,6 +17,7 @@ import random
 import re
 import time
 import subprocess
+import tempfile
 import uuid
 from urllib.parse import urlsplit
 
@@ -279,9 +280,9 @@ class PedidoGeracao(Pedido):
     idioma_musica: str = Field("pt", pattern="^(pt|en|es|de|it|fr|ja|zh|ko)$")
     idioma_voz: str = Field("Portuguese", pattern="^(Portuguese|English|Spanish|German|Italian|French|Japanese|Chinese|Korean)$")
     idioma_referencia_voz: str = Field("Portuguese", pattern="^(Portuguese|English|Spanish|German|Italian|French|Japanese|Chinese|Korean)$")
-    modo_voz: str = Field("narrar", pattern="^(narrar|criar|clonar)$")
+    modo_voz: str = Field("narrar", pattern="^(narrar|criar|clonar|limpar)$")
     # "auto": a voz segue o motor (OmniVoice local, Qwen3-TTS na nuvem). "elevenlabs": so na Comfy Cloud.
-    modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs)$")
+    modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs|breeze|fish)$")
     # Modelo 3D por API (aba 3D): tripo | meshy; com ou sem textura.
     modelo_3d: str = Field("tripo", pattern="^(tripo|tripo_texto|tencent|meshy)$")
     textura_3d: bool = True
@@ -911,9 +912,15 @@ async def _montar(tarefa: Tarefa):
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0
         tarefa.prompt_final = p.prompt
-        if p.modelo_voz == "elevenlabs":
+        if p.modo_voz == "limpar" or p.modelo_voz in ("elevenlabs", "breeze", "fish"):
             if not comfy.na_nuvem():
-                raise ValueError("ElevenLabs runs on Comfy Cloud: switch the engine to Comfy Cloud.")
+                raise ValueError("This voice tool runs on Comfy Cloud: switch the engine to Comfy Cloud.")
+            if p.modo_voz == "limpar":
+                return voz.grafo_isolar(p)
+            if p.modelo_voz == "breeze":
+                return voz.grafo_breeze(p, seed)
+            if p.modelo_voz == "fish":
+                return voz.grafo_fish(p, seed)
             return voz.grafo_elevenlabs(p, seed)
         return voz.grafo_nuvem(p, seed) if comfy.na_nuvem() else voz.grafo(p, seed)
 
@@ -1502,6 +1509,14 @@ async def _montar(tarefa: Tarefa):
                 tarefa.prompt_final = p.prompt
                 return workflows.dublar_video_api(entrada, p.metodo_video, p.idioma_destino, seed,
                                                   prefixo="editor/video_dublado")
+            if p.metodo_video in presets.METODOS_APAGAR:
+                if len(p.referencias) < 2:
+                    raise ValueError("pinte o objeto a apagar")
+                mascara = await asyncio.to_thread(_video_de_mascara, _caminho_de_entrada(p.referencias[1]),
+                                                  d["largura"], d["altura"], d["fps"] or 24.0, d["duracao"])
+                mascara_nome = await comfy.enviar_imagem(f"apagmask_{uuid.uuid4().hex[:12]}.mp4", mascara)
+                return workflows.apagar_objeto_video_api(entrada, mascara_nome, com_audio,
+                                                         prefixo="editor/video_apagado")
             if p.metodo_video in presets.METODOS_HDR_API:
                 return workflows.hdr_video_api(entrada, seed, prefixo="editor/video_hdr_api")
             if p.metodo_video in presets.METODOS_REFRAME:
@@ -1893,6 +1908,22 @@ def _video_de_referencia(ref: str) -> str:
     """Caminho de um video: "entrada:<nome>" (enviado) ou "subpasta/arquivo"."""
     return (_caminho_de_entrada(ref.split(":", 1)[1]) if ref.startswith("entrada:")
             else _caminho_de_saida(ref))
+
+
+def _video_de_mascara(imagem: str, largura: int, altura: int, fps: float, duracao: float) -> bytes:
+    """Repete a mascara pintada (branco = apagar) em todos os quadros do video: um mp4 do mesmo
+    tamanho, cadencia e numero de quadros do original, como o Bria Eraser exige."""
+    if not largura or not altura or not duracao:
+        raise ValueError("não consegui medir o vídeo")
+    quadros = max(1, round(duracao * fps))
+    with tempfile.TemporaryDirectory() as pasta:
+        saida = pathlib.Path(pasta) / "mascara.mp4"
+        r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-framerate", f"{fps}", "-i", imagem,
+                            "-frames:v", str(quadros), "-vf", f"scale={largura}:{altura}:flags=neighbor,format=gray,format=yuv420p",
+                            "-c:v", "libx264", "-crf", "10", str(saida)], capture_output=True, timeout=180)
+        if r.returncode != 0 or not saida.is_file():
+            raise ValueError("não consegui montar o vídeo da máscara")
+        return saida.read_bytes()
 
 
 def _video_a_24fps(caminho: str) -> bytes:
@@ -2961,7 +2992,7 @@ def _eh_api(p: PedidoGeracao) -> bool:
         p.modelo == "reluz" and p.metodo_luz == "nuvem") or (p.modelo == "avatar" and p.modelo_avatar in avatar.API) or (
         p.modelo == "genjutsu" and not genjutsu.MODELOS[p.modelo_genjutsu]["aberto"]) or (
         p.modelo == "limpar_video" and p.metodo_video in presets.METODOS_API_VIDEO) or (
-        p.modelo == "voz" and p.modelo_voz == "elevenlabs") or (
+        p.modelo == "voz" and (p.modelo_voz in ("elevenlabs", "breeze", "fish") or p.modo_voz == "limpar")) or (
         p.modelo == "modelo3d") or (
         p.modelo == "musica" and bool(musica.MODELOS.get(p.modelo_musica, {}).get("api"))) or (
         p.modelo == "video" and (p.modelo_video in presets.VIDEO_API
@@ -4198,6 +4229,14 @@ async def gerar(pedido: PedidoGeracao):
             raise HTTPException(400, "Use up to 12,000 characters per narration.")
         if pedido.modelo_voz == "elevenlabs" and (pedido.modo_voz != "narrar" or len(pedido.prompt) > 5000):
             raise HTTPException(400, "ElevenLabs narrates with its ready voices, up to 5,000 characters.")
+        if pedido.modelo_voz == "breeze" and (pedido.modo_voz not in ("criar", "clonar") or len(pedido.prompt) > 1000):
+            raise HTTPException(400, "Breeze designs a voice or clones one, up to 1,000 characters.")
+        if pedido.modelo_voz == "fish" and pedido.modo_voz == "criar":
+            raise HTTPException(400, "Fish Audio narrates with a random voice or clones one from a recording.")
+        if pedido.modo_voz == "limpar" and not pedido.referencia_voz:
+            raise HTTPException(400, "Envie a gravação a limpar.")
+        if pedido.modo_voz == "clonar" and pedido.modelo_voz in ("breeze", "fish") and not pedido.referencia_voz:
+            raise HTTPException(400, "Envie a referência de voz.")
         if pedido.modo_voz == "clonar" and (not pedido.referencia_voz
                                             or (not pedido.transcricao_voz.strip() and not comfy.na_nuvem())):
             raise HTTPException(400, "Envie a referência de voz e sua transcrição.")

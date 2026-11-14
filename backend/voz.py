@@ -147,6 +147,61 @@ def grafo_elevenlabs(p, seed):
                 "audio": ["fala", 0], "filename_prefix": "editor/" + nome_audio((p.nome_voz, p.titulo_audio_voz), "voz")}}}
 
 
+def _nome_saida(p):
+    return "editor/" + nome_audio((p.nome_voz, p.titulo_audio_voz), "voz")
+
+
+def _idioma_breeze(idioma):
+    """Idioma do Breeze: ingles e chines escolhem o modelo; os outros usam o multilingue sozinhos."""
+    r = {"language": idioma}
+    if idioma in ("English", "Chinese"):
+        r["language.model"] = "Breeze TTS 2"
+    return r
+
+
+def grafo_breeze(p, seed):
+    """Breeze TTS 2 (Comfy Cloud): a voz vem de uma descricao (Design) ou de uma gravacao (Clone)."""
+    seed = seed % 2147483647
+    texto = p.prompt.strip()[:1000]
+    g = {}
+    if p.modo_voz == "clonar":
+        g["amostra"] = {"class_type": "LoadAudio", "inputs": {"audio": p.referencia_voz}}
+        g["voz"] = {"class_type": "BreezeVoiceClone", "inputs": {
+            "audio": ["amostra", 0], "remove_background_noise": False, "seed": seed}}
+    else:
+        g["voz"] = {"class_type": "BreezeVoiceDesign", "inputs": {
+            "description": p.instrucao_voz.strip()[:500], "preview_text": texto[:500], "strength": 4.0,
+            "seed": seed, **_idioma_breeze(p.idioma_voz)}}
+    g["fala"] = {"class_type": "BreezeTextToSpeech", "inputs": {
+        "voice": ["voz", 0], "text": texto, "delivery": "neutral", "delivery.speaker_boost": False,
+        "speed": 1.0, "seed": seed, **_idioma_breeze(p.idioma_voz)}}
+    g["salva"] = {"class_type": "SaveAudio", "inputs": {"audio": ["fala", 0], "filename_prefix": _nome_saida(p)}}
+    return g
+
+
+def grafo_fish(p, seed):
+    """Fish Audio S2.1 Pro (Comfy Cloud): com uma gravacao clona a voz; sem ela, uma voz aleatoria."""
+    seed = seed % 2147483647
+    g = {}
+    ent = {"text": p.prompt.strip(), "model": "s2.1-pro", "model.temperature": 0.7, "model.top_p": 0.7,
+           "model.speed": 1.0, "model.volume": 0.0, "model.normalize": True, "seed": seed}
+    if p.modo_voz == "clonar":
+        g["amostra"] = {"class_type": "LoadAudio", "inputs": {"audio": p.referencia_voz}}
+        g["voz"] = {"class_type": "FishAudioInstantVoiceClone", "inputs": {
+            "files.audio0": ["amostra", 0], "enhance_audio_quality": True}}
+        ent["model.voices.voice0"] = ["voz", 0]
+    g["fala"] = {"class_type": "FishAudioTextToSpeech", "inputs": ent}
+    g["salva"] = {"class_type": "SaveAudio", "inputs": {"audio": ["fala", 0], "filename_prefix": _nome_saida(p)}}
+    return g
+
+
+def grafo_isolar(p):
+    """Tira o ruido de fundo de uma gravacao e deixa so a voz (ElevenLabs Audio Isolation)."""
+    return {"amostra": {"class_type": "LoadAudio", "inputs": {"audio": p.referencia_voz}},
+            "limpa": {"class_type": "ElevenLabsAudioIsolation", "inputs": {"audio": ["amostra", 0]}},
+            "salva": {"class_type": "SaveAudio", "inputs": {"audio": ["limpa", 0], "filename_prefix": _nome_saida(p)}}}
+
+
 # O Voice Design do OmniVoice (local) so aceita itens de uma lista fixa; uma descricao
 # livre ("Powerful deep male voice, dramatic...") derrubava a geracao. Aqui a descricao
 # vira esses itens: genero, idade, tom, sussurro e sotaque. (A nuvem, Qwen3-TTS, le texto livre.)

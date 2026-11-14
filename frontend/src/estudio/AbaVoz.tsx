@@ -11,6 +11,7 @@ const MODOS = [
   { id: 'narrar', rotulo: 'Narrate', icone: '🗣', frase: 'Read your text with a ready voice.' },
   { id: 'criar', rotulo: 'Design a voice', icone: '✨', frase: 'Describe a voice and hear it say your text.' },
   { id: 'clonar', rotulo: 'Clone a voice', icone: '🎙', frase: 'Copy a voice from a short recording.' },
+  { id: 'limpar', rotulo: 'Clean a recording', icone: '🧹', frase: 'Remove the noise and keep only the voice (Comfy Cloud).' },
 ]
 // Exemplos de voz para o modo "Design a voice": um clique preenche a descricao.
 const VOZES_PRONTAS = [
@@ -96,15 +97,26 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   // Na nuvem ha dois modelos: Qwen3-TTS (3 modos) e ElevenLabs (so Narrate, vozes prontas, creditos).
   const [modeloNuvem, setModeloNuvem] = useState('qwen3tts')
   const eleven = naNuvem && modeloNuvem === 'elevenlabs'
+  const breeze = naNuvem && modeloNuvem === 'breeze'
+  const fish = naNuvem && modeloNuvem === 'fish'
+  const limpar = modo === 'limpar'
   const [vozEleven, setVozEleven] = useState('Roger')
-  const escolher = useEscolha((id) => { if (id === 'qwen3tts' || id === 'elevenlabs') setModeloNuvem(id) })
+  const escolher = useEscolha((id) => { if (id === 'qwen3tts' || id === 'elevenlabs' || id === 'breeze' || id === 'fish') setModeloNuvem(id) })
 
   // Narrate local com voz pronta = Voice Design com as tags e a seed dela.
   const pronta = modo === 'narrar' && !naNuvem ? VOZES_LOCAIS.find((v) => v.id === vozLocal && v.tags) : undefined
   // Voz salva: refaz o Design (descricao + seed) ou o Clone (gravacao + transcricao).
   const minhasVisiveis = vozesMinhas.filter((v) => v.nome.toLowerCase().includes(busca.trim().toLowerCase()))
   const minha = modo === 'narrar' && !naNuvem ? vozesMinhas.find((v) => `minha:${v.id}` === vozLocal) : undefined
-  const pedido = eleven ? {
+  const pedido = limpar ? {
+    modelo: 'voz', modo_voz: 'limpar', prompt: 'x', proporcao: '1:1', referencia_voz: ref?.nome ?? '',
+  } : breeze ? {
+    modelo: 'voz', modelo_voz: 'breeze', modo_voz: modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
+    instrucao_voz: modo === 'criar' ? instrucao.trim() : '', referencia_voz: modo === 'clonar' ? ref?.nome ?? '' : '',
+  } : fish ? {
+    modelo: 'voz', modelo_voz: 'fish', modo_voz: modo, prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
+    referencia_voz: modo === 'clonar' ? ref?.nome ?? '' : '',
+  } : eleven ? {
     modelo: 'voz', modelo_voz: 'elevenlabs', modo_voz: 'narrar', prompt: texto.trim() || 'x', proporcao: '1:1', idioma_voz: idioma,
     falante_voz: vozEleven, instrucao_voz: comoDizer.trim().replace(/[\[\]]/g, ''),
   } : minha ? {
@@ -125,11 +137,16 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
     setCaps(null)
     fetch('/api/voz').then((r) => r.json()).then(setCaps).catch(() => setCaps(null))
   }, [naNuvem])
-  const semMotor = !eleven && !!caps && (!caps.disponivel || (modo === 'criar' && caps.design === false))
-  const pronto = !semMotor && !!texto.trim() && (!eleven || modo === 'narrar') && (modo !== 'criar' || !!instrucao.trim())
+  const semMotor = !eleven && !breeze && !fish && !limpar && !!caps && (!caps.disponivel || (modo === 'criar' && caps.design === false))
+  // Quais modos cada modelo de API aceita; "limpar" so existe na nuvem.
+  const modoNaoSuportado = (eleven && modo !== 'narrar') || (breeze && modo === 'narrar') || (fish && modo === 'criar') || (limpar && !naNuvem)
+  const pronto = limpar ? naNuvem && !!ref : !semMotor && !modoNaoSuportado && !!texto.trim() && (modo !== 'criar' || !!instrucao.trim())
     && (modo !== 'clonar' || (!!ref && (naNuvem || !!transcricao.trim())))
   // O que falta para o Generate ligar (antes ficava desligado sem dizer por que).
   const falta = semMotor ? null
+    : limpar ? (!naNuvem ? 'Cleaning a recording runs on Comfy Cloud: switch the engine to Comfy Cloud.' : !ref ? 'Add the recording to clean.' : null)
+    : breeze && modo === 'narrar' ? 'Breeze needs a voice: switch to Design a voice or Clone a voice.'
+    : fish && modo === 'criar' ? 'Fish Audio narrates with a random voice or clones a recording: switch to Narrate or Clone a voice.'
     : eleven && modo !== 'narrar' ? 'ElevenLabs only narrates with its ready voices: switch to Narrate, or pick Qwen3-TTS.'
     : modo === 'criar' && !instrucao.trim() ? 'Describe the voice (or pick an example) to design it.'
     : modo === 'clonar' && !ref ? 'Add a voice sample to clone.'
@@ -174,7 +191,8 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
               {modo === 'narrar' && <label className="hf-vfx-busca hf-vzn-busca"><span aria-hidden>⌕</span>
                 <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Search voices…" aria-label="Search voices" /></label>}
             </div>
-            {modo === 'narrar' && (naNuvem ? (
+            {modo === 'narrar' && fish && <p className="hf-dica">Fish Audio picks a random voice each time. To keep one voice, use <b>Clone a voice</b> with a short recording. Emotion tags like [whispering] or [excited] go inside your text.</p>}
+            {modo === 'narrar' && !fish && (naNuvem ? (
               <>
                 <div className="hf-vzn-lista" role="radiogroup" aria-label="Speaker">
                   {(eleven ? VOZES_ELEVEN : FALANTES).filter((f) => f.toLowerCase().includes(busca.trim().toLowerCase())).map((f) => (
@@ -244,18 +262,18 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
                 </div>
               </>
             )}
-            {modo === 'clonar' && (
+            {(modo === 'clonar' || limpar) && (
               <>
                 <label className="hf-slot hf-vz-amostra" data-cheio={!!ref}>
                   {ref
                     ? <span className="hf-fala"><audio src={ref.url} controls onClick={(e) => e.preventDefault()} /></span>
-                    : <span>{enviando ? 'Uploading…' : '+ Voice sample'}<small>5–20 s, one speaker, no music</small></span>}
+                    : <span>{enviando ? 'Uploading…' : limpar ? '+ Recording to clean' : '+ Voice sample'}<small>{limpar ? 'speech with background noise' : '5–20 s, one speaker, no music'}</small></span>}
                   <input type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" className="hf-arquivo"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) enviar(f) }} />
                 </label>
                 {ref && <button type="button" className="hf-botao-sec" onClick={() => setRef(null)}>Remove sample</button>}
-                <textarea aria-label="What the sample says" className="hf-vz-caixa" value={transcricao} onChange={(e) => setTranscricao(e.target.value)} rows={3}
-                  placeholder={naNuvem ? 'Optional: what is said in the sample, word for word (better clone)' : 'What is said in the sample, word for word'} />
+                {!limpar && <textarea aria-label="What the sample says" className="hf-vz-caixa" value={transcricao} onChange={(e) => setTranscricao(e.target.value)} rows={3}
+                  placeholder={naNuvem ? 'Optional: what is said in the sample, word for word (better clone)' : 'What is said in the sample, word for word'} />}
               </>
             )}
           </section>
@@ -277,7 +295,9 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           <label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? `nuvem:${modeloNuvem}` : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true, naoInstalado: !naNuvem && !!caps && !caps.disponivel, falta: 'nodes missing' },
               { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true },
-              { id: 'elevenlabs', rotulo: 'ElevenLabs v3 (API)', soNuvem: true }]} />
+              { id: 'elevenlabs', rotulo: 'ElevenLabs v3 (API)', soNuvem: true },
+              { id: 'breeze', rotulo: 'Breeze TTS 2 (API)', soNuvem: true },
+              { id: 'fish', rotulo: 'Fish Audio S2.1 (API)', soNuvem: true }]} />
           </select></label>
           <label className="hf-campo"><span>Language</span><select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
             {IDIOMAS.map((i) => <option key={i}>{i}</option>)}

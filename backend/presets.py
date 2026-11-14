@@ -2961,6 +2961,9 @@ METODOS_API_VIDEO.update(METODOS_REFRAME)
 # SDR -> HDR pela API do LTX (HLG, BT.2020, 10 bits; o audio nao e mantido).
 METODOS_HDR_API = {"hdr_ltx": "LtxApiVideoSdrToHdr"}
 METODOS_API_VIDEO.update(METODOS_HDR_API)
+# Apagar um objeto do video (Bria Eraser): a mascara pintada num quadro vira um video de mascara.
+METODOS_APAGAR = {"apagar_bria": "BriaVideoEraser"}
+METODOS_API_VIDEO.update(METODOS_APAGAR)
 VIDEO_RTX = {
     "rtx": {"rotulo": "Rápido e fiel (RTX)", "segundos_estimados": 25,
             "descricao": ("Amplia 2x sem redesenhar nada: rosto e boca ficam "

@@ -1902,7 +1902,7 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-vzn-titulo h1 { margin: 0; font-size: 34px; color: var(--hf-texto); }
 .hf-vzn-titulo h1 em { font-style: normal; color: var(--hf-neon); }
 .hf-vzn-titulo p { margin: 6px 0 0; color: var(--hf-apagado); font-size: 13px; }
-.hf-vzn .hf-vz-modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.hf-vzn .hf-vz-modos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
 .hf-vzn .hf-barra-prompt { padding: 0; background: none; border: 0; }
 .hf-vzn .hf-vz-corpo { display: grid; grid-template-columns: 300px minmax(0, 1fr) 280px; gap: 12px; align-items: stretch; }
 .hf-vzn .hf-vz-coluna { padding: 14px; border: 1px solid var(--hf-linha); border-radius: 16px; background: var(--hf-cartao); }
@@ -2993,3 +2993,10 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 .hf-m3d-baixar { position: absolute; right: 10px; bottom: 10px; padding: 6px 12px; border-radius: 999px; background: #000a; color: #fff; text-decoration: none; font-size: 13px; }
 .hf-m3d-baixar:hover { background: var(--hf-neon, #8cf); color: #000; }
 @media (max-width: 700px) { .hf-m3d-entrada { grid-template-columns: 1fr; } }
+
+/* Erase object: tela de pintura sobre o primeiro quadro */
+.hf-mask { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.hf-mask-palco { position: relative; width: 100%; line-height: 0; border-radius: 12px; overflow: hidden; background: #000; }
+.hf-mask-palco video, .hf-mask-palco canvas { width: 100%; height: auto; display: block; }
+.hf-mask-palco canvas { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+.hf-mask-barra { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }

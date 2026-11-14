@@ -3,6 +3,7 @@ import { MotorCtx, useEscolha } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Popup } from './AbaCinema'
+import MascaraVideo from './MascaraVideo'
 import { Contador, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, rotuloCusto, useCusto, useTarefas, Galeria, MAX_PROMPT, TituloPagina } from './comum'
 
 // VFX Apps: one card per effect, all open-weight LTX IC-LoRAs. Pick a card,
@@ -312,6 +313,7 @@ export const APPS: App[] = [
   { id: 'fundo', nome: 'Swap background', frase: 'Keeps the subject and puts your image behind it, with matching edges. Comfy Cloud (Bria), credits.', semTexto: true, imagem: 'New background', beta: true },
   { id: 'estender', nome: 'Extend video', frase: 'Continues your clip with new footage that follows what you describe. Comfy Cloud (Grok or PixVerse), credits.', textoObrigatorio: true, dica: 'What happens next: she turns and walks down the street as the lights come on', beta: true },
   { id: 'audio', nome: 'Clean audio', frase: 'Removes background noise from the speech and evens out the volume. The picture stays untouched. Comfy Cloud (VEED), credits.', semTexto: true, beta: true },
+  { id: 'apagar', nome: 'Erase object', frase: 'Paint over something that stays in place (a logo, a sign, a stain) and it is removed from the whole clip, with the gap filled in. Comfy Cloud (Bria), credits.', semTexto: true, beta: true },
   { id: 'foley', nome: 'Add sound (foley)', frase: 'Creates the sound effects of a silent clip: steps, doors, rain. No speech or music. Up to 7 s.', textoObrigatorio: true, dica: 'What makes sound and on what: boots crunching on gravel, a wooden door slams shut, light rain on a car roof', beta: true },
   { id: 'cinemagraph', nome: 'Cinemagraph', frase: 'Brings one thing in a still to life in a seamless loop while the rest stays frozen. Best on scenes without people.', imagem: 'Still image', video: false, textoObrigatorio: true, dica: 'What moves, and only that: only the water in the fountain flows', beta: true },
   { id: 'ampliar2x', nome: 'Upscale 2×', frase: 'Doubles the resolution by inventing fine detail (not a faithful restoration). Up to 2 s.', semTexto: true, beta: true },
@@ -378,6 +380,9 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   const [segExt, setSegExt] = useState(5)
   const estenderApi = app?.id === 'estender'
   const audioApi = app?.id === 'audio'
+  // Erase object: a mascara pintada num quadro (imagem enviada ao motor).
+  const [mascara, setMascara] = useState<Referencia | null>(null)
+  const apagarApi = app?.id === 'apagar'
   // Expand frame: o LoRA do LTX (sua placa) ou, na Comfy Cloud, o Reframe do Luma Ray 3.2.
   const [escolhaExp, setEscolhaExp] = useState('ltxexp')
   const expandirApi = app?.id === 'expandir' && naNuvem && escolhaExp === 'reframe_luma'
@@ -632,11 +637,14 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
   }
   const videoArrastado = (dt: DataTransfer) => Array.from(dt.files).find((f) => f.type.startsWith('video/'))
   const bloqueado = naNuvem && !!app && SO_LOCAL.has(app.id) && !ampliarApi && !somApi && !hdrApi
-  const soNuvem = (chromaApi || fundoApi || estenderApi || audioApi) && !naNuvem
+  const soNuvem = (chromaApi || fundoApi || estenderApi || audioApi || apagarApi) && !naNuvem
   const semPlaca = app?.id === 'maquete' && !naNuvem && teto === null
-  const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!app.textoObrigatorio || somApi || !!texto.trim())
+  const pronto = app && !bloqueado && !soNuvem && !semPacote && !semPlaca && (!precisaVideo || video) && (!app.imagem || app.imagemOpcional || imagem) && (!apagarApi || !!mascara) && (!app.textoObrigatorio || somApi || !!texto.trim())
 
-  const custo = useCusto(!app || bloqueado || soNuvem ? null : hdrApi
+  const custo = useCusto(!app || bloqueado || soNuvem ? null : apagarApi
+    ? { modelo: 'limpar_video', metodo_video: 'apagar_bria', prompt: '', proporcao: '1:1',
+        referencias: video && mascara ? [`entrada:${video.nome}`, mascara.nome] : [] }
+    : hdrApi
     ? { modelo: 'limpar_video', metodo_video: 'hdr_ltx', prompt: '', proporcao: '1:1',
         referencias: video ? [`entrada:${video.nome}`] : [] }
     : expandirApi
@@ -672,7 +680,10 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
     if (!app) return
     setErro(null); setAplicadoEm(Date.now() / 1000 - 2)  // o resultado deste Apply vai para o comparador
     try {
-      if (hdrApi) {
+      if (apagarApi) {
+        await api.gerar({ modelo: 'limpar_video', metodo_video: 'apagar_bria', prompt: '', proporcao: '1:1',
+          referencias: [`entrada:${video!.nome}`, mascara!.nome] } as Parameters<typeof api.gerar>[0])
+      } else if (hdrApi) {
         await api.gerar({ modelo: 'limpar_video', metodo_video: 'hdr_ltx', prompt: '', proporcao: '1:1',
           referencias: [`entrada:${video!.nome}`] } as Parameters<typeof api.gerar>[0])
       } else if (expandirApi) {
@@ -822,6 +833,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
           <div className="hf-vfx-palco" data-xadrez={!!transparente || undefined}>
             {video && resultado ? <ThenNow antes={urlEntrada(video.nome)} depois={transparente || urlImagem(resultado)} ehVideo={transparente ? true : undefined} modo={comparar} rotulos={['Before', 'After']} />
               : resultado ? <video src={transparente || urlImagem(resultado)} controls autoPlay loop muted playsInline />
+              : apagarApi && video ? <MascaraVideo videoUrl={urlEntrada(video.nome)} aoMudar={setMascara} />
               : video ? <video src={urlEntrada(video.nome)} controls muted playsInline />
               : app ? <><video src={`/exemplos/${app.id}.mp4?v=17`} autoPlay loop muted playsInline /><span className="hf-vfx-exemplo">Example · drop your video on the right</span></>
               : <div className="hf-img-vazio"><b>Pick an effect</b><span>Choose one on the left.</span></div>}

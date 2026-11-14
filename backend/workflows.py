@@ -1794,6 +1794,16 @@ def hdr_video_api(entrada, seed=42, prefixo="video_hdr_api"):
                                                             "format": "auto", "codec": "auto"}}}
 
 
+def apagar_objeto_video_api(entrada, entrada_mascara, preservar_audio=True, prefixo="video_apagado"):
+    """Apaga o que a mascara cobre (branco) e preenche o buraco (Bria Eraser). A mascara e um video."""
+    return {"carga": {"class_type": "LoadVideo", "inputs": {"file": entrada}},
+            "mascara": {"class_type": "LoadVideo", "inputs": {"file": entrada_mascara}},
+            "gera": {"class_type": "BriaVideoEraser", "inputs": {
+                "video": ["carga", 0], "mask_video": ["mascara", 0], "preserve_audio": bool(preservar_audio)}},
+            "salva": {"class_type": "SaveVideo", "inputs": {"video": ["gera", 0], "filename_prefix": prefixo,
+                                                            "format": "auto", "codec": "auto"}}}
+
+
 def reluz_magnific(imagem, descricao, estilo="standard", forca=100,
                    referencia=None, mudar_fundo=False, preservar_detalhe=True,
                    prefixo="reluz"):
