@@ -426,13 +426,13 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
           </section>
         )}
         </> : <>
+        {/* "Your machine" vem primeiro: os pacotes de baixo dependem dele. */}
+        <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
         <InicioComWindows />
         <ModoSeguro />
         <PastaResultados />
-        <Relatorio />
-
-        <Maquina aoSalvar={(p) => { setPerfil(p); recarregar() }} />
         <EscanearModelos aoTerminar={recarregar} />
+        <Relatorio />
         {/* Os pacotes so aparecem depois de confirmar a maquina; antes nada dizia isso (02/11/2026). */}
         {!perfil && <p className="mq-aviso mq-aviso-passo" role="status">↑ Press <b>Confirm</b> in “Your machine” to see the model packages you can download with one click.</p>}
 

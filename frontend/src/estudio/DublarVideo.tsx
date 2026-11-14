@@ -12,7 +12,7 @@ const MODELOS = [
   { id: 'dub_heygen', rotulo: 'HeyGen Video Translate', dica: 'Clones the original voice and re-animates the mouth. Speed mode.' },
 ]
 
-export default function DublarVideo() {
+export default function DublarVideo({ ferramentas }: { ferramentas: React.ReactNode }) {
   const tarefas = useTarefas()
   const { naNuvem } = useContext(MotorCtx)
   const [escolhido, setEscolhido] = useState('dub_veed')
@@ -41,6 +41,7 @@ export default function DublarVideo() {
     <div className="hf-aba hf-img hf-lsn">
       <TituloPagina antes="Dub any video into" destaque={idioma} selo={modelo.rotulo}
         sub="The speech is translated, each voice is cloned and the lips are synced to the new language. Comfy Cloud, credits." />
+      {ferramentas}
       <div className="hf-barra-prompt">
         <div className="hf-slots">
           <label className="hf-slot" data-cheio={!!video}>

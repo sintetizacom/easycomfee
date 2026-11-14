@@ -286,6 +286,15 @@ class PedidoGeracao(Pedido):
     # Modelo 3D por API (aba 3D): tripo | meshy; com ou sem textura.
     modelo_3d: str = Field("tripo", pattern="^(tripo|tripo_texto|tencent|rodin|meshy)$")
     textura_3d: bool = True
+    # Ajustes do modelo 3D (cada um tem os seus; ver modelos3d.MODELOS). Valores fora das opcoes viram o padrao.
+    ajustes_3d: dict[str, str | int | float | bool] = Field(default_factory=dict)
+    # Varias vistas do mesmo objeto (alem da frente, que e a primeira referencia): esquerda, costas, direita.
+    vistas_3d: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("vistas_3d", mode="after")
+    @classmethod
+    def _vistas3d(cls, v: dict[str, str]) -> dict[str, str]:
+        return {k: _referencia_segura(n) for k, n in v.items() if k in ("esquerda", "costas", "direita") and n}
     referencia_voz: str = ""
     nome_voz: str = Field("", max_length=120)
     titulo_audio_voz: str = Field("", max_length=120)
@@ -907,7 +916,7 @@ async def _montar(tarefa: Tarefa):
         tarefa.largura = tarefa.altura = 0
         tarefa.prompt_final = p.prompt if texto else ""
         return modelos3d.grafo(p.modelo_3d, p.referencias[0] if p.referencias else "", p.textura_3d, seed,
-                               prefixo="editor/modelo3d", prompt=p.prompt)
+                               prefixo="editor/modelo3d", prompt=p.prompt, ajustes=p.ajustes_3d, vistas=p.vistas_3d)
 
     if p.modelo == "voz":
         tarefa.largura = tarefa.altura = 0
@@ -3009,6 +3018,12 @@ def _modelos_conhecidos() -> set[str]:
                "profundidade_video",
                "transcricao_voz", "musica", "genjutsu",
                "avatar", "separar", "trocar_voz", "treinar_voz"})
+
+
+@app.get("/api/modelos3d")
+async def modelos_3d():
+    """Os modelos 3D com os ajustes de cada um (a aba 3D monta os cartoes e os controles daqui)."""
+    return modelos3d.catalogo()
 
 
 @app.post("/api/estimar")

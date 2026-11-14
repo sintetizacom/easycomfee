@@ -3,7 +3,7 @@ import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useFaltaInstalar, useValor } from './motor'
 import { api, type Referencia } from '../api'
 import DublarVideo from './DublarVideo'
-import { Contador, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina } from './comum'
+import { Contador, BotaoGerar, CartaoTarefa, Chips, SlotImagem, mensagem, useCusto, useTarefas, Galeria, useFalaPendente, useLembrado, textoDoDetalhe, MAX_PROMPT, TituloPagina, teclasRadio } from './comum'
 
 // Lip Sync: a portrait and a voice track become a talking video. LTX 2.3 is the
 // open-weights default (up to 30 s); with "Open weights only" off, the Comfy
@@ -28,7 +28,7 @@ const DESCRICOES: Record<string, string> = {
 // A foto e a voz ficam guardadas enquanto a pessoa anda pelas abas (useLembrado):
 // mandar a voz pelo menu de um audio e depois o rosto pelo de uma imagem nao pode perder a voz.
 
-function RetratoFalante({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
+function RetratoFalante({ apiModelos, ferramentas }: { apiModelos: ModeloLipSync[]; ferramentas: React.ReactNode }) {
   const tarefas = useTarefas()
   const [foto, setFoto] = useLembrado<{ nome: string; url: string } | null>('lipsync.foto', null)
   const [fala, setFala] = useLembrado<{ nome: string; url: string; segundos: number } | null>('lipsync.fala', null)
@@ -107,6 +107,7 @@ function RetratoFalante({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
     <div className="hf-aba hf-img hf-lsn">
       <TituloPagina antes="Make any portrait" destaque="talk" selo={cfg.rotulo}
         sub={`A photo plus a voice track becomes a talking video, up to ${LIMITE} seconds, on your GPU or on Comfy Cloud.`} />
+      {ferramentas}
       <ol className="hf-lsn-etapas" aria-label="Steps">
         <li data-feito={!!foto}><i>1</i>Portrait</li>
         <li data-feito={!!fala && !longa}><i>2</i>Voice</li>
@@ -175,15 +176,23 @@ function RetratoFalante({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
 }
 
 // Two tools in the tab: a talking portrait (photo + voice) and the dubbing of a video.
+// As duas ferramentas da aba, em cartoes como os modos da aba Voice (logo abaixo do titulo).
+const FERRAMENTAS = [
+  { id: 'retrato', icone: '🗣', rotulo: 'Talking portrait', frase: 'A photo plus a voice track becomes a talking video.' },
+  { id: 'dublar', icone: '🌐', rotulo: 'Dub a video', frase: 'Translate the speech of a video and redo the lips (Comfy Cloud).' },
+]
+
 export default function AbaLipSync({ apiModelos }: { apiModelos: ModeloLipSync[] }) {
   const [ferramenta, setFerramenta] = useState<'retrato' | 'dublar'>('retrato')
-  return (
-    <>
-      <div className="hf-linha-controles" style={{ justifyContent: 'center', margin: '8px 0 0' }}>
-        <Chips rotulo="Tool" opcoes={[{ id: 'retrato', rotulo: 'Talking portrait' }, { id: 'dublar', rotulo: 'Dub a video' }]}
-          valor={ferramenta} aoMudar={(v) => setFerramenta(v as 'retrato' | 'dublar')} />
-      </div>
-      {ferramenta === 'retrato' ? <RetratoFalante apiModelos={apiModelos} /> : <DublarVideo />}
-    </>
+  const cartoes = (
+    <div className="hf-vz-modos hf-ls-ferramentas" role="radiogroup" aria-label="Tool" onKeyDown={teclasRadio}>
+      {FERRAMENTAS.map((m) => (
+        <button key={m.id} type="button" role="radio" aria-checked={ferramenta === m.id} tabIndex={ferramenta === m.id ? 0 : -1} className="hf-vz-modo"
+          data-ativo={ferramenta === m.id} onClick={() => setFerramenta(m.id as 'retrato' | 'dublar')}>
+          <span aria-hidden>{m.icone}</span><b>{m.rotulo}</b><small>{m.frase}</small>
+        </button>
+      ))}
+    </div>
   )
+  return ferramenta === 'retrato' ? <RetratoFalante apiModelos={apiModelos} ferramentas={cartoes} /> : <DublarVideo ferramentas={cartoes} />
 }

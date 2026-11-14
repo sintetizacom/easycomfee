@@ -77,6 +77,26 @@ export default function ContaApi({ temChave, linkRecarga, aoMudar }: {
 }
 
 // "Paid API models" checkbox. It lives in the Local models tab of Config Models.
+/** Cartao com chave seletora (liga/desliga), no mesmo estilo de "Start ComfyUI with Windows". */
+export function InterruptorCartao({ id, rotulo, texto, extra, ligado, aoMudar }: {
+  id: string; rotulo: string; texto: string; extra?: string; ligado: boolean; aoMudar: (v: boolean) => void
+}) {
+  return (
+    <section className="mq-cartao mq-interruptor">
+      <div>
+        <span className="mq-rotulo" id={id}>{rotulo}</span>
+        <p className="mq-sub">{texto}</p>
+        {extra && <p className="mq-sub">{extra}</p>}
+      </div>
+      <button type="button" role="switch" aria-checked={ligado} aria-labelledby={id}
+        className="mq-seletor" data-ligado={ligado} onClick={() => aoMudar(!ligado)}>
+        <span className="mq-seletor-bola" aria-hidden />
+        <span className="mq-seletor-texto">{ligado ? 'On' : 'Off'}</span>
+      </button>
+    </section>
+  )
+}
+
 export function ModelosPagos({ soAbertos, aoMudar }: { soAbertos: boolean; aoMudar: () => void }) {
   const abertos = async (valor: boolean) => {
     await fetch('/api/abertos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) })
@@ -84,14 +104,9 @@ export function ModelosPagos({ soAbertos, aoMudar }: { soAbertos: boolean; aoMud
   }
   return (
     <>
-      <section className="mq-cartao">
-        <span className="mq-rotulo">Paid API models</span>
-        <label className="mq-check">
-          <input type="checkbox" checked={!soAbertos} onChange={(e) => abertos(!e.target.checked)} />
-          <span>Show Kling, Seedance, Veo, Nano Banana and the other paid models in the menus (they use your Comfy credits).</span>
-        </label>
-        <p className="mq-sub">Open-weight models run free on your GPU or on Comfy Cloud: pick where in each model menu.</p>
-      </section>
+      <InterruptorCartao id="mq-pagos-rotulo" rotulo="Paid API models" ligado={!soAbertos} aoMudar={(v) => abertos(!v)}
+        texto="Show Kling, Seedance, Veo, Nano Banana and the other paid models in the menus (they use your Comfy credits)."
+        extra="Open-weight models run free on your GPU or on Comfy Cloud: pick where in each model menu." />
     </>
   )
 }

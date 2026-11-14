@@ -486,7 +486,7 @@ def imagens_salvas(saidas: dict) -> list[dict]:
     Todos os nossos grafos nomeiam o SaveImage de "salva"; quando ele existe,
     e so dele que sai o resultado.
     """
-    fonte = {"salva": saidas["salva"]} if "salva" in saidas else saidas
+    fonte = {k: v for k, v in saidas.items() if k == "salva" or k.startswith("salva_")} if "salva" in saidas else saidas
     # Os nos do VHS devolvem sob "gifs", nao "images" — mesmo quando a saida e
     # um mp4. Ler so "images" fazia o video limpo sumir: o arquivo existia no
     # disco e a tarefa terminava sem resultado algum.
