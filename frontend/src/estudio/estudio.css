@@ -3144,3 +3144,20 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 .hf-gj-opc-gerar button { width: 100%; }
 .hf-gj-aviso { margin: 8px 2px 0; }
 @media (max-width: 900px) { .hf-gj-opc { flex: 1 1 100%; border-left: 0; padding: 0 4px; } .hf-gj-opc-gerar { margin-left: 0; padding: 0 4px; } .hf-gj-direita { margin-left: 0; width: 100%; } .hf-gj-direita > .hf-gj-opc:first-child, .hf-gj-direita > .hf-gj-opc:first-child + .hf-gj-opc-gerar { border-left: 0; padding-left: 4px; } }
+
+/* Dub a video: tres boxes numerados como o Talking portrait */
+.hf-dub-video { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.hf-dub-video > span { display: grid; gap: 4px; text-align: center; }
+.hf-dub-video small { color: var(--hf-apagado); font-size: 12px; }
+.hf-dub-video video { width: 100%; height: 100%; object-fit: cover; }
+.hf-dub-modelos { display: flex; flex-direction: column; gap: 10px; }
+.hf-dub-modelos button { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border: 1px solid var(--hf-linha); border-radius: 12px;
+  background: #1A1420; color: var(--hf-texto); cursor: pointer; font: inherit; }
+.hf-dub-modelos button:hover { border-color: #463A52; }
+.hf-dub-modelos button[data-ativo='true'] { border-color: var(--hf-neon); background: var(--hf-neon-escuro); }
+.hf-dub-modelos button[data-ativo='true'] b { color: var(--hf-neon); }
+.hf-dub-modelos b { font-size: 15px; }
+.hf-dub-modelos small { color: var(--hf-apagado); font-size: 12.5px; }
+.hf-dub-modelos span { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.hf-dub-modelos i { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #ffffff12; color: #cfc8da; }
+.hf-dub-resumo { margin: 0; align-self: center; }
