@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { MotorCtx, useEscolha } from './motor'
+import { MotorCtx, useEscolha, BotaoNuvem } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Popup } from './AbaCinema'
@@ -1017,7 +1017,7 @@ export default function AbaApps({ naNuvem }: { naNuvem: boolean }) {
             {semPlaca && <span className="hf-erro" role="alert">3D render → Video needs a graphics card with at least 16 GB of VRAM (this one has {vramGb} GB).</span>}
             {app.formatos && <Chips rotulo="Output format" opcoes={['16:9', '9:16', '1:1'].map((f) => ({ id: f, rotulo: f }))} valor={formato} aoMudar={setFormato} />}
             {semPacote && <span className="hf-dica">Install “Video depth map” in Config Models to use this app.</span>}
-            {soNuvem && <span className="hf-dica">This app runs on Comfy Cloud: switch the engine to Comfy Cloud to use it.</span>}
+            {soNuvem && <span className="hf-dica">This app runs on Comfy Cloud. <BotaoNuvem /></span>}
             {bloqueado && <span className="hf-dica">This effect is not on Comfy Cloud yet. Switch to Local to use it.</span>}
             <BotaoGerar rotulo={app.id === 'maquete' && modoMaquete === 'avancado' ? 'Generate video ✦' : '✦ Apply effect'} est={custo} desligado={!pronto} aoClicar={aplicar} />
           </div>}

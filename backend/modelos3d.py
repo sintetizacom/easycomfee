@@ -13,6 +13,9 @@ MODELOS = {
     # Hunyuan 3D (Tencent): imagem -> GLB; "Normal" com PBR opcional.
     "tencent": {"rotulo": "Hunyuan 3D 3.1", "no": "TencentImageToModelNode", "saida_glb": 1,
                 "dica": "Tencent's Hunyuan 3D: detailed geometry, optional PBR."},
+    # Rodin Gen-2.5 (Hyper3D): imagem -> GLB; "Regular" no nivel mais alto, PBR ou sem textura.
+    "rodin": {"rotulo": "Rodin Gen-2.5", "no": "Rodin3D_Gen25_Image", "saida_glb": 0,
+              "dica": "Hyper3D Rodin: high-fidelity geometry with PBR materials."},
     "meshy": {"rotulo": "Meshy 7.1", "no": "MeshyImageToModelNode", "saida_glb": 2,
               "dica": "Clean topology, textures up to 8K."},
 }
@@ -37,6 +40,15 @@ def grafo(modelo, imagem, texturizar=True, seed=42, prefixo="editor/modelo3d", p
         g["gera"] = {"class_type": cfg["no"], "inputs": {
             "image": ["imagem", 0], "model_version": "v3.1-20260211", "texture": bool(texturizar),
             "pbr": bool(texturizar), "model_seed": seed % 2147483647, "face_limit": -1}}
+    elif modelo == "rodin":
+        g["gera"] = {"class_type": cfg["no"], "inputs": {
+            "images.image0": ["imagem", 0], "mode": "Regular", "mode.tier": "Gen-2.5-High",
+            "mode.polygon_count": "Default", "mode.creative": False,
+            "material": "PBR" if texturizar else "None", "geometry_file_format": "glb", "seed": seed % 65535,
+            # A nuvem marca estes como opcionais mas o no exige todos (erro "missing 10 required arguments").
+            "texture_mode": "Default", "TAPose": False, "hd_texture": False, "texture_delight": False,
+            "use_original_alpha": False, "addon_highpack": False, "bbox_width": 0, "bbox_height": 0,
+            "bbox_length": 0, "height_cm": 0}}
     elif modelo == "tencent":
         g["gera"] = {"class_type": cfg["no"], "inputs": {
             "model": "3.1", "image": ["imagem", 0], "face_count": 500000, "generate_type": "Normal",

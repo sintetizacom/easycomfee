@@ -81,11 +81,11 @@ export default function MascaraVideo({ videoUrl, aoMudar }: { videoUrl: string; 
       <div className="hf-mask-palco">
         <video ref={video} src={videoUrl} muted playsInline preload="auto" onLoadedData={preparar} onLoadedMetadata={() => { if (video.current) video.current.currentTime = 0.05 }} />
         <canvas ref={tela} onPointerDown={comecar} onPointerMove={mover} onPointerUp={terminar} onPointerCancel={terminar} aria-label="Paint over the object to erase" />
-      </div>
-      <div className="hf-mask-barra">
-        <label>Brush <input type="range" min={8} max={160} step={4} value={raio} onChange={(e) => setRaio(Number(e.target.value))} aria-label="Brush size" /></label>
-        <button type="button" className="hf-botao-sec" onClick={limpar} disabled={!pintou}>Clear</button>
-        <span className="hf-dica">{enviando ? 'Saving the mask…' : pintou ? 'Mask ready. It covers every frame, so it fits things that stay in place.' : 'Paint over what should disappear.'}</span>
+        <div className="hf-mask-barra">
+          <label>Brush <input type="range" min={8} max={160} step={4} value={raio} onChange={(e) => setRaio(Number(e.target.value))} aria-label="Brush size" /></label>
+          <button type="button" className="hf-botao-sec" onClick={limpar} disabled={!pintou}>Clear</button>
+          <span>{enviando ? 'Saving the mask…' : pintou ? 'Mask ready (covers every frame)' : 'Paint over what should disappear'}</span>
+        </div>
       </div>
       {erro && <p className="hf-erro" role="alert">{erro}</p>}
     </div>

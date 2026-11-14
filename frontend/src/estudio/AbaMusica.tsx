@@ -114,6 +114,8 @@ export default function AbaMusica() {
   const comVoz = !!cfg?.letra && vocal
   const minDur = cfg?.minimo ?? 10
   const ehSfx = minDur < 10
+  // Ao escolher um efeito sonoro, a duracao sai de 5 s (e nao dos 30 s do teto).
+  useEffect(() => { setDuracao((d) => (ehSfx ? (d > 10 ? 5 : d) : (d < 10 ? 60 : d))) }, [ehSfx])
   const durOk = Math.max(minDur, Math.min(duracao, cfg?.maximo ?? duracao))
 
   // Versao do ACE-Step 1.5 (Turbo ou XL), so as que estao neste PC.
@@ -192,14 +194,15 @@ export default function AbaMusica() {
       <div className="hf-barra-prompt">
         <div className="hf-mu-corpo" data-letra={!cfg?.plenio && !!cfg?.letra}>
           <section className="hf-vz-coluna">
-            <span className="hf-grupo-rotulo">Style</span>
-            <textarea aria-label="Style and mood" maxLength={MAX_PROMPT} className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
-              placeholder="Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive" /><Contador texto={prompt} limite={MAX_PROMPT} />
-            <div className="hf-vz-exemplos">
+            <span className="hf-grupo-rotulo">{ehSfx ? 'Sound' : 'Style'}</span>
+            <textarea aria-label={ehSfx ? 'Describe the sound' : 'Style and mood'} maxLength={MAX_PROMPT} className="hf-vz-caixa" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
+              placeholder={ehSfx ? 'The sound and where it happens… e.g. a heavy wooden door slams shut in an empty stone hallway, echo fading'
+                : 'Genre, mood, instruments, tempo… e.g. upbeat synth-pop, female vocals, 120 bpm, summer night drive'} /><Contador texto={prompt} limite={MAX_PROMPT} />
+            {!ehSfx && <div className="hf-vz-exemplos">
               {ESTILOS.map((e) => (
                 <button key={e} type="button" className="hf-botao-sec" onClick={() => setPrompt(e)}>{e.split(',')[0]}</button>
               ))}
-            </div>
+            </div>}
           </section>
           {!cfg?.plenio && cfg?.letra && (
             <section className="hf-vz-coluna">

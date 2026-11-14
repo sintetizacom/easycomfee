@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, urlImagem } from '../api'
-import { GruposAbertos, useEscolha } from './motor'
+import { GruposAbertos, useEscolha, BotaoNuvem } from './motor'
 import { Contador, MAX_PROMPT, EVENTO_VOZES, BotaoGerar, CartaoTarefa, mensagem, teclasRadio, useCusto, useTarefas, Galeria, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
 
 // Voice: text to speech with open weights. Locally it is OmniVoice (voz.grafo);
@@ -100,6 +100,13 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
   const breeze = naNuvem && modeloNuvem === 'breeze'
   const fish = naNuvem && modeloNuvem === 'fish'
   const limpar = modo === 'limpar'
+  // Cada modelo de API so tem alguns modos: ao escolher, a tela vai para um que ele tenha.
+  useEffect(() => {
+    if (breeze && modo === 'narrar') setModo('criar')
+    else if (fish && modo === 'criar') setModo('narrar')
+  }, [breeze, fish, modo])
+  // Limite de texto de cada modelo (o servidor recusa acima disso).
+  const maxTexto = breeze ? 1000 : eleven ? 5000 : MAX_TEXTO
   const [vozEleven, setVozEleven] = useState('Roger')
   const escolher = useEscolha((id) => { if (id === 'qwen3tts' || id === 'elevenlabs' || id === 'breeze' || id === 'fish') setModeloNuvem(id) })
 
@@ -144,7 +151,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
     && (modo !== 'clonar' || (!!ref && (naNuvem || !!transcricao.trim())))
   // O que falta para o Generate ligar (antes ficava desligado sem dizer por que).
   const falta = semMotor ? null
-    : limpar ? (!naNuvem ? 'Cleaning a recording runs on Comfy Cloud: switch the engine to Comfy Cloud.' : !ref ? 'Add the recording to clean.' : null)
+    : limpar ? (!naNuvem ? 'Cleaning a recording runs on Comfy Cloud.' : !ref ? 'Add the recording to clean.' : null)
     : breeze && modo === 'narrar' ? 'Breeze needs a voice: switch to Design a voice or Clone a voice.'
     : fish && modo === 'criar' ? 'Fish Audio narrates with a random voice or clones a recording: switch to Narrate or Clone a voice.'
     : eleven && modo !== 'narrar' ? 'ElevenLabs only narrates with its ready voices: switch to Narrate, or pick Qwen3-TTS.'
@@ -188,7 +195,7 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           <section className="hf-vz-coluna">
             <div className="hf-vzn-cabeca">
               <span className="hf-grupo-rotulo">The voice</span>
-              {modo === 'narrar' && <label className="hf-vfx-busca hf-vzn-busca"><span aria-hidden>⌕</span>
+              {modo === 'narrar' && !fish && <label className="hf-vfx-busca hf-vzn-busca"><span aria-hidden>⌕</span>
                 <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Search voices…" aria-label="Search voices" /></label>}
             </div>
             {modo === 'narrar' && fish && <p className="hf-dica">Fish Audio picks a random voice each time. To keep one voice, use <b>Clone a voice</b> with a short recording. Emotion tags like [whispering] or [excited] go inside your text.</p>}
@@ -279,20 +286,22 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           </section>
 
           <section className="hf-vz-coluna hf-vz-texto">
-            <span className="hf-grupo-rotulo">What to say</span>
-            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} maxLength={MAX_TEXTO}
-              placeholder="The text to speak…" aria-label="The text to speak" /><Contador texto={texto} limite={MAX_TEXTO} />
+            <span className="hf-grupo-rotulo">{limpar ? 'How it works' : 'What to say'}</span>
+            {limpar ? <p className="hf-dica">Add a recording on the left. ElevenLabs removes the background noise and keeps only the voice. There is no text to write.</p> : <>
+            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} maxLength={maxTexto}
+              placeholder="The text to speak…" aria-label="The text to speak" /><Contador texto={texto} limite={maxTexto} />
             <span className="hf-dica">
-              {texto.length.toLocaleString('en-US')} / {MAX_TEXTO.toLocaleString('en-US')} characters · about {segundosDe(texto)} s of speech
+              {texto.length.toLocaleString('en-US')} / {maxTexto.toLocaleString('en-US')} characters · about {segundosDe(texto)} s of speech
               {/* Narracao longa e valida; so o Lip Sync aceita ate 30 s de fala. */}
               {segundosDe(texto) > 30 && <b className="hf-vz-longo"> · fine for narration, but over the 30 s that Lip Sync takes</b>}
-              {texto.length >= MAX_TEXTO && <b className="hf-vz-longo"> · limit reached</b>}
+              {texto.length >= maxTexto && <b className="hf-vz-longo"> · limit reached</b>}
             </span>
+            </>}
           </section>
 
           <aside className="hf-vz-coluna hf-vzn-dir" aria-label="Settings">
             <span className="hf-grupo-rotulo">Settings</span>
-          <label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? `nuvem:${modeloNuvem}` : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
+          {!limpar && <><label className="hf-campo"><span>Model</span><select className="hf-select" value={naNuvem ? `nuvem:${modeloNuvem}` : 'local:omnivoice'} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={[{ id: 'omnivoice', rotulo: 'OmniVoice', soLocal: true, naoInstalado: !naNuvem && !!caps && !caps.disponivel, falta: 'nodes missing' },
               { id: 'qwen3tts', rotulo: 'Qwen3-TTS', soNuvem: true },
               { id: 'elevenlabs', rotulo: 'ElevenLabs v3 (API)', soNuvem: true },
@@ -301,11 +310,11 @@ export default function AbaVoz({ naNuvem }: { naNuvem: boolean }) {
           </select></label>
           <label className="hf-campo"><span>Language</span><select className="hf-select" value={idioma} onChange={(e) => setIdioma(e.target.value)} aria-label="Language">
             {IDIOMAS.map((i) => <option key={i}>{i}</option>)}
-          </select></label>
+          </select></label></>}
             <BotaoGerar rotulo="Generate ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
           </aside>
         </div>
-        {falta && <p className="hf-dica" role="status">{falta}</p>}
+        {falta && <p className="hf-dica" role="status">{falta}{limpar && !naNuvem && <> <BotaoNuvem /></>}</p>}
         {semMotor && <p className="hf-erro" role="alert">{naNuvem ? 'Voice design is not available here.' : 'OmniVoice is not installed in your ComfyUI'}{caps?.motivo ? ` (${caps.motivo})` : ''}. Install the TTS Audio Suite nodes, or pick Qwen3-TTS (Comfy Cloud) in the menu.</p>}
         {erro && <p className="hf-erro" role="alert">{erro}</p>}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, createElement } from 'react'
 import { api, urlImagem, type Referencia } from '../api'
+import { BotaoNuvem } from './motor'
 import { BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useCusto, useTarefas, TituloPagina } from './comum'
 
 // 3D: uma imagem vira um modelo 3D (arquivo GLB) por um modelo de API da Comfy Cloud
@@ -9,6 +10,7 @@ const MODELOS = [
   { id: 'tripo', rotulo: 'Tripo 3.1', dica: 'Textured model with PBR materials. A good all-rounder.' },
   { id: 'tripo_texto', rotulo: 'Tripo 3.1 · from text', dica: 'Describe the object; no image needed.' },
   { id: 'tencent', rotulo: 'Hunyuan 3D 3.1', dica: 'Tencent: detailed geometry, optional PBR.' },
+  { id: 'rodin', rotulo: 'Rodin Gen-2.5', dica: 'Hyper3D Rodin: high-fidelity geometry with PBR materials.' },
   { id: 'meshy', rotulo: 'Meshy 7.1', dica: 'Clean topology, textures up to 2K here.' },
 ]
 
@@ -65,7 +67,7 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
             <Chips rotulo="Model" opcoes={MODELOS.map((m) => ({ id: m.id, rotulo: m.rotulo, dica: m.dica }))} valor={modelo} aoMudar={setModelo} />
             <label className="hf-toggle"><input type="checkbox" checked={textura} onChange={(e) => setTextura(e.target.checked)} /> Textures</label>
             <p className="hf-dica">A single object on a plain background works best. Runs on Comfy Cloud (credits): the cost shows on the button.</p>
-            {!naNuvem && <p className="hf-dica">Switch the engine to Comfy Cloud to use the 3D models.</p>}
+            {!naNuvem && <p className="hf-dica">The 3D models run on Comfy Cloud. <BotaoNuvem /></p>}
             <BotaoGerar rotulo="Generate 3D ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
             {erro && <p className="hf-erro" role="alert">{erro}</p>}
           </div>

@@ -2994,9 +2994,12 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 .hf-m3d-baixar:hover { background: var(--hf-neon, #8cf); color: #000; }
 @media (max-width: 700px) { .hf-m3d-entrada { grid-template-columns: 1fr; } }
 
-/* Erase object: tela de pintura sobre o primeiro quadro */
-.hf-mask { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-.hf-mask-palco { position: relative; width: 100%; line-height: 0; border-radius: 12px; overflow: hidden; background: #000; }
-.hf-mask-palco video, .hf-mask-palco canvas { width: 100%; height: auto; display: block; }
-.hf-mask-palco canvas { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
-.hf-mask-barra { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+/* Erase object: tela de pintura sobre o primeiro quadro; a barra fica sobre o video, no rodape */
+.hf-mask { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #000; }
+.hf-mask-palco { position: relative; height: 100%; max-width: 100%; line-height: 0; }
+.hf-mask-palco video { height: 100%; width: auto; max-width: 100%; display: block; }
+.hf-mask-palco canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.hf-mask-barra { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 6px 10px; background: #000b; color: #fff; font-size: 12px; line-height: 1.2; }
+.hf-mask-barra input[type=range] { width: 110px; vertical-align: middle; }
+.hf-mask-barra .hf-botao-sec { padding: 3px 10px; }

@@ -24,8 +24,10 @@ export default function PainelConta({ temChave, linkRecarga, abrirConfig }: {
   useEffect(() => {
     if (!aberto) return
     const fora = (e: MouseEvent) => { if (!caixa.current?.contains(e.target as Node)) setAberto(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false) }
     document.addEventListener('mousedown', fora)
-    return () => document.removeEventListener('mousedown', fora)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc) }
   }, [aberto])
 
   if (!temChave) {

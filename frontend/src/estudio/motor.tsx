@@ -105,6 +105,17 @@ export function useEscolha(aoMudar: (id: string) => void) {
 /** Aviso na tela quando a troca de motor nao acontece (antes era um alert() do
  *  navegador, ou nada). O Estudio mostra; `chave` poe o botao da chave da nuvem. */
 export const EVENTO_AVISO_MOTOR = 'easycomfee:aviso-motor'
+/** "Switch to Comfy Cloud": para as telas que so funcionam na nuvem. Sem chave, leva ao aviso da chave. */
+export function BotaoNuvem({ rotulo = 'Switch to Comfy Cloud' }: { rotulo?: string }) {
+  const { temChave } = useContext(MotorCtx)
+  return (
+    <button type="button" className="hf-link hf-link-neon" onClick={() => {
+      if (!temChave) { avisarMotor('Add your Comfy Cloud API key to run models on the cloud.', true); return }
+      trocarMotor('nuvem').catch((e) => avisarMotor(String(e instanceof Error ? e.message : e)))
+    }}>{rotulo}</button>
+  )
+}
+
 export function avisarMotor(texto: string, chave = false) {
   window.dispatchEvent(new CustomEvent(EVENTO_AVISO_MOTOR, { detail: { texto, chave } }))
 }

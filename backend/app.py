@@ -284,7 +284,7 @@ class PedidoGeracao(Pedido):
     # "auto": a voz segue o motor (OmniVoice local, Qwen3-TTS na nuvem). "elevenlabs": so na Comfy Cloud.
     modelo_voz: str = Field("auto", pattern="^(auto|elevenlabs|breeze|fish)$")
     # Modelo 3D por API (aba 3D): tripo | meshy; com ou sem textura.
-    modelo_3d: str = Field("tripo", pattern="^(tripo|tripo_texto|tencent|meshy)$")
+    modelo_3d: str = Field("tripo", pattern="^(tripo|tripo_texto|tencent|rodin|meshy)$")
     textura_3d: bool = True
     referencia_voz: str = ""
     nome_voz: str = Field("", max_length=120)
