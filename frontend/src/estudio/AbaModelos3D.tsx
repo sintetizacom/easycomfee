@@ -173,6 +173,7 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
   const [textura, setTextura] = useState(true)
   const [ajustes, setAjustes] = useState<Record<string, Valores>>({})
   const [aberto, setAberto] = useState(false)
+  const [depois, setDepois] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const [meta, setMeta] = useState<Record<string, Meta>>(() => lerMeta())
@@ -187,6 +188,7 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
     return Object.fromEntries((c?.ajustes ?? []).map((a) => [a.id, ajustes[id]?.[a.id] ?? a.padrao]))
   }
   const mudarAjuste = (id: string, chave: string, v: string | boolean) => setAjustes((x) => ({ ...x, [id]: { ...x[id], [chave]: v } }))
+  const depoisAtivo = !!cfg && cfg.ajustes.some((a) => a.grupo === 'depois' && (ajustes[modelo]?.[a.id] ?? a.padrao) !== a.padrao)
   const mudouAlgum = !!cfg && cfg.ajustes.some((a) => (ajustes[modelo]?.[a.id] ?? a.padrao) !== a.padrao)
 
   const porTexto = modo === 'texto'
@@ -235,27 +237,25 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
   }
 
   return (
-    <div className="hf-aba hf-img hf-m3d">
+    <div className="hf-aba hf-img hf-vzn hf-m3d">
       <TituloPagina antes="Build in" destaque="3D" selo={cfg ? cfg.rotulo : undefined}
         sub="A picture or a sentence becomes a textured 3D model you can spin, download and use in Blender or a game engine." />
-      <div className="hf-m3d-grade">
-        <aside className="hf-m3d-lateral" aria-label="Create">
-          <section>
-            <span className="hf-grupo-rotulo">1 · Start from</span>
-            <div className="hf-vz-modos hf-m3d-partida" role="radiogroup" aria-label="Start from" onKeyDown={teclasRadio}>
-              {PONTO_DE_PARTIDA.map((p) => (
-                <button key={p.id} type="button" role="radio" aria-checked={modo === p.id} tabIndex={modo === p.id ? 0 : -1} className="hf-vz-modo"
-                  data-ativo={modo === p.id} onClick={() => setModo(p.id as Modo)}>
-                  <span aria-hidden>{p.icone}</span><b>{p.rotulo}</b><small>{p.frase}</small>
-                </button>
-              ))}
-            </div>
-          </section>
 
-          <section>
-            <span className="hf-grupo-rotulo">2 · {porTexto ? 'Describe it' : porVistas ? 'Your views' : 'Your image'}</span>
+      <div className="hf-vz-modos hf-m3d-partida" role="radiogroup" aria-label="Start from" onKeyDown={teclasRadio}>
+        {PONTO_DE_PARTIDA.map((p) => (
+          <button key={p.id} type="button" role="radio" aria-checked={modo === p.id} tabIndex={modo === p.id ? 0 : -1} className="hf-vz-modo"
+            data-ativo={modo === p.id} onClick={() => setModo(p.id as Modo)}>
+            <span aria-hidden>{p.icone}</span><b>{p.rotulo}</b><small>{p.frase}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="hf-barra-prompt">
+        <div className="hf-vz-corpo">
+          <section className="hf-vz-coluna">
+            <span className="hf-grupo-rotulo">{porTexto ? 'Describe it' : porVistas ? 'Your views' : 'Your image'}</span>
             {porTexto
-              ? <textarea aria-label="Describe the object" className="hf-vz-caixa" rows={4} maxLength={600} value={texto} onChange={(e) => setTexto(e.target.value)}
+              ? <textarea aria-label="Describe the object" className="hf-vz-caixa" rows={8} maxLength={600} value={texto} onChange={(e) => setTexto(e.target.value)}
                   placeholder="A small wooden chair with a red cushion, cartoon style" />
               : porVistas
                 ? <div className="hf-m3d-vistas">
@@ -269,8 +269,8 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
               : 'One object on a plain background works best.'}</p>
           </section>
 
-          <section>
-            <span className="hf-grupo-rotulo">3 · Model</span>
+          <section className="hf-vz-coluna">
+            <span className="hf-grupo-rotulo">Model</span>
             <div className="hf-m3d-modelos" role="radiogroup" aria-label="Model" onKeyDown={teclasRadio}>
               {doModo.map((m) => (
                 <button key={m.id} type="button" role="radio" aria-checked={modelo === m.id} tabIndex={modelo === m.id ? 0 : -1} className="hf-m3d-modelo"
@@ -284,11 +284,11 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
             </div>
           </section>
 
-          <section>
-            <span className="hf-grupo-rotulo">4 · Settings</span>
+          <aside className="hf-vz-coluna hf-vzn-dir" aria-label="Settings">
+            <span className="hf-grupo-rotulo">Settings</span>
             <label className="hf-m3d-chave hf-m3d-chave-grande">
               <input type="checkbox" checked={textura} onChange={(e) => setTextura(e.target.checked)} />
-              <span>Textures and colors</span><small>Off gives only the bare shape (grey), useful to sculpt or paint yourself.</small>
+              <span>Textures and colors</span><small>Off gives only the bare shape (grey).</small>
             </label>
             <details className="hf-m3d-avancado" open={aberto} onToggle={(e) => setAberto((e.currentTarget as HTMLDetailsElement).open)}>
               <summary>{cfg?.rotulo ?? 'Model'} settings{mudouAlgum && <em> · changed</em>}</summary>
@@ -299,84 +299,80 @@ export default function AbaModelos3D({ naNuvem }: { naNuvem: boolean }) {
                 {mudouAlgum && <button type="button" className="hf-botao-sec" onClick={() => setAjustes((x) => ({ ...x, [modelo]: {} }))}>Back to the defaults</button>}
               </div>
             </details>
-          </section>
-
-          {cfg?.ajustes.some((a) => a.grupo === 'depois') && (
-            <section>
-              <span className="hf-grupo-rotulo">5 · After building <small>(Tripo)</small></span>
-              <div className="hf-m3d-ajustes hf-m3d-depois">
-                {cfg.ajustes.filter((a) => a.grupo === 'depois').map((a) => (
-                  <CampoAjuste key={a.id} a={a} valor={ajustes[modelo]?.[a.id] ?? a.padrao} aoMudar={(v) => mudarAjuste(modelo, a.id, v)} />
-                ))}
-              </div>
-              <p className="hf-dica">Each step runs in the same job, so you get the finished model. They add to the cost shown on the button.</p>
-            </section>
-          )}
-
-          <div className="hf-m3d-gerar">
+            {cfg?.ajustes.some((a) => a.grupo === 'depois') && (
+              <details className="hf-m3d-avancado" open={depois} onToggle={(e) => setDepois((e.currentTarget as HTMLDetailsElement).open)}>
+                <summary>After building <small>(Tripo)</small>{depoisAtivo && <em> · on</em>}</summary>
+                <div className="hf-m3d-ajustes">
+                  {cfg.ajustes.filter((a) => a.grupo === 'depois').map((a) => (
+                    <CampoAjuste key={a.id} a={a} valor={ajustes[modelo]?.[a.id] ?? a.padrao} aoMudar={(v) => mudarAjuste(modelo, a.id, v)} />
+                  ))}
+                  <p className="hf-dica">Each step runs in the same job and adds to the cost on the button.</p>
+                </div>
+              </details>
+            )}
             {!naNuvem && <p className="hf-dica">The 3D models run on Comfy Cloud (credits). <BotaoNuvem /></p>}
             <BotaoGerar rotulo="Generate 3D ✦" est={custo} desligado={!pronto} aoClicar={gerar} />
             {erro && <p className="hf-erro" role="alert">{erro}</p>}
-          </div>
-        </aside>
-
-        <main className="hf-m3d-centro">
-          <div className="hf-m3d-palco">
-            {arq
-              ? <Palco key={atual!.id} nome={arq.nome} subpasta={arq.subpasta} titulo={catAtual?.rotulo ?? '3D model'} />
-              : atual
-                ? <div className="hf-m3d-vazio"><CartaoTarefa t={atual} /></div>
-                : <div className="hf-m3d-vazio">
-                    <b>Your 3D model shows up here</b>
-                    <p>Pick an image or write a description on the left, choose a model and press <em>Generate 3D</em>.
-                      You can spin the result, change the light and the background, take a picture of it and download the GLB.</p>
-                  </div>}
-          </div>
-
-          {atual && (
-            <div className="hf-m3d-detalhes">
-              <div className="hf-m3d-fonte">
-                {mAtual?.imagem && <img src={mAtual.imagem} alt="Source image" />}
-                <div>
-                  <b>{catAtual?.rotulo ?? '3D model'}{mAtual?.modo === 'texto' ? ' · from text' : mAtual?.vistas ? ` · ${mAtual.vistas} views` : ''}</b>
-                  {mAtual?.texto && <p>“{mAtual.texto}”</p>}
-                  <small>{atual.estado === 'pronto' ? `Built in ${Math.round(atual.duracao)} s` : atual.estado === 'erro' ? 'Failed' : 'Building…'}
-                    {mAtual ? ` · ${mAtual.textura ? 'textured' : 'shape only'}` : ''}</small>
-                </div>
-              </div>
-              {mAtual && (
-                <div className="hf-m3d-lista-ajustes">
-                  {Object.entries(mAtual.ajustes).map(([k, v]) => rotuloDoAjuste(mAtual.modelo, k, v)).filter(Boolean)
-                    .map((t) => <i key={t}>{t}</i>)}
-                </div>
-              )}
-              {extras.map((e) => <a key={e.nome} className="hf-botao-sec hf-m3d-extra" href={urlImagem({ nome: e.nome, subpasta: e.subpasta })} download={e.nome}>⬇ {(e.nome.match(/modelo3d_(\w+?)_/i)?.[1] ?? 'file').toUpperCase()}</a>)}
-              {mAtual && <button type="button" className="hf-botao-sec" onClick={reusar}>Reuse these settings</button>}
-            </div>
-          )}
-
-          {historico.length > 0 && (
-            <div className="hf-m3d-historico" aria-label="Your 3D models">
-              <span className="hf-grupo-rotulo">Your 3D models</span>
-              <div>
-                {historico.map((t) => {
-                  const m = meta[t.id]
-                  const c = m ? catalogo.find((x) => x.id === m.modelo) : undefined
-                  return (
-                    <button key={t.id} type="button" data-ativo={atual?.id === t.id} data-estado={t.estado} onClick={() => setSelecionada(t.id)}
-                      title={m?.texto ?? undefined}>
-                      {m?.imagem ? <img src={m.imagem} alt="" /> : <span aria-hidden className="hf-m3d-icone">{m?.modo === 'texto' ? '✍' : '▣'}</span>}
-                      <b>{c?.rotulo ?? '3D model'}</b>
-                      <small>{t.estado === 'pronto' ? new Date(t.criada_em * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : t.estado === 'erro' ? 'failed' : `${Math.round((t.progresso ?? 0) * 100)}%`}</small>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </main>
+          </aside>
+        </div>
       </div>
+
+      <section className="hf-m3d-resultado" aria-label="Your 3D model">
+        <span className="hf-img-titulo">Your 3D model</span>
+        <div className="hf-m3d-palco">
+          {arq
+            ? <Palco key={atual!.id} nome={arq.nome} subpasta={arq.subpasta} titulo={catAtual?.rotulo ?? '3D model'} />
+            : atual
+              ? <div className="hf-m3d-vazio"><CartaoTarefa t={atual} /></div>
+              : <div className="hf-m3d-vazio">
+                  <b>Nothing built yet</b>
+                  <p>Pick an image or write a description, choose a model and press <em>Generate 3D</em>.
+                    The model opens here: spin it, change the light and the background, take a picture of it and download the GLB.</p>
+                </div>}
+        </div>
+
+        {atual && (
+          <div className="hf-m3d-detalhes">
+            <div className="hf-m3d-fonte">
+              {mAtual?.imagem && <img src={mAtual.imagem} alt="Source image" />}
+              <div>
+                <b>{catAtual?.rotulo ?? '3D model'}{mAtual?.modo === 'texto' ? ' · from text' : mAtual?.vistas ? ` · ${mAtual.vistas} views` : ''}</b>
+                {mAtual?.texto && <p>“{mAtual.texto}”</p>}
+                <small>{atual.estado === 'pronto' ? `Built in ${Math.round(atual.duracao)} s` : atual.estado === 'erro' ? 'Failed' : 'Building…'}
+                  {mAtual ? ` · ${mAtual.textura ? 'textured' : 'shape only'}` : ''}</small>
+              </div>
+            </div>
+            {mAtual && (
+              <div className="hf-m3d-lista-ajustes">
+                {Object.entries(mAtual.ajustes).map(([k, v]) => rotuloDoAjuste(mAtual.modelo, k, v)).filter(Boolean)
+                  .map((t) => <i key={t}>{t}</i>)}
+              </div>
+            )}
+            {extras.map((e) => <a key={e.nome} className="hf-botao-sec hf-m3d-extra" href={urlImagem({ nome: e.nome, subpasta: e.subpasta })} download={e.nome}>⬇ {(e.nome.match(/modelo3d_(\w+?)_/i)?.[1] ?? 'file').toUpperCase()}</a>)}
+            {mAtual && <button type="button" className="hf-botao-sec" onClick={reusar}>Reuse these settings</button>}
+          </div>
+        )}
+
+        {historico.length > 1 && (
+          <div className="hf-m3d-historico" aria-label="Earlier 3D models">
+            <div>
+              {historico.map((t) => {
+                const m = meta[t.id]
+                const c = m ? catalogo.find((x) => x.id === m.modelo) : undefined
+                return (
+                  <button key={t.id} type="button" data-ativo={atual?.id === t.id} data-estado={t.estado} onClick={() => setSelecionada(t.id)}
+                    title={m?.texto ?? undefined}>
+                    {m?.imagem ? <img src={m.imagem} alt="" /> : <span aria-hidden className="hf-m3d-icone">{m?.modo === 'texto' ? '✍' : '▣'}</span>}
+                    <b>{c?.rotulo ?? '3D model'}</b>
+                    <small>{t.estado === 'pronto' ? new Date(t.criada_em * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : t.estado === 'erro' ? 'failed' : `${Math.round((t.progresso ?? 0) * 100)}%`}</small>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

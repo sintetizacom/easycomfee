@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import { CartaoModelo, LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
+import { LinhaOnde, MotorCtx, useEscolha, useInstalado } from './motor'
 import { api, referenciaDaGaleria, urlEntrada, urlImagem, type Referencia } from '../api'
 import { ThenNow, abrirVisualizador } from './Visualizador'
 import { Contador, limitePrompt, BotaoGerar, CartaoTarefa, Chips, SlotImagem, arquivos, mensagem, useVideoRecebido, useCusto, useTarefas, type Estimativa, Galeria, parteDoHash, useLembrado, textoDoDetalhe, TituloPagina } from './comum'
@@ -54,20 +54,41 @@ const RESOLUCOES: Record<string, string[]> = {
 const FOTOS: Record<string, string> = { recast: 'gj_recast', wan_animate2: 'gj_wan_animate', wan22_replace: 'gj_wan_replace',
   h3_swap: 'gj_h3_swap', higgsfield: 'gj_higgsfield', kling_omni: 'gj_kling', aleph2: 'gj_runway', luma_edit: 'gj_luma_edit', kling4_edit: 'gj_kling4_edit', beeble_edit: 'gj_beeble', wan27_edit: 'gj_wan27_edit', grok_edit: 'gj_grok_edit' }
 
+// Etiquetas dos cartoes, sempre na mesma ordem: quanto dura, o que entra, um extra. Mesmas palavras em todos.
 const ETIQUETAS: Record<string, string[]> = {
-  recast: ['New cast + place', 'Up to 14 s'],
-  wan_animate2: ['Photo performs the video', '~5 s', 'Cloud'],
-  wan22_replace: ['Into the video', '~5 s'],
-  h3_swap: ['Into the video', 'With sound', 'Up to 8 s'],
-  higgsfield: ['Up to 30 s', '8 references'],
-  kling_omni: ['3–10 s'],
-  aleph2: ['Text only', 'Up to 30 s'],
-  luma_edit: ['Text only', 'Up to 10 s'],
-  kling4_edit: ['Text only', 'Original sound'],
-  wan27_edit: ['Text only', 'Up to 10 s'],
-  grok_edit: ['Text only'],
-  beeble_edit: ['Keeps the subject', 'Up to 10 s'],
+  recast: ['Up to 14 s', 'Photos'],
+  wan_animate2: ['About 5 s', 'Photo'],
+  wan22_replace: ['About 5 s', 'Photo'],
+  h3_swap: ['Up to 8 s', 'Photo', 'Keeps sound'],
+  higgsfield: ['Up to 30 s', '8 photos'],
+  kling_omni: ['3 to 10 s', '2 photos'],
+  aleph2: ['Up to 30 s', 'Text only'],
+  luma_edit: ['Up to 10 s', 'Text only'],
+  kling4_edit: ['Up to 15 s', 'Text only', 'Keeps sound'],
+  wan27_edit: ['Up to 10 s', 'Text only', 'Keeps sound'],
+  grok_edit: ['Up to 15 s', 'Text only'],
+  beeble_edit: ['Up to 10 s', 'Look photo'],
 }
+// Uma frase por cartao: o que ele faz, em poucas palavras.
+const FAZ: Record<string, string> = {
+  recast: 'New cast and place, same motion',
+  wan_animate2: 'Your photo performs the video',
+  wan22_replace: 'Swaps in your character',
+  h3_swap: 'Swaps in your character',
+  higgsfield: 'New cast, place and style',
+  kling_omni: 'Rework a video with text and photos',
+  aleph2: 'Restyle, relight, add or remove',
+  luma_edit: 'Change the look, light or contents',
+  kling4_edit: 'Edit by describing the change',
+  wan27_edit: 'Edit by describing the change',
+  grok_edit: 'Quick edits by description',
+  beeble_edit: 'New background, light or costume',
+}
+// Os modelos de API, agrupados pelo tipo de trabalho.
+const GRUPOS_API = [
+  { rotulo: 'Swap the cast or place, with photos', ids: ['higgsfield', 'kling_omni'] },
+  { rotulo: 'Edit the video by describing the change', ids: ['aleph2', 'luma_edit', 'kling4_edit', 'wan27_edit', 'grok_edit', 'beeble_edit'] },
+]
 
 const ROTULO_CUSTO = (a: Estimativa | null, b: Estimativa | null): Estimativa | null =>
   a && b && a.tipo === b.tipo && a.tipo === 'gpu' ? { tipo: 'gpu', usd: (a.usd ?? 0) + (b.usd ?? 0) }
@@ -111,17 +132,26 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
     if (!m.aberto) { escolher(m.id); return }
     escolher(`${m.id === 'wan_animate2' || naNuvem ? 'nuvem' : 'local'}:${m.id}`)
   }
-  const cartao = (m: Modelo) => (
-    <CartaoModelo key={m.id} ativo={modelo === m.id} aoEscolher={() => escolherModelo(m)} title={m.dica}
-      rodape={m.aberto && <LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local={m.id !== 'wan_animate2'} nuvem faltaLocal={!instalado(m.id)} />}>
-      {FOTOS[m.id] && <img className="hf-gj-foto" src={`/studios/cartoes/${FOTOS[m.id]}.webp`} alt="" loading="lazy" />}
-      <b>{m.rotulo}</b>
-      <span className="hf-mu-tags">
-        <i data-onde={m.aberto ? 'local' : 'falta'}>{m.aberto ? 'Open weights' : 'API'}</i>
-        {(ETIQUETAS[m.id] ?? []).filter((t) => t !== 'Cloud').map((t) => <i key={t}>{t}</i>)}
-      </span>
-    </CartaoModelo>
+  // Mosaico: cards de tamanhos diferentes (grandes e pequenos) que fecham cada linha sem buracos (ver o CSS "hf-gj-bloco").
+  const cartaoMosaico = (m: Modelo) => (
+    <div key={m.id} className="hf-gj-cartao" data-m={m.id} data-ativo={modelo === m.id}>
+      {FOTOS[m.id] && <img src={`/studios/cartoes/${FOTOS[m.id]}.webp`} alt="" loading="lazy" />}
+      <button type="button" className="hf-gj-escolher" aria-pressed={modelo === m.id} onClick={() => escolherModelo(m)} title={m.dica}>
+        <b>{m.rotulo}</b>
+        <em className="hf-gj-faz">{FAZ[m.id]}</em>
+        <span className="hf-mu-tags">
+          <i data-onde={m.aberto ? 'local' : 'falta'}>{m.aberto ? 'Open weights' : 'API'}</i>
+          {(ETIQUETAS[m.id] ?? []).map((t) => <i key={t}>{t}</i>)}
+        </span>
+      </button>
+      {m.aberto && (
+        <div className="hf-gj-onde-cartao">
+          <LinhaOnde escolher={escolher} id={m.id} cartaoAtivo={modelo === m.id} local={m.id !== 'wan_animate2'} nuvem faltaLocal={!instalado(m.id)} />
+        </div>
+      )}
+    </div>
   )
+  const doBloco = (ids: string[]) => ids.map((id) => MODELOS.find((m) => m.id === id)).filter((m): m is Modelo => !!m).map(cartaoMosaico)
   const imagens = refs.slice(0, cfg.refs.length).filter(Boolean) as Referencia[]
   const precisaRef = cfg.refs.length > 0 && !cfg.refs[0].includes('optional')
   const pronto = !!video && (!cfg.aberto || naNuvem || instalado(modelo)) && (!precisaRef || imagens.length > 0)
@@ -205,19 +235,23 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
     <div className="hf-aba hf-img hf-gj">
       <TituloPagina antes="Recast" destaque="any video" sub="Same motion, camera and timing. New cast, place or style." />
 
-      <div className="hf-mu-modelos hf-gj-modelos">{MODELOS.filter((m) => m.aberto).map(cartao)}</div>
-      {apiLiberado && <>
-        <span className="hf-grupo-rotulo hf-gj-api">Partner models · Comfy credits</span>
-        <div className="hf-mu-modelos hf-gj-modelos">{MODELOS.filter((m) => !m.aberto).map(cartao)}</div>
-      </>}
+      <span className="hf-grupo-rotulo hf-gj-rotulo">Open weights <small>your GPU or Comfy Cloud</small></span>
+      <div className="hf-gj-bloco" data-bloco="abertos">{doBloco(['recast', 'wan_animate2', 'wan22_replace', 'h3_swap'])}</div>
+      {apiLiberado && GRUPOS_API.map((g, n) => (
+        <div key={g.rotulo}>
+          <span className="hf-grupo-rotulo hf-gj-rotulo">{g.rotulo} <small>Comfy credits</small></span>
+          <div className="hf-gj-bloco" data-bloco={n === 0 ? 'troca' : 'edicao'}>{doBloco(g.ids)}</div>
+        </div>
+      ))}
+      <p className="hf-gj-dica-longa hf-gj-escolhido"><b>{cfg.rotulo}.</b> {cfg.dica}</p>
 
       <div className="hf-barra-prompt hf-ls hf-gj-passos">
         <div className="hf-ls-passos">
           <section className="hf-ls-cartao" data-pronto={!!video}>
-            <header><b>1</b> Video <small>{cfg.dica}</small></header>
+            <header><b>1</b> Video</header>
             <label className="hf-slot hf-gj-video" data-cheio={!!video}>
               {video ? <video src={urlEntrada(video.nome)} muted loop autoPlay playsInline />
-                : <span>{enviando ? 'Uploading…' : '+ Your video'}<small>The motion, camera and timing come from here</small></span>}
+                : <span>{enviando ? 'Uploading…' : '+ Your video'}<small>Drop it here or click to choose</small></span>}
               <input type="file" accept="video/*" className="hf-arquivo" onChange={async (e) => {
                 const f = e.target.files?.[0]
                 if (!f) return
@@ -226,6 +260,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
               }} />
             </label>
             {video && <button type="button" className="hf-botao-sec" onClick={() => setVideo(null)}>Remove video</button>}
+            <p className="hf-dica">The motion, camera and timing come from this video. {(ETIQUETAS[cfg.id] ?? [])[0] ?? 'Short clips'} with {cfg.rotulo}.</p>
           </section>
 
           <section className="hf-ls-cartao" data-pronto={!precisaRef || imagens.length > 0}>
@@ -238,7 +273,7 @@ export default function AbaGenjutsu({ apiLiberado }: { apiLiberado: boolean }) {
                 ))}
               </div>
             ) : <p className="hf-dica">{cfg.rotulo} works from the text alone.</p>}
-            <p className="hf-dica">A clear photo of the character, full body if the video shows the body. Drag one from the gallery or press ↑ Use.</p>
+            {cfg.refs.length > 0 && <p className="hf-dica">A clear photo of the character, full body if the video shows the body. Drag one from the gallery or press ↑ Use.</p>}
           </section>
 
           <section className="hf-ls-cartao hf-ls-cena">
