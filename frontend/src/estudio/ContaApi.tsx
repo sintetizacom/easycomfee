@@ -63,7 +63,7 @@ export default function ContaApi({ temChave, linkRecarga, aoMudar }: {
             <li>Paste it below and press Save.</li>
           </ol>
         )}
-        <form className="mq-acoes" onSubmit={(e) => { e.preventDefault(); if (chave.trim()) salvar(chave) }}>
+        <form className="mq-acoes mq-chave-acoes" onSubmit={(e) => { e.preventDefault(); if (chave.trim()) salvar(chave) }}>
           <input className="mq-token" type="password" autoComplete="off" value={chave} onChange={(e) => setChave(e.target.value)}
             aria-label="Comfy Cloud API key"
             placeholder={temChave ? 'Key saved. Paste a new one to replace it' : 'comfyui-…'} />

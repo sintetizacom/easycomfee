@@ -957,6 +957,7 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
 /* Botao Studios e a janela com os seis estudios (MenuEstudios.tsx). */
 .hf-est-seta { font-size: 12px; margin-left: 2px; opacity: .8; }
 .hf-est-janela { position: fixed; z-index: 60; width: min(560px, calc(100vw - 24px)); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  max-height: calc(100dvh - 24px); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain;
   padding: 10px; background: #261D2E; border: 1px solid var(--hf-linha); border-radius: 14px; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 .hf-est-cartao { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 6px; border: 1px solid transparent;
   border-radius: 10px; background: none; color: var(--hf-texto); text-align: left; cursor: pointer; font: inherit; }
@@ -977,6 +978,25 @@ html .mq-remover:disabled { opacity: .5; cursor: default; }
   font-size: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
 .hf-aviso-motor .hf-link { font-size: 14px; }
 .hf-aviso-motor button { white-space: nowrap; flex: none; }
+@media (max-width: 560px) {
+  .hf-aviso-motor {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    transform: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    max-width: none;
+    box-sizing: border-box;
+  }
+  .hf-aviso-motor > span { min-width: 0; overflow-wrap: anywhere; }
+  .hf-aviso-motor > .hf-botao-sec {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+  .hf-aviso-motor > .hf-link { grid-column: 2; grid-row: 1; }
+}
 
 /* Campo de arquivo dos slots: invisivel mas alcancavel pelo teclado (Tab foca o
    slot, Enter ou espaco abre a escolha do arquivo). Com `hidden` nao dava. */
@@ -2247,6 +2267,32 @@ input[type='range'].hf-luz-temp::-webkit-slider-thumb { margin-top: -6px; }
 .hf-cin-popup > header b { font-size: 18px; color: var(--hf-texto); }
 .hf-cin-popup > header button { border: 0; background: none; color: var(--hf-apagado); font-size: 24px; cursor: pointer; line-height: 1; }
 .hf-cin-popup .hf-painel-op { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; gap: 10px; border: 0; padding: 0; margin: 0; background: none; }
+@media (max-width: 720px) {
+  .hf-cin-popup-fundo { padding: 0; }
+  .hf-cin-popup {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 0;
+    padding: 0 14px 18px;
+  }
+  .hf-cin-popup > header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 0 -14px 14px;
+    padding: 14px;
+    background: var(--hf-cartao);
+    border-bottom: 1px solid var(--hf-linha);
+  }
+  .hf-cin-popup .hf-painel-op,
+  .hf-cin-popup .hf-painel-camera,
+  .hf-enq-popup.hf-painel-op {
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)) !important;
+  }
+}
 .hf-cin-popup .hf-painel-camera { display: flex !important; flex-direction: column; gap: 14px; }
 .hf-cin-popup .hf-painel-camera > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .hf-cin-popup .hf-painel-camera .hf-grupo-rotulo { width: 100%; }
@@ -3126,9 +3172,28 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 @media (max-width: 1024px) {
   .hf-img-grade, .hf-edt-grade, .hf-vid-grade, .hf-vfx-grade { grid-template-columns: minmax(0, 1fr); }
   .hf-img-grade > .hf-img-col { height: auto; min-height: 0; max-height: none; }
+  .hf-edt-grade > .hf-img-col {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+  .hf-vfx-grade > .hf-vfx-esq {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
   /* Video empilhado: a altura sincronizada com o palco so serve para duas colunas. */
   .hf-vid-grade > .hf-vid-dir { height: auto; min-height: 0; max-height: none; }
   .hf-img-palco { height: auto; min-height: 300px; }
+  /* Edit empilhado segue o fluxo: ferramenta, entradas/ajustes, palco. */
+  .hf-edt-grade > .hf-edt-esq { order: 1; }
+  .hf-edt-grade > .hf-edt-dir { order: 2; }
+  .hf-edt-grade > .hf-edt-centro { order: 3; }
+  .hf-vfx-grade > .hf-vfx-esq { order: 1; }
+  .hf-vfx-grade > .hf-vfx-dir { order: 2; }
+  .hf-vfx-grade > .hf-vfx-centro { order: 3; }
 }
 /* Celular: a coluna unica nao pode crescer com o conteudo (a barra de abas rola por dentro). */
 @media (max-width: 720px) {
@@ -3136,6 +3201,33 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-lateral, .hf-principal, .hf-corpo { min-width: 0; max-width: 100vw; }
   .hf-lat-nav { min-width: 0; flex: 1 1 auto; }
   .hf-topo.hf-topo-direita { flex-wrap: wrap; gap: 8px; }
+  /* Edit: cada categoria fica numa faixa curta, em vez de empurrar o palco muito para baixo. */
+  .hf-edt .hf-editar-grupo .hf-edt-cartoes {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+  .hf-edt .hf-editar-grupo .hf-edt-cartoes > .hf-ferramenta { flex: 0 0 150px; }
+  .hf-edt-centro .hf-orbita-caixa .hf-slot,
+  .hf-edt-centro .hf-orbita-caixa > img,
+  .hf-edt-centro .hf-orbita-vazio {
+    height: auto;
+    min-height: 220px;
+    max-height: 420px;
+    aspect-ratio: 4 / 3;
+  }
+  .hf-vfx-topo {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hf-vfx-modos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+  .hf-vfx-modos button { min-width: 0; }
 }
 @media (max-width: 1024px) {
   .hf-cin-grade, .hf-vz-corpo, .hf-vzn .hf-vz-corpo { grid-template-columns: minmax(0, 1fr); }
@@ -3166,7 +3258,19 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-topo.hf-topo-direita, .hf-principal:has(> .hf-aviso-comfy) > .hf-topo.hf-topo-direita { position: static; justify-content: flex-end; padding: 8px 12px 0; }
 }
 @media (max-width: 1024px) { .hf-titulo-pag { margin-right: 2px; } .hf-topo.hf-topo-direita { position: static; justify-content: flex-end; padding: 8px 12px 0; } }
-@media (max-width: 720px) { .hf-titulo-pag h1 { font-size: 24px; } }
+@media (max-width: 720px) {
+  .hf-titulo-pag {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .hf-titulo-pag > :first-child { width: 100%; min-width: 0; }
+  .hf-titulo-pag > :last-child:not(:first-child) {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+  .hf-titulo-pag h1 { font-size: 24px; }
+}
 @media (max-width: 1024px) { .hf-topo.hf-topo-direita { height: auto; min-height: 44px; align-items: center; } }
 
 /* Celular e navegador estreito: navegacao e acoes dividem uma unica faixa.
@@ -3224,7 +3328,60 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 @media (max-width: 1024px) {
   .hf-cin-grade { grid-template-areas: none; }
   .hf-cin-grade > *, .hf-cin-centro > * { grid-area: auto; grid-column: 1; grid-row: auto; min-width: 0; }
-  .hf-cin-palco { order: 1; } .hf-cin-esq { order: 2; } .hf-cin-dir { order: 3; } .hf-cin-planos { order: 4; } .hf-cin-rodape { order: 5; }
+  .hf-cin-esq { order: 1; }
+  .hf-cin-dir { order: 2; }
+  .hf-cin-palco { order: 3; }
+  .hf-cin-planos { order: 4; }
+  .hf-cin-rodape { order: 5; }
+  .hf-cin-planos-topo {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  .hf-cin-planos-topo > .hf-cin-mais { width: 100%; justify-content: center; }
+  .hf-cin-rodape {
+    padding: 14px;
+    background: var(--hf-cartao);
+    border: 1px solid var(--hf-linha);
+  }
+  .hf-cin-rodape .hf-cinema-rodape {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 10px;
+  }
+  .hf-cin-rodape .hf-cin-modelo,
+  .hf-cin-rodape .hf-gerar {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .hf-cin-rodape .hf-cinema-rodape > .hf-ctrl,
+  .hf-cin-rodape .hf-cinema-rodape > .hf-ajustes { width: 100%; }
+  .hf-cin-rodape .hf-gerar { justify-content: center; }
+  .hf-cin-rodape .hf-cinema-rodape .hf-ajustes {
+    flex-wrap: wrap;
+    align-self: stretch;
+  }
+  .hf-cin-rodape .hf-cinema-rodape .hf-ajustes-campos {
+    position: static;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    margin-top: 8px;
+  }
+  .hf-cin-rodape .hf-ajustes-campos label { flex: 1 1 140px; }
+  .hf-cin-rodape .hf-ajustes-campos input,
+  .hf-cin-rodape .hf-ajustes-campos label:not(:first-child) input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .hf-cin-rodape .hf-ajustes-limpar {
+    position: static;
+    margin-left: auto;
+  }
 }
 
 /* 3D: no mesmo molde da aba Voice (cartoes de ponto de partida, tres colunas) com o palco grande embaixo */
@@ -3317,7 +3474,65 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
   .hf-m3d-modelos::-webkit-scrollbar { display: none; }
   .hf-m3d-modelos > .hf-m3d-modelo { scroll-snap-align: start; }
   .hf-m3d-modelos > .hf-m3d-modelo:only-child { grid-column: auto; }
+
+  /* Music: o seletor de funcao abre no fluxo e nunca sai da tela. */
+  .hf-funcao { width: 100%; }
+  .hf-funcao-botao { width: 100%; }
+  .hf-funcao-menu {
+    position: static;
+    width: 100%;
+    max-height: 60dvh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    margin-top: 6px;
+  }
+  .hf-separar-acao { align-items: stretch; }
+  .hf-separar-formato { width: 100%; }
+  .hf-separar-formato select { flex: 1; min-width: 0; }
+  .hf-separar-acao > .hf-gerar { width: 100%; justify-content: center; }
+
+  /* Voice: titulo e busca nao disputam a mesma linha. */
+  .hf-vzn-cabeca { flex-direction: column; align-items: stretch; }
+  .hf-vzn-busca { width: 100%; max-width: none; box-sizing: border-box; }
+
+  /* Assets: filtros rolam numa faixa; busca e ordem usam a largura inteira. */
+  .hf-ast-topo { align-items: stretch; }
+  .hf-ast-topo > div,
+  .hf-ast-ferramentas { width: 100%; min-width: 0; }
+  .hf-ast-filtros {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .hf-ast-filtros::-webkit-scrollbar { display: none; }
+  .hf-ast-filtros button { flex: 0 0 auto; }
+  .hf-ast-ferramentas .hf-vfx-busca { flex: 1; width: auto; min-width: 0; }
+
+  /* 3D: controles do visor ficam em faixas rolaveis, sem cobrir o modelo inteiro. */
+  .hf-m3d-palco { min-height: 360px; height: 62dvh; }
+  .hf-m3d-barra {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 4px;
+  }
+  .hf-m3d-barra > * { flex: 0 0 auto; }
+  .hf-m3d-acoes {
+    left: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  .hf-m3d-acoes > * { flex: 0 0 auto; }
+  .hf-m3d-detalhes { align-items: stretch; }
+  .hf-m3d-fonte,
+  .hf-m3d-lista-ajustes { width: 100%; min-width: 0; }
 }
+
+/* Mensagens tecnicas longas nunca alargam a pagina. */
+.hf-erro { min-width: 0; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
 
 /* Erase object: tela de pintura sobre o primeiro quadro; a barra fica sobre o video, no rodape */
 .hf-mask { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #000; }

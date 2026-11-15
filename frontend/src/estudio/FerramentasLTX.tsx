@@ -99,25 +99,27 @@ function Keyframes() {
 
       <div className="hf-barra-prompt">
         <div className="hf-kf">
-          <div className="hf-kf-regua">
-            {marcas.map((s) => <span key={s} style={{ left: `${(s / duracao) * 100}%` }}>{s}s</span>)}
-          </div>
-          <div ref={trilha} className="hf-kf-trilha" data-vazia={chaves.length === 0}
-            onClick={clicarTrilha}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault()
-              const daGaleria = e.dataTransfer.getData(TIPO_GALERIA)
-              adicionar(daGaleria ? [JSON.parse(daGaleria)] : Array.from(e.dataTransfer.files), segDoPonto(e.clientX))
-            }}>
-            {chaves.length === 0 && <span className="hf-kf-vazio">{enviando ? 'Uploading…' : 'Click the timeline or drop images here (from your computer or the gallery)'}</span>}
-            {ordem.map((c, i) => (
-              <div key={c.id} className="hf-kf-chave" style={{ left: `${(c.seg / duracao) * 100}%` }} onPointerDown={arrastar(c.id)}>
-                <img src={c.img.url} alt="" draggable={false} />
-                <small>{i + 1} · {rotuloSeg(c.seg)}</small>
-                <button type="button" className="hf-slot-x" onClick={() => setChaves((a) => a.filter((x) => x.id !== c.id))}>×</button>
-              </div>
-            ))}
+          <div className="hf-kf-rolagem">
+            <div className="hf-kf-regua">
+              {marcas.map((s) => <span key={s} style={{ left: `${(s / duracao) * 100}%` }}>{s}s</span>)}
+            </div>
+            <div ref={trilha} className="hf-kf-trilha" data-vazia={chaves.length === 0}
+              onClick={clicarTrilha}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                const daGaleria = e.dataTransfer.getData(TIPO_GALERIA)
+                adicionar(daGaleria ? [JSON.parse(daGaleria)] : Array.from(e.dataTransfer.files), segDoPonto(e.clientX))
+              }}>
+              {chaves.length === 0 && <span className="hf-kf-vazio">{enviando ? 'Uploading…' : 'Click the timeline or drop images here (from your computer or the gallery)'}</span>}
+              {ordem.map((c, i) => (
+                <div key={c.id} className="hf-kf-chave" style={{ left: `${(c.seg / duracao) * 100}%` }} onPointerDown={arrastar(c.id)}>
+                  <img src={c.img.url} alt="" draggable={false} />
+                  <small>{i + 1} · {rotuloSeg(c.seg)}</small>
+                  <button type="button" className="hf-slot-x" onClick={() => setChaves((a) => a.filter((x) => x.id !== c.id))}>×</button>
+                </div>
+              ))}
+            </div>
           </div>
           <input ref={seletor} type="file" accept="image/*" multiple hidden
             onChange={(e) => { adicionar(Array.from(e.target.files ?? []), segNovo.current); e.target.value = '' }} />
@@ -206,7 +208,7 @@ function Ingredientes() {
       </div>
 
       <div className="hf-barra-prompt">
-        <div className="hf-slots">
+        <div className="hf-slots hf-ingredientes-slots">
           {imgs.map((r, i) => (
             <div key={r.nome + i} className="hf-ingrediente">
               <SlotImagem rotulo={`Ingredient ${i + 1}`} valor={r}
@@ -279,7 +281,7 @@ function Ampliar() {
       </div>
 
       <div className="hf-barra-prompt">
-        <div className="hf-slots">
+        <div className="hf-slots hf-ampliar-entrada">
           <label className="hf-slot" data-cheio={!!video}>
             {video ? <video src={video.url} muted loop autoPlay playsInline /> : <span>{enviando ? 'Uploading…' : '+ Upload video'}</span>}
             {video && <button type="button" className="hf-slot-x" onClick={(e) => { e.preventDefault(); setVideo(null) }}>×</button>}
