@@ -392,6 +392,8 @@
 .hf-conta-saldo { margin: 0; font-size: 14px; color: var(--hf-apagado); }
 .hf-conta-saldo strong { font-size: 24px; color: var(--hf-texto); }
 .hf-conta-painel > .hf-botao-sec { width: 100%; box-sizing: border-box; text-align: center; }
+/* Celular: a pilula do saldo fica no meio da barra, e o painel alinhado a ela saia pela esquerda. */
+@media (max-width: 720px) { .hf-conta-painel { position: fixed; top: 60px; left: 12px; right: 12px; width: auto; } }
 .hf-conta-chave { display: flex; gap: 6px; }
 .hf-conta-chave .hf-campo { flex: 1; }
 .hf-link { background: none; border: 0; padding: 0; color: var(--hf-apagado); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; align-self: flex-start; }
