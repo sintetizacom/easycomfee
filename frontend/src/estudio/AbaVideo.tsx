@@ -129,7 +129,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const h3Local = motor === 'minimax' && !naNuvem
   // LoRA do usuario: so nos videos da placa (LTX 2.5, MiniMax H3 e os leves), nunca na nuvem.
   const videoLocal = !naNuvem && !apiGeradores.some((g) => g.id === motor) && (motor === 'ltx' || motor === 'minimax' || !!LEVES[motor])
-  const { campos: camposLora, campo: campoLora } = useLora(videoLocal, 'an LTX 2.3 LoRA may not work on LTX 2.5')
+  const { campos: camposLora, campo: campoLora } = useLora(videoLocal, `video:${motor}`)
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
   const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]

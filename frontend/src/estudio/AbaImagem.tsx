@@ -163,7 +163,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const tamanhoOk = tamanho === '4k' && comRefs ? 'padrao' : tamanho
   // LoRA do usuario: so modelos locais, sem imagens de referencia (o modo de referencia
   // monta outro grafo).
-  const { campos: camposLora, campo: campoLora } = useLora(!apiAtual && !naNuvem && !comRefs)
+  const { campos: camposLora, campo: campoLora } = useLora(!apiAtual && !naNuvem && !comRefs, modelo)
   const pedido = {
     modelo: comRefs && usoRefs ? usoRefs.modo : modelo, prompt: prompt || 'x', proporcao,
     ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),

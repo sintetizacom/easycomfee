@@ -3582,8 +3582,13 @@ async def cancelar_instalacao():
 
 @app.get("/api/loras")
 async def loras():
-    """LoRAs da pasta models/loras do ComfyUI local, para o menu da aba Image."""
-    return {"loras": await loras_locais()}
+    """LoRAs da pasta models/loras do ComfyUI local, para os menus de LoRA (Image, Video,
+    Cinema), com a familia de modelo de cada uma (familia_lora) para filtrar por modelo."""
+    import familia_lora
+    nomes = await loras_locais()
+    fams = await asyncio.to_thread(lambda: {n: familia_lora.familia_do_arquivo(n) for n in nomes})
+    return {"loras": nomes, "familias": fams,
+            "modelos": {k: sorted(v) for k, v in familia_lora.FAMILIAS_DO_MODELO.items()}}
 
 
 @app.get("/api/modelos")

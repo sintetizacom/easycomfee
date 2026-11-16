@@ -182,8 +182,8 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const local = video ? !gApi : !apiAtual
   // LoRA do usuario, uma para imagem e outra para video (familias diferentes): so na placa,
   // e na imagem so sem elenco (com elenco o pedido vai no modo de referencia).
-  const loraImg = useLora(!video && !naNuvem && !apiAtual && castOk.length === 0)
-  const loraVid = useLora(video && !naNuvem && !gApi, 'an LTX 2.3 LoRA may not work on LTX 2.5')
+  const loraImg = useLora(!video && !naNuvem && !apiAtual && castOk.length === 0, modelo)
+  const loraVid = useLora(video && !naNuvem && !gApi, `video:${motorVideo}`)
   const seed = local && ajustes.seed ? Number(ajustes.seed) : seedSorteada
   const duracaoDe = (p: Plano) => Math.max(dMin, Math.min(dMax, p.duracao ?? duracao))
   const pedidoVideo = {
