@@ -43,6 +43,12 @@ Tips:
 - Settings go in `options` with the app's exact names, e.g. `{"proporcao": "16:9"}`. A wrong
   name (like `aspect_ratio`) is rejected instead of silently ignored, and every result reports the
   real `size` of the image.
+- **Reference images.** The AI calls `upload_reference` with the path of an image (one you gave it,
+  or a result saved in `~/EasyComfee-mcp`) and passes the returned name in
+  `options: {"referencias": [name]}`. Edit models (`list_models` kind `edit`) take 1 to 10 images;
+  for video use `model: "video"` with `modo_video: "imagem"` (first frame) or
+  `"primeiro_ultimo"`. Only real images are accepted, and file paths are never accepted
+  straight in `referencias`.
 - Long jobs: `generate` waits about 40 s and then returns a `job_id` with `state` set to
   `executando`. The AI should call `job_status` with that same id (not `generate` again) until
   `state` is `pronto`. If the chat is lost, the finished image is still in the gallery and in
@@ -55,6 +61,7 @@ Tips:
 | `status` | Is the app up, local or cloud engine, what is generating |
 | `list_models` | Model ids: image (local and cloud), edit, video |
 | `estimate_cost` | Price before running (free on your GPU) |
+| `upload_reference` | Send a local image (png/jpg/webp) to use as a reference: edit, restyle, keep a character, first frame of a video |
 | `generate` | Run a model; waits ~40 s and, if not done, returns a `job_id` |
 | `job_status` | Waits up to 40 s more; when done, saves the files in `~/EasyComfee-mcp` |
 | `list_jobs` | The most recent jobs |

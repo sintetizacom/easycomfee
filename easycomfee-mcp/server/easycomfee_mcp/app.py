@@ -10,6 +10,7 @@ Local e gratis e passa direto.
 """
 
 import asyncio
+import functools
 import json
 import os
 import pathlib
@@ -30,6 +31,18 @@ ATIVAS = {"na_fila", "preparando", "submetendo", "executando"}
 
 class ErroApp(RuntimeError):
     pass
+
+
+def legivel(fn):
+    """A biblioteca MCP troca qualquer excecao por 'Error executing tool', e o modelo nunca ve o
+    motivo (app fechado, arquivo que nao e imagem...). Os erros nossos voltam como texto."""
+    @functools.wraps(fn)
+    async def envolta(*args, **kwargs):
+        try:
+            return await fn(*args, **kwargs)
+        except ErroApp as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+    return envolta
 
 
 async def _req(metodo, caminho, timeout=60.0, **kw):
@@ -69,6 +82,7 @@ def _resumo(lista, campos):
 
 
 @mcp.tool()
+@legivel
 async def status() -> str:
     """Is EasyComfee running, which engine is active (local GPU or Comfy Cloud), and what
     is generating now."""
@@ -83,6 +97,7 @@ async def status() -> str:
 
 
 @mcp.tool()
+@legivel
 async def list_models(kind: str = "all") -> str:
     """The model ids you can pass to generate. kind: 'image' (text to image, local and
     cloud), 'edit' (edit images with references), 'video' (video generators) or 'all'.
@@ -98,12 +113,68 @@ async def list_models(kind: str = "all") -> str:
             "id", "rotulo", "descricao", "min_referencias", "max_referencias"))
     if kind in ("video", "all"):
         v = d.get("video") or {}
-        out["video"] = {"id": "video", "note": "use modelo='video' and modelo_video=<id>",
-                        "default": _resumo([v], ("id", "rotulo", "descricao", "duracao_min",
-                                                 "duracao_max"))}
+        out["video_how_to"] = ("generate(model='video', options={'modelo_video': <id>, "
+                               "'modo_video': <mode>, 'duracao_video': <seconds>, "
+                               "'referencias': [names from upload_reference]}). Modes: texto "
+                               "(text only), imagem (first frame = 1 reference), "
+                               "primeiro_ultimo (first and last frame = 2), referencia.")
+        out["video_local_and_cloud"] = [
+            {c: g[c] for c in ("id", "rotulo", "modos", "duracao_min", "duracao_max", "nuvem")
+             if c in g} for g in v.get("geradores", [])]
         out["video_api"] = [{**m, "paid": True} for m in _resumo(
             d.get("video_api"), ("id", "rotulo", "modos", "duracao_min", "duracao_max"))]
     return _json(out)
+
+
+LIMITE_IMAGEM = 40 * 1024 * 1024  # o mesmo teto do app
+EXT_IMAGEM = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+              ".webp": "image/webp"}
+
+
+def _eh_imagem(cabeca: bytes) -> bool:
+    """Confere os primeiros bytes: o app aceita qualquer coisa, e uma 'referencia' que nao e
+    imagem seria enviada tal qual (inclusive para a nuvem, num modelo de API)."""
+    return (cabeca.startswith(bytes([0x89]) + b"PNG\r\n" + bytes([0x1a]) + b"\n")
+            or cabeca.startswith(bytes([0xff, 0xd8, 0xff]))
+            or (cabeca[:4] == b"RIFF" and cabeca[8:12] == b"WEBP"))
+
+
+@mcp.tool()
+@legivel
+async def upload_reference(path: str) -> str:
+    """Send a local IMAGE (png, jpg, webp, up to 40 MB) to EasyComfee so it can be used as a
+    reference: to edit it, restyle it, keep a character, or as the first frame of a video.
+    `path` is a file on the user's PC (an image they gave you, or one saved earlier in
+    ~/EasyComfee-mcp). Returns a `reference` name: pass it in generate's options as
+    {"referencias": ["<name>"]}. Non-image files are refused."""
+    arquivo = pathlib.Path(path).expanduser()
+    if not arquivo.is_file():
+        raise ErroApp(f"No such file: {path}")
+    if arquivo.suffix.lower() not in EXT_IMAGEM:
+        raise ErroApp("Only png, jpg and webp images can be sent as a reference.")
+    if arquivo.stat().st_size > LIMITE_IMAGEM:
+        raise ErroApp("The image is above 40 MB.")
+    dados = arquivo.read_bytes()
+    if not _eh_imagem(dados[:16]):
+        raise ErroApp("That file is not really a png/jpg/webp image, so it was not sent.")
+    r = await _req("POST", "/api/referencia", timeout=300, files={
+        "arquivo": (arquivo.name, dados, EXT_IMAGEM[arquivo.suffix.lower()])})
+    nome = r.json()["nome"]
+    return _json({"reference": nome, "use_it": {"referencias": [nome]},
+                  "note": "Put this in generate's options. Check list_models(kind='edit') for "
+                          "how many references each model takes."})
+
+
+def _referencias_cruas(opcoes):
+    """Um caminho do PC em `referencias` (em vez do nome devolvido por upload_reference)."""
+    ruins = [r for r in (opcoes or {}).get("referencias", []) if not isinstance(r, str)
+             or "\\" in r or (len(r) > 1 and r[1] == ":") or r.startswith("/")]
+    if not ruins:
+        return None
+    return {"invalid_references": ruins,
+            "hint": "`referencias` takes the names returned by upload_reference, not file "
+                    "paths. Call upload_reference(path) for each image, then pass the names. "
+                    "Nothing was generated."}
 
 
 _CAMPOS = {}
@@ -124,6 +195,9 @@ async def _campos():
 
 async def _opcoes_invalidas(opcoes):
     """None se estiver tudo certo; senao a resposta de erro para a IA corrigir e tentar de novo."""
+    cruas = _referencias_cruas(opcoes)
+    if cruas:
+        return cruas
     nomes = await _campos()
     if not nomes or not opcoes:
         return None
@@ -156,6 +230,7 @@ def _maximo(est):
 
 
 @mcp.tool()
+@legivel
 async def estimate_cost(model: str, prompt: str, options: dict | None = None) -> str:
     """Price of a generation before running it, without sending anything. Returns
     {'type': 'free'|'api'|'gpu'|'unknown', usd...}. Local generation is free. Tell the
@@ -178,6 +253,7 @@ async def _limite_usd():
 
 
 @mcp.tool()
+@legivel
 async def generate(model: str, prompt: str, options: dict | None = None,
                    wait: bool = True, timeout_s: int = ESPERA_MAX) -> str:
     """Generate with a model id from list_models. Free local jobs run at once. A job that
@@ -185,6 +261,9 @@ async def generate(model: str, prompt: str, options: dict | None = None,
     EasyComfee app (Config Models -> Connect your AI); otherwise it is refused and you must
     tell the user the price and that they can raise the limit there. You cannot change the
     limit and must not try to work around a refusal: pick a free local model or stop.
+    To use images (edit, restyle, keep a character, image-to-video) first call
+    upload_reference for each file and pass {"referencias": [names]}. For video use
+    model='video' (see list_models kind='video').
     Extra settings go in `options` with the app's exact names, e.g. {"proporcao": "16:9"}
     (also "1:1", "9:16"); unknown names are rejected. The result has the real `size`: report
     that, not what you asked for. It waits up to ~40 s; if the image is not ready it returns state 'na_fila' or
@@ -268,6 +347,7 @@ async def _fim(tid, timeout_s):
 
 
 @mcp.tool()
+@legivel
 async def job_status(job_id: str, wait_s: int = 30) -> str:
     """State of a job from generate. Waits up to wait_s seconds (max 40) for it to finish;
     when done, the files are saved to ~/EasyComfee-mcp and their paths returned. If it is
@@ -276,6 +356,7 @@ async def job_status(job_id: str, wait_s: int = 30) -> str:
 
 
 @mcp.tool()
+@legivel
 async def list_jobs(limit: int = 10) -> str:
     """The most recent jobs: id, model, state, prompt."""
     ts = (await _req("GET", "/api/tarefas", timeout=20)).json()[:max(1, min(limit, 50))]
@@ -284,6 +365,7 @@ async def list_jobs(limit: int = 10) -> str:
 
 
 @mcp.tool()
+@legivel
 async def set_engine(mode: str) -> str:
     """Switch the engine: 'local' (your GPU, free) or 'nuvem' (Comfy Cloud, credits;
     needs the key set in the app). Refused while something is generating."""

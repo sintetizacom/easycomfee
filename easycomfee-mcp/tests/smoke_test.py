@@ -40,6 +40,19 @@ async def main():
         pago = modelos["image_cloud_api"][0]["id"]
         erro, t = await chamar("generate", model=pago, prompt="a red apple")
         print("paid without approval ->", t[:300])
+        # Referencia: so imagem de verdade, e o erro tem de chegar legivel ao modelo.
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            falso = pathlib.Path(d) / "falso.png"
+            falso.write_text("not an image")
+            erro, t = await chamar("upload_reference", path=str(falso))
+            assert "not really" in json.loads(t)["error"], t
+            erro, t = await chamar("upload_reference", path=str(pathlib.Path(d) / "nada.png"))
+            assert "No such file" in json.loads(t)["error"], t
+        erro, t = await chamar("generate", model="krea", prompt="x",
+                               options={"referencias": ["C:/pasta/foto.png"]})
+        assert "invalid_references" in json.loads(t), t
+        print("references: ok")
         if "--gerar" in sys.argv:
             erro, t = await chamar("generate", model="qwen21", prompt="a red apple on a table")
             print("generate:", t[:300]); assert not erro
