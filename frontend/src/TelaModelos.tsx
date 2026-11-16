@@ -52,7 +52,9 @@ const SELOS: Record<string, { texto: string; classe: string }> = {
   bem: { texto: 'Runs well here', classe: 'bem' },
   limitado: { texto: 'Runs limited here', classe: 'limitado' },
   nao_testado: { texto: 'Not tested on AMD', classe: 'limitado' },
-  nao_roda: { texto: "Won't run here — use Comfy Cloud", classe: 'nao' },
+  // Abaixo do minimo medido: avisa, mas deixa instalar. O ComfyUI joga parte do modelo
+  // para a RAM e roda (devagar): um usuario gerava LTX 2.5 numa placa abaixo de 16 GB.
+  nao_roda: { texto: 'Below the tested minimum: may be very slow or fail', classe: 'nao' },
   nuvem: { texto: 'Cloud only (no downloads)', classe: 'nuvem' },
 }
 
@@ -484,7 +486,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
             .reduce((s, a) => s + a.tamanho, 0)
           const temOpcional = p.arquivos.some((a) => a.opcional && a.instalado === false && !a.sem_origem)
           const pronto = p.pronto === true && !faltaNo
-          const bloqueado = avaliacao.selo === 'nao_roda' || avaliacao.selo === 'nuvem' || !!avaliacao.sem_espaco
+          const bloqueado = avaliacao.selo === 'nuvem' || !!avaliacao.sem_espaco
           const essencial = p.arquivos.filter((a) => !a.opcional).reduce((s, a) => s + a.tamanho, 0)
           return (
             <section key={p.id} className="mq-pacote" data-selo={avaliacao.selo}>

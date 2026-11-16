@@ -3466,6 +3466,28 @@ def aplicar_lora_ltx(g, lora, forca, chave):
     return g
 
 
+def aplicar_lora_usuario(g, lora, forca):
+    """Poe a LoRA escolhida pelo usuario (aba Image, so local) depois de cada
+    carregador de modelo do grafo (UNETLoader ou CheckpointLoaderSimple).
+
+    `lora` ja vem com o nome exato da lista do ComfyUI (sem win()). Quem lia a
+    saida 0 do carregador passa a ler a da LoRA, entao serve para qualquer familia.
+    """
+    carregadores = [k for k, v in g.items()
+                    if v.get("class_type") in ("UNETLoader", "CheckpointLoaderSimple")]
+    for i, unet in enumerate(carregadores):
+        chave = "lora_usuario" if i == 0 else f"lora_usuario{i}"
+        g[chave] = {"class_type": "LoraLoaderModelOnly", "inputs": {
+            "model": [unet, 0], "lora_name": lora, "strength_model": forca}}
+        for k, v in g.items():
+            if k == chave:
+                continue
+            for e, x in v.get("inputs", {}).items():
+                if x == [unet, 0]:
+                    v["inputs"][e] = [chave, 0]
+    return bool(carregadores)
+
+
 def aplicar_camera_lenta(g, velocidade):
     """Poe o LoRA Slow-Motion-Control num grafo do LTX 2.5 ja montado.
 

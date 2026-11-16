@@ -454,6 +454,10 @@ class PedidoGeracao(Pedido):
     # A primeira e a imagem base; as demais sao referencias.
     referencias: list[str] = Field(default_factory=list)
     forca_referencia: float = Field(1.0, ge=0.5, le=4.0)
+    # LoRA do usuario (aba Image, modelos locais): nome exato da pasta loras do
+    # ComfyUI, como /api/loras devolve. Vazio = sem LoRA.
+    lora: str = Field("", max_length=400)
+    forca_lora: float = Field(1.0, ge=-2.0, le=2.0)
     # SD 1.5, SDXL e SD 3.5 com uma imagem: quanto a imagem muda (img2img).
     forca_imagem: float = Field(0.6, ge=0.15, le=1.0)
     # Cena com 2-3 personagens (Krea/Kroma): onde cada referencia fica, na
@@ -785,7 +789,31 @@ async def montar(tarefa: Tarefa):
     g = await _montar(tarefa)
     if isinstance(g, dict):
         variantes.aplicar(g, tarefa.pedido)
+        await _aplicar_lora_usuario(g, tarefa.pedido)
     return g
+
+
+async def loras_locais() -> list[str]:
+    """Os arquivos da pasta models/loras do ComfyUI local (vazio se ele estiver fora do ar)."""
+    try:
+        info = await comfy.info_nos(comfy.MOTOR.get(), timeout=30)
+    except Exception:
+        return []
+    campo = info.get("LoraLoaderModelOnly", {}).get("input", {}).get("required", {}).get("lora_name")
+    return list(campo[0]) if campo and isinstance(campo[0], list) else []
+
+
+async def _aplicar_lora_usuario(g: dict, p) -> None:
+    """A LoRA escolhida na aba Image: so nos modelos locais da aba (presets.SIMPLE)."""
+    if not p.lora:
+        return
+    if p.modelo not in presets.SIMPLE or comfy.na_nuvem():
+        raise ValueError("LoRAs only work with local models (your GPU).")
+    # So nomes que o proprio ComfyUI lista: nada de caminho digitado.
+    if p.lora not in await loras_locais():
+        raise ValueError(f"LoRA not found in ComfyUI's loras folder: {p.lora}")
+    if not workflows.aplicar_lora_usuario(g, p.lora, p.forca_lora):
+        raise ValueError("This model can't take a LoRA.")
 
 
 async def _montar(tarefa: Tarefa):
@@ -3544,6 +3572,12 @@ async def cancelar_instalacao():
     import instalador
     instalador.cancelar()
     return {"ok": True}
+
+
+@app.get("/api/loras")
+async def loras():
+    """LoRAs da pasta models/loras do ComfyUI local, para o menu da aba Image."""
+    return {"loras": await loras_locais()}
 
 
 @app.get("/api/modelos")

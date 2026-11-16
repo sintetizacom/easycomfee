@@ -122,7 +122,9 @@ def avaliar(req: dict, perfil: dict | None, disco_livre: float | None, faltando_
     vram, ram = perfil.get("vram_gb", 0) + 1, perfil.get("ram_gb", 0) + 1
     if vram < req["vram_min"] or (req.get("ram_min") and ram < req["ram_min"]):
         selo, motivo = "nao_roda", f"Needs {req['vram_min']} GB VRAM" + (
-            f" and {req['ram_min']} GB RAM" if req.get("ram_min") else "") + "."
+            f" and {req['ram_min']} GB RAM" if req.get("ram_min") else "") + (
+            " You can still install it: ComfyUI moves part of the model to RAM, so it may run, much slower."
+            " Comfy Cloud is the fast option.")
     elif vram < req["vram_rec"]:
         selo, motivo = "limitado", req.get("nota_limitado") or f"Recommended: {req['vram_rec']} GB VRAM."
     else:

@@ -211,6 +211,8 @@ Local generation was built and tested on **NVIDIA RTX cards on Windows** only.
 - **Locally on AMD or Mac**, ComfyUI itself runs, but many model files in the catalog use NVIDIA-oriented formats: *nvfp4* needs an RTX 50-series card, *fp8* is fast only on RTX 40/50 and may fail on Mac, and the *int8* files rely on ComfyUI kernels written for NVIDIA. The NVIDIA RTX video effects (RTX upscale and smooth motion) are NVIDIA-only. The light models (SD 1.5, SDXL) are the most likely to work, and video models are very slow on Mac.
 - **Mac (Apple Silicon, M1 or newer):** use `install.command` (see *Quick start (Mac)* below). Intel Macs can only use Comfy Cloud. On Linux follow the manual setup below.
 
+- **Older AMD cards with ZLUDA** (for example ComfyUI-Zluda from Stability Matrix): tested by a user with Z-Image Turbo. It works, at the same speed as ComfyUI on its own, which on that card was about 3 minutes per image; the GPU may look idle while the image is decoded. The first run is slower (ZLUDA prepares the card's code once). Use light image models there; for video, use Comfy Cloud.
+
 **Config Models** says so: pick an AMD card in *Your machine* and the packages read *Not tested on AMD* instead of *Runs well here*. Reports from AMD and Mac users are welcome.
 
 ## Quick start (Windows)
@@ -235,6 +237,8 @@ install.bat
 - If you use your own ComfyUI, start it first, as usual.
 - **Start ComfyUI when you log in** (Config Models → Local models, when EasyComfee installed ComfyUI): an On/Off switch that loads ComfyUI when you log in, so it is ready when you open the studio. Off removes it; on Windows it also shows in Task Manager → Startup apps, on the Mac in Login Items.
 - **Safe mode** (Config Models → Local models, **on by default**): explicit prompts are refused, local models get an anti-nudity negative prompt, and any result a small on-device classifier (Falconsai NSFW detector, Apache-2.0, ONNX on the CPU) marks as NSFW is shown blurred; the file on disk is kept. Open-weight models have no filter of their own, so turning it off is your choice and your responsibility.
+
+**While an image or video is generating, don't change settings** (Config Models, Local ↔ Comfy Cloud, the API key). Changing them mid-generation can leave the job stuck at a step such as *Decoding the image*. Wait for it to finish or press **Stop** first; if a job is already stuck, close and reopen the studio.
 
 Then open **Config Models**, press **Confirm** in *Your machine* (the packages only appear after that), and install a package: *Z-Image* (or *SD 1.5* on a small card) plus *LTX 2.5 Video* is a good first pick.
 
