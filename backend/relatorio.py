@@ -75,6 +75,33 @@ def _cmd(args: list[str]) -> str:
         return f"({type(e).__name__})"
 
 
+def _downloads() -> list[str]:
+    """Pasta de modelos, espaco livre e o ultimo download de pacote (Config Models): um
+    download de 13 GB que caia nao deixava rastro no relatorio (16/11/2026)."""
+    linhas = []
+    try:
+        import maquina
+        livre = maquina._disco_livre()
+        linhas.append(f"Models folder: {config.MODELOS_DIR}  (free disk: "
+                      + (f"{livre:.1f} GB" if livre is not None else "unknown") + ")")
+    except Exception as e:
+        linhas.append(f"Models folder: ({type(e).__name__})")
+    try:
+        import instalador
+        e = instalador.ESTADO
+        if e.get("pacote"):
+            linhas.append("Last model download: " + json.dumps({k: e.get(k) for k in (
+                "pacote", "ativo", "arquivo", "feitos", "quantos", "baixado", "total", "erro", "aviso")},
+                ensure_ascii=False))
+        partes = [f"{p.relative_to(config.MODELOS_DIR)} ({p.stat().st_size / 1024 ** 3:.2f} GB)"
+                  for p in config.MODELOS_DIR.rglob("*.part")][:20]
+        if partes:
+            linhas.append("Unfinished downloads (.part): " + "; ".join(partes))
+    except Exception as e:
+        linhas.append(f"Last model download: ({type(e).__name__})")
+    return linhas
+
+
 def resumo(estado_motor: dict, stats: dict | None) -> str:
     cfg = {}
     try:
@@ -94,6 +121,7 @@ def resumo(estado_motor: dict, stats: dict | None) -> str:
                                      "--format=csv,noheader"]),
         "Node: " + _cmd(["node", "--version"]),
         "ComfyUI system_stats: " + (json.dumps(stats, ensure_ascii=False)[:3000] if stats else "(not reachable)"),
+        *_downloads(),
     ]
     return limpar("\n".join(linhas))
 

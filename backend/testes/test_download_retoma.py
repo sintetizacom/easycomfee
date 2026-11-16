@@ -40,3 +40,12 @@ def test_part_ja_completo_so_termina(tmp_path, monkeypatch):
     arq = {"arquivo": "m.gguf", "tamanho": len(DADOS), "repo": "r"}
     asyncio.run(ins._baixar(None, arq, 0))
     assert (tmp_path / "m.gguf").read_bytes() == DADOS
+
+
+def test_relatorio_traz_o_ultimo_download(monkeypatch):
+    import relatorio
+    monkeypatch.setitem(ins.ESTADO, "pacote", "ltx25_gguf")
+    monkeypatch.setitem(ins.ESTADO, "erro", "m.gguf: the connection kept dropping")
+    texto = relatorio.resumo({"modo": "local", "respondendo": True}, None)
+    assert "Models folder:" in texto and "free disk" in texto
+    assert "ltx25_gguf" in texto and "the connection kept dropping" in texto

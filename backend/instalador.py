@@ -84,6 +84,15 @@ TENTATIVAS = 8
 ESPERA = (5, 10, 20, 30, 60, 60, 60)
 
 
+def _log(texto: str) -> None:
+    """Vai para logs/easycomfee.log, que entra no "Send a report"."""
+    try:
+        import relatorio
+        relatorio.log().warning("download %s: %s", ESTADO.get("pacote"), texto)
+    except Exception:
+        pass
+
+
 async def _baixar_insistindo(cliente: httpx.AsyncClient, arq: dict, total_antes: int):
     for n in range(TENTATIVAS):
         try:
@@ -92,6 +101,7 @@ async def _baixar_insistindo(cliente: httpx.AsyncClient, arq: dict, total_antes:
             if n == TENTATIVAS - 1:
                 raise RuntimeError(f"{arq['arquivo']}: the connection kept dropping ({type(e).__name__}). "
                                    "Press Download again: it continues from where it stopped.") from e
+            _log(f"{arq['arquivo']}: try {n + 1}/{TENTATIVAS} failed: {type(e).__name__}: {e}")
             ESTADO["aviso"] = f"Connection dropped. Retrying ({n + 2}/{TENTATIVAS}), keeping what was downloaded..."
             await asyncio.sleep(ESPERA[min(n, len(ESPERA) - 1)])
         finally:
@@ -164,10 +174,12 @@ async def _instalar(lista: list[dict]):
                           else f"O token foi recusado para {repo}. Aceite a licenca em "
                           f"https://huggingface.co/{repo} com a mesma conta do token.")
         ESTADO["repo_recusado"] = repo
+        _log(f"license or token refused for {repo}")
     except asyncio.CancelledError:
         ESTADO["erro"] = "Cancelado. O que ja baixou continua de onde parou."
     except Exception as e:
         ESTADO["erro"] = str(e)
+        _log(f"failed: {type(e).__name__}: {e}")
     finally:
         ESTADO.update(ativo=False, arquivo=None, terminado_em=time.time())
         comfy.esquecer_info()
