@@ -22,6 +22,9 @@ BASE = os.environ.get("EDITOR_URL", "http://127.0.0.1:8600")
 SAIDA = pathlib.Path(os.environ.get("EASYCOMFEE_MCP_OUTPUT",
                                     pathlib.Path.home() / "EasyComfee-mcp"))
 FIM = {"pronto", "erro"}
+# Quanto uma chamada espera antes de devolver o job_id. Os clientes MCP (LM Studio, Codex...)
+# desistem de uma chamada parada por cerca de um minuto, e o job continua no app.
+ESPERA_MAX = 40
 ATIVAS = {"na_fila", "preparando", "submetendo", "executando"}
 
 
@@ -141,13 +144,15 @@ async def _limite_usd():
 
 @mcp.tool()
 async def generate(model: str, prompt: str, options: dict | None = None,
-                   wait: bool = True, timeout_s: int = 900) -> str:
+                   wait: bool = True, timeout_s: int = ESPERA_MAX) -> str:
     """Generate with a model id from list_models. Free local jobs run at once. A job that
     costs credits runs ONLY if its price is within the spending limit the user set in the
     EasyComfee app (Config Models -> Connect your AI); otherwise it is refused and you must
     tell the user the price and that they can raise the limit there. You cannot change the
     limit and must not try to work around a refusal: pick a free local model or stop.
-    wait=false returns the job id right away (use job_status later). Files are saved under
+    It waits up to ~40 s; if the image is not ready it returns state 'na_fila' or
+    'executando' with a job_id: then call job_status(job_id) until state is 'pronto' (do not
+    start the job again). wait=false returns the job id at once. Files are saved under
     ~/EasyComfee-mcp and appear in the app gallery."""
     pedido, est = await _estimar(model, prompt, options)
     teto, conhecido = _maximo(est)
@@ -202,7 +207,7 @@ async def _baixar(item, pasta):
 
 
 async def _fim(tid, timeout_s):
-    limite = time.monotonic() + timeout_s
+    limite = time.monotonic() + max(1, min(timeout_s, ESPERA_MAX))
     t = await _tarefa(tid)
     while t.get("estado") not in FIM and time.monotonic() < limite:
         await asyncio.sleep(3)
@@ -215,19 +220,17 @@ async def _fim(tid, timeout_s):
         pasta = SAIDA / time.strftime("%Y%m%d")
         resp["files"] = [await _baixar(i, pasta) for i in _itens(t) if i.get("nome")]
     else:
-        resp["note"] = "Still running. Call job_status later."
+        resp["note"] = ("Still running in EasyComfee, nothing is lost. Call job_status with this "
+                        "job_id again (do not start a new job).")
     return resp
 
 
 @mcp.tool()
-async def job_status(job_id: str, download: bool = True) -> str:
-    """State of a job started with generate(wait=false). When it is done, the files are
-    saved to ~/EasyComfee-mcp and their paths returned."""
-    t = await _tarefa(job_id)
-    if t.get("estado") in FIM and download:
-        return _json(await _fim(job_id, 1))
-    return _json({"job_id": job_id, "state": t.get("estado"), "progress": t.get("progresso"),
-                  "detail": t.get("detalhe")})
+async def job_status(job_id: str, wait_s: int = 30) -> str:
+    """State of a job from generate. Waits up to wait_s seconds (max 40) for it to finish;
+    when done, the files are saved to ~/EasyComfee-mcp and their paths returned. If it is
+    still running, call this again with the same job_id."""
+    return _json(await _fim(job_id, wait_s))
 
 
 @mcp.tool()

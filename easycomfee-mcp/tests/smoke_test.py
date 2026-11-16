@@ -41,9 +41,17 @@ async def main():
         erro, t = await chamar("generate", model=pago, prompt="a red apple")
         print("paid without approval ->", t[:300])
         if "--gerar" in sys.argv:
-            erro, t = await chamar("generate", model="qwen21", prompt="a red apple on a table",
-                                   timeout_s=600)
-            print("generate:", t[:500]); assert not erro
+            erro, t = await chamar("generate", model="qwen21", prompt="a red apple on a table")
+            print("generate:", t[:300]); assert not erro
+            r = json.loads(t)
+            # A chamada volta em ate ~40 s; se a imagem ainda nao esta pronta, consulta o job.
+            while r["state"] not in ("pronto", "erro"):
+                erro, t = await chamar("job_status", job_id=r["job_id"], wait_s=30)
+                assert not erro
+                r = json.loads(t)
+                print("job_status:", r["state"], r.get("progress"))
+            assert r["state"] == "pronto" and r["files"], r
+            print("files:", r["files"])
 
 
 asyncio.run(main())

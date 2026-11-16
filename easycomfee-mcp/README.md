@@ -41,8 +41,9 @@ Tips:
 | `status` | Is the app up, local or cloud engine, what is generating |
 | `list_models` | Model ids: image (local and cloud), edit, video |
 | `estimate_cost` | Price before running (free on your GPU) |
-| `generate` | Run a model; waits and saves the files in `~/EasyComfee-mcp` |
-| `job_status`, `list_jobs` | Follow jobs started with `wait=false` |
+| `generate` | Run a model; waits ~40 s and, if not done, returns a `job_id` |
+| `job_status` | Waits up to 40 s more; when done, saves the files in `~/EasyComfee-mcp` |
+| `list_jobs` | The most recent jobs |
 | `set_engine` | Switch `local` / `nuvem` (refused while something generates) |
 
 ## Cost guard
