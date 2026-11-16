@@ -101,7 +101,7 @@ async def status() -> str:
 async def list_models(kind: str = "all") -> str:
     """The model ids you can pass to generate. kind: 'image' (text to image, local and
     cloud), 'edit' (edit images with references), 'video' (video generators), 'audio'
-    (music and voice) or 'all'.
+    (music and voice), 'lipsync', 'genjutsu' (video recast) or 'all'.
     A model marked paid=true is an API model and costs credits on Comfy Cloud."""
     d = (await _req("GET", "/api/modelos", timeout=60)).json()
     out = {}
@@ -142,6 +142,30 @@ async def list_models(kind: str = "all") -> str:
             "(default voice) | 'criar' (design a voice: also 'instrucao_voz', e.g. 'elderly woman, "
             "low pitch, british accent'), 'idioma_voz': 'English'|'Portuguese'|'Spanish'|...}). "
             "Free on the GPU. Voice cloning needs a recording and is not available over MCP yet.")
+    if kind in ("lipsync", "all"):
+        av = (await _req("GET", "/api/avatar", timeout=60)).json()
+        out["lipsync_how_to"] = (
+            "A talking photo. upload_reference(photo) + upload_audio(speech), then generate("
+            "model='avatar', options={'modelo_avatar': <id>, 'referencias': [photo], "
+            "'referencia_avatar': <audio reference>}). Speech length is limited per model. Make the "
+            "speech with model='voz' first if you need it (its .flac works as audio).")
+        out["lipsync"] = [{c: m[c] for c in ("id", "rotulo", "limite", "resolucao", "disponivel")
+                           if c in m} for m in av.get("modelos", [])]
+    if kind in ("genjutsu", "all"):
+        out["genjutsu_how_to"] = (
+            "Remake a video with another character or style, keeping its motion. Videos come from "
+            "upload_video. Recast (open, on your GPU): extract_first_frame(video), then generate(model='qwen', "
+            "prompt='Redraw image 1 keeping its exact composition, camera angle, framing and pose. Replace the "
+            "person with the main character from image 2.', options={'referencias': [frame, character_image], "
+            "'proporcao': '16:9', 'resolucao_edicao': 'baixa'}), show the user the redrawn frame, and when "
+            "approved upload_reference(that file) and generate(model='transformar_video', options={'efeito_video': "
+            "'trocar', 'referencias': [video, approved_frame]}). Other models are one step: generate(model='genjutsu', "
+            "options={'modelo_genjutsu': <id>, 'referencias': [video, character_image]}). Always estimate_cost first: "
+            "the partner models cost credits.")
+        out["genjutsu"] = {
+            "open_weights": ["wan_animate2", "wan22_replace", "h3_swap"],
+            "paid_partner_api": ["higgsfield", "kling_omni", "aleph2", "luma_edit", "kling4_edit",
+                                 "wan27_edit", "grok_edit", "beeble_edit"]}
     return _json(out)
 
 
@@ -194,6 +218,79 @@ def _referencias_cruas(opcoes):
             "hint": "`referencias` takes the names returned by upload_reference, not file "
                     "paths. Call upload_reference(path) for each image, then pass the names. "
                     "Nothing was generated."}
+
+
+EXT_AUDIO = {".wav": "audio/wav", ".mp3": "audio/mpeg", ".flac": "audio/flac",
+             ".m4a": "audio/mp4", ".ogg": "audio/ogg"}
+EXT_VIDEO = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm"}
+
+
+def _eh_audio(cabeca: bytes) -> bool:
+    return (cabeca[:4] == b"RIFF" and cabeca[8:12] == b"WAVE") or cabeca[:4] in (b"fLaC", b"OggS")         or cabeca[:3] == b"ID3" or cabeca[:2] in (bytes([0xff, 0xfb]), bytes([0xff, 0xf3]), bytes([0xff, 0xf2]))         or cabeca[4:8] == b"ftyp"
+
+
+def _eh_video(cabeca: bytes) -> bool:
+    return cabeca[4:8] == b"ftyp" or cabeca[:4] == bytes([0x1a, 0x45, 0xdf, 0xa3])
+
+
+async def _enviar_midia(path: str, extensoes: dict, confere, rota: str, o_que: str) -> str:
+    """Le um arquivo do PC, confere que e do tipo certo (extensao E bytes) e o envia ao app."""
+    arquivo = pathlib.Path(path).expanduser()
+    if not arquivo.is_file():
+        raise ErroApp(f"No such file: {path}")
+    if arquivo.suffix.lower() not in extensoes:
+        raise ErroApp(f"Only {', '.join(sorted(e[1:] for e in extensoes))} files can be sent as {o_que}.")
+    if arquivo.stat().st_size > LIMITE_IMAGEM:
+        raise ErroApp("The file is above 40 MB.")
+    dados = arquivo.read_bytes()
+    if not confere(dados[:16]):
+        raise ErroApp(f"That file is not really {o_que}, so it was not sent.")
+    r = await _req("POST", rota, timeout=300, files={
+        "arquivo": (arquivo.name, dados, extensoes[arquivo.suffix.lower()])})
+    return r.json()["nome"]
+
+
+@mcp.tool()
+@legivel
+async def upload_audio(path: str) -> str:
+    """Send a local AUDIO file (wav, mp3, flac, m4a, ogg, up to 40 MB) to EasyComfee: a voice
+    sample to clone, or the speech for a lip sync. Returns a `reference` name. For voice cloning
+    call transcribe_voice_sample next; for lip sync pass it as options.referencia_avatar."""
+    nome = await _enviar_midia(path, EXT_AUDIO, _eh_audio, "/api/referencia-audio", "an audio file")
+    return _json({"reference": nome})
+
+
+@mcp.tool()
+@legivel
+async def upload_video(path: str) -> str:
+    """Send a local VIDEO (mp4, mov, webm, up to 40 MB) to EasyComfee, to recast it (Genjutsu), or
+    apply an effect. Returns a `reference` already in the form the app wants for videos
+    ("entrada:<name>"): put it in options.referencias as is."""
+    nome = await _enviar_midia(path, EXT_VIDEO, _eh_video, "/api/referencia", "a video")
+    return _json({"reference": f"entrada:{nome}"})
+
+
+@mcp.tool()
+@legivel
+async def transcribe_voice_sample(reference: str, language: str = "English") -> str:
+    """Transcribe a voice sample sent with upload_audio, on the local GPU (free). Voice cloning
+    needs the text spoken in the sample: pass it as options.transcricao_voz together with
+    options.referencia_voz = the reference, options.modo_voz = 'clonar'. `language` is the
+    language spoken in the sample (English, Portuguese, Spanish...). Check the text with the user
+    when it matters: a wrong transcript makes a worse clone."""
+    tarefa = (await _req("POST", "/api/voz/transcrever", json={"referencia": reference,
+                                                               "idioma": language}, timeout=120)).json()
+    return _json(await _fim(tarefa["id"], ESPERA_MAX))
+
+
+@mcp.tool()
+@legivel
+async def extract_first_frame(video: str) -> str:
+    """The first frame of a video sent with upload_video, as an image reference. Recast (Genjutsu)
+    starts here: redraw this frame with an edit model and the new character, then apply the
+    'trocar' video effect (see list_models kind='genjutsu')."""
+    r = await _req("POST", "/api/genjutsu/quadro", json={"video": video}, timeout=120)
+    return _json({"reference": r.json()["nome"]})
 
 
 _CAMPOS = {}
@@ -354,6 +451,8 @@ async def _fim(tid, timeout_s):
             "cost_usd": t.get("custo_usd")}
     if t.get("largura") and t.get("altura"):
         resp["size"] = f"{t['largura']}x{t['altura']}"  # o que saiu de fato; relate este valor
+    if t.get("modelo") == "transcricao_voz" and t.get("resultado_texto"):
+        resp["text"] = t["resultado_texto"]
     if t.get("estado") == "erro":
         resp["error"] = (t.get("erro") or "")[:800]
     elif t.get("estado") == "pronto":

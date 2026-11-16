@@ -44,6 +44,16 @@ async def main():
         audio = json.loads(t)
         assert audio["music"] and "voice_how_to" in audio, t
         print("audio models:", [m["id"] for m in audio["music"]])
+        for tipo, chave in (("lipsync", "lipsync"), ("genjutsu", "genjutsu")):
+            erro, t = await chamar("list_models", kind=tipo)
+            assert chave in json.loads(t), t
+        with __import__("tempfile").TemporaryDirectory() as d:
+            for nome, ferramenta in (("falso.wav", "upload_audio"), ("falso.mp4", "upload_video")):
+                falso = pathlib.Path(d) / nome
+                falso.write_text("not media")
+                erro, t = await chamar(ferramenta, path=str(falso))
+                assert "not really" in json.loads(t)["error"], t
+        print("audio/video uploads refused when fake: ok")
         # Referencia: so imagem de verdade, e o erro tem de chegar legivel ao modelo.
         import tempfile
         with tempfile.TemporaryDirectory() as d:

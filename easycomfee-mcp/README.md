@@ -18,11 +18,17 @@ same queue, show up in the gallery and respect the VRAM guard.
 5. **Load a model that supports tool use.** In LM Studio's model list these have a blue
    wrench icon. Use a mid-size one (about 9B or more): very small models get the arguments
    wrong, and heavy quantizations (Q1/Q2) break tool calls. Qwen3.5 9B (Q4_K_M) worked well.
+
+   ![LM Studio model list: the blue wrench icon marks models that support tool use](img/lmstudio-model-list.png)
+
 6. Open a **new chat** with that model and turn the `easycomfee` switch on (plug/tools icon
    near the message box).
 7. Ask: *"List the EasyComfee image models."* Then: *"Generate a red apple on a table with
    qwen21."* LM Studio shows each tool call and asks you to press **Proceed**. Read the
    `model` field before you approve a `generate`.
+
+   ![LM Studio asks before each tool call: read the arguments, then press Proceed](img/lmstudio-tool-approval.png)
+
 8. The image is saved in `~/EasyComfee-mcp` and also shows up in the EasyComfee gallery.
 
 Tips:
@@ -81,18 +87,63 @@ A 10 s clip took about 35-45 s on an RTX 5070 Ti, so it may return a `job_id` fi
   british accent"` (on your GPU: gender, age, pitch, whisper or accent).
 - `idioma_voz`: `English`, `Portuguese`, `Spanish`, `German`, `Italian`, `French`, `Japanese`,
   `Chinese` or `Korean`.
-- Voice **cloning** and cleaning need a recording and a transcript, and are not available over
-  MCP yet.
+- `modo_voz: "clonar"` speaks the text in the voice of a recording. Three steps, all free on
+  your GPU: `upload_audio(path)` with a clean 5-15 s sample, `transcribe_voice_sample(reference,
+  language)` to get what is said in it, then `generate(model="voz", prompt=<new text>,
+  options={"modo_voz": "clonar", "referencia_voz": <reference>, "transcricao_voz": <transcript>,
+  "idioma_voz": "English", "idioma_referencia_voz": "English"})`. Read the transcript to the user
+  first: a wrong one makes a worse clone. Tested: a 4.9 s sample transcribed correctly and the
+  clone took under 40 s.
 
 Files are saved as `.flac` in `~/EasyComfee-mcp` like the images.
+
+## Lip sync
+
+A photo that talks. `list_models` with `kind: "lipsync"` lists the models and the maximum speech
+length of each (LongCat 1.5: 15 s, LTX 2.3: 30 s, both on your GPU).
+
+1. `upload_reference(photo)` with a front-facing portrait.
+2. `upload_audio(speech)`: a recording, or the `.flac` that `generate(model="voz")` just made.
+3. `generate(model="avatar", options={"modelo_avatar": "ltx23", "referencias": [photo], "referencia_avatar": <audio reference>})`.
+   No prompt is needed.
+
+Tested: a 4.9 s narration on an RTX 5070 Ti with LTX 2.3 gave a 1280x704 video with the speech in
+148 s, so it always returns a `job_id` first: call `job_status`. Do not run it next to a big chat
+model (see the VRAM note above).
+
+## Recast a video (Genjutsu)
+
+Remake a video with another character while keeping its motion. `list_models` with
+`kind: "genjutsu"` has the short recipe. **Recast** is the open one and runs on your GPU:
+
+1. `upload_video(clip)` returns `entrada:<name>`.
+2. `extract_first_frame(video)` returns the first frame as an image reference.
+3. `upload_reference(character image)`, then `generate(model="qwen", prompt="Redraw image 1 keeping
+   its exact composition, camera angle, framing and the pose of every animal. Replace the fox with
+   the bear cub from image 2.", options={"referencias": [frame, character], "proporcao": "16:9",
+   "resolucao_edicao": "baixa"})`. **Show the redrawn frame to the user and wait for a yes**: the
+   whole video follows this frame.
+4. `upload_reference(<the redrawn file>)`, then `generate(model="transformar_video", prompt=<short
+   description>, options={"efeito_video": "trocar", "referencias": [video, approved_frame]})`.
+
+Tested end to end through the MCP with a 3 s clip: the redrawn frame took 144 s and the video 107 s
+(1152x640), and the new character moved like the original. Step 3 and 4 each return a `job_id`
+first. The other Genjutsu models are one step, `generate(model="genjutsu", options={"modelo_genjutsu":
+<id>, "referencias": [video, character image]})`. The open-weight ones are `wan_animate2`,
+`wan22_replace` and `h3_swap`; `higgsfield`, `kling_omni`, `aleph2`, `luma_edit`, `kling4_edit`,
+`wan27_edit`, `grok_edit` and `beeble_edit` are paid partner models, so they stay blocked until you
+raise the spending limit (only Recast and the recipe above were run for this guide).
 
 ## Tools
 
 | Tool | What it does |
 |---|---|
 | `status` | Is the app up, local or cloud engine, what is generating |
-| `list_models` | Model ids: image (local and cloud), edit, video |
+| `list_models` | Model ids: image (local and cloud), edit, video, audio, lipsync, genjutsu |
 | `estimate_cost` | Price before running (free on your GPU) |
+| `upload_audio`, `upload_video` | Send a local audio (voice sample, speech) or video (to recast) |
+| `transcribe_voice_sample` | The text spoken in a voice sample, for cloning |
+| `extract_first_frame` | The first frame of an uploaded video (Recast starts here) |
 | `upload_reference` | Send a local image (png/jpg/webp) to use as a reference: edit, restyle, keep a character, first frame of a video |
 | `generate` | Run a model; waits ~40 s and, if not done, returns a `job_id` |
 | `job_status` | Waits up to 40 s more; when done, saves the files in `~/EasyComfee-mcp` |
@@ -110,6 +161,8 @@ returns your Comfy Cloud key.
 To allow paid models, pick a limit in **AI spending limit** (for example US$ 0.25 each). Anything
 within it runs without asking you again, so keep it small and set it back to **Off** when you
 are done. Above the limit, the AI is told the price and has to stop.
+
+![With the limit on Off, the AI explains the price and offers free local models instead](img/lmstudio-cost-guard.png)
 
 ## Test
 
