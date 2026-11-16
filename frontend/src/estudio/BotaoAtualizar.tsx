@@ -58,7 +58,14 @@ export default function BotaoAtualizar() {
     const vigia = setInterval(async () => {
       const ok = await fetch('/api/motor', { cache: 'no-store' }).then((x) => x.ok).catch(() => false)
       if (!ok) caiu = true
-      else if (caiu) { clearInterval(vigia); location.reload() }
+      // Endereco com ?v= novo: o navegador pede a pagina nova ao servidor em vez de
+      // reabrir a guardada (a interface velha aparecia depois do Update, 16/11/2026).
+      else if (caiu) {
+        clearInterval(vigia)
+        const url = new URL(location.href)
+        url.searchParams.set('v', String(Date.now()))
+        location.replace(url.toString())
+      }
     }, 3000)
   }
 

@@ -48,7 +48,7 @@ export function useLora(ativo: boolean, modelo: string) {
         {todas && grupo('Made for other models', outras)}
       </select>
       {outras.length > 0 && (
-        <label className="hf-dica" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <label className="hf-toggle">
           <input type="checkbox" checked={todas} onChange={(e) => setTodas(e.target.checked)} />
           Show all ({outras.length} for other models)
         </label>

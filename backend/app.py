@@ -5028,6 +5028,11 @@ async def ws(sock: WebSocket):
 
 
 # A interface compilada e servida pelo proprio backend, para rodar em um endereco so.
+# A pagina (index.html) sempre confere com o servidor: sem Cache-Control o navegador
+# guardava a versao velha por conta propria, e depois do Update a pessoa via a interface
+# antiga ate dar Ctrl+F5 (16/11/2026). Os arquivos de /assets tem o hash no nome, entao
+# uma pagina nova ja pede arquivos novos; eles podem ficar guardados.
+SEM_CACHE = {"Cache-Control": "no-cache"}
 if ESTATICOS.exists():
     app.mount("/assets", StaticFiles(directory=ESTATICOS / "assets"), name="assets")
 
@@ -5041,5 +5046,7 @@ if ESTATICOS.exists():
         # invertida) nao pode sair dela e entregar, por exemplo, chaves.json.
         alvo = (ESTATICOS / caminho).resolve()
         if caminho and alvo.is_relative_to(ESTATICOS.resolve()) and alvo.is_file():
+            if alvo.suffix.lower() == ".html":
+                return FileResponse(alvo, headers=SEM_CACHE)
             return FileResponse(alvo)
-        return FileResponse(ESTATICOS / "index.html")
+        return FileResponse(ESTATICOS / "index.html", headers=SEM_CACHE)
