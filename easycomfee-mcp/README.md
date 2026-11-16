@@ -1,8 +1,8 @@
 # EasyComfee MCP
 
 Lets an AI app generate images and videos with EasyComfee by chatting. It is an **MCP**
-server, so it works with any MCP client: LM Studio (with an open-weights model), Claude
-Desktop, Cursor, VS Code. It only calls EasyComfee's own local API (port 8600): jobs use the
+server, so it works with any MCP client that runs local servers: LM Studio (with an open-weights
+model), Claude Desktop, Cursor, Codex, VS Code. It only calls EasyComfee's own local API (port 8600): jobs use the
 same queue, show up in the gallery and respect the VRAM guard.
 
 ## Step by step (LM Studio, free, on your GPU)
@@ -10,8 +10,9 @@ same queue, show up in the gallery and respect the VRAM guard.
 1. **Open EasyComfee** and leave it running. The AI app can only use it while it is open.
 2. Go to **Config Models → Connect your AI · MCP** and press **Set up**. It builds a small
    Python environment and adds the `easycomfee` entry to the AI apps it finds (LM Studio,
-   Claude Desktop, Cursor). A `.bak` copy of each config is kept and your other MCP servers
-   stay. If your app is not listed, press **Copy config** and paste it into its MCP settings.
+   Claude Desktop, Cursor, Codex). A `.bak` copy of each config is kept and your other MCP
+   servers stay. If your app is not listed, press **Copy config** and paste it into its MCP settings (JSON; Codex uses TOML, so for
+   Codex use the **Connect** button).
 3. **Restart the AI app.** It only reads its MCP list when it starts.
 4. In **LM Studio**, check the entry: *Developer → mcp.json* should list `easycomfee`.
 5. **Load a model that supports tool use.** In LM Studio's model list these have a blue
@@ -62,3 +63,8 @@ are done. Above the limit, the AI is told the price and has to stop.
 server/.venv/Scripts/python.exe tests/smoke_test.py          # no generation
 server/.venv/Scripts/python.exe tests/smoke_test.py --gerar  # one small local image
 ```
+
+## ChatGPT
+
+Not supported. ChatGPT only connects to remote MCP servers over public HTTPS, and exposing
+EasyComfee (and your spending) to the internet is not something this project does for you.
