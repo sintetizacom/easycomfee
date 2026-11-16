@@ -54,6 +54,38 @@ Tips:
   `state` is `pronto`. If the chat is lost, the finished image is still in the gallery and in
   `~/EasyComfee-mcp`.
 
+## Music and voice
+
+Ask `list_models` with `kind: "audio"` for the music models and how to call them. Everything
+below was tested through the MCP on a local GPU (free).
+
+**Music**: `model: "musica"`, the prompt describes style and mood.
+
+| Option | Meaning |
+|---|---|
+| `modelo_musica` | `ace-step15`, `stable-audio3`, `minimax-music3` (local or cloud), `yue2` / `yue2-cover` (local only), `elevenlabs-sfx` (paid API) |
+| `duracao_musica` | Seconds, from 10 up to the model's maximum (SFX: 0.5 to 30) |
+| `vocal_musica` | `true` to sing; `false` for instrumental |
+| `letra_musica` | Lyrics with `[verse]` / `[chorus]` marks (models with lyrics: ACE-Step, MiniMax) |
+| `idioma_musica`, `bpm_musica`, `tonalidade_musica` | Language (`en`, `pt`...), tempo, key (e.g. `C major`) |
+
+Example: `generate(model="musica", prompt="warm acoustic indie pop, female vocal", options={"modelo_musica": "ace-step15", "duracao_musica": 20, "vocal_musica": true, "letra_musica": "[verse]
+...", "idioma_musica": "en"})`.
+A 10 s clip took about 35-45 s on an RTX 5070 Ti, so it may return a `job_id` first: call
+`job_status`.
+
+**Voice**: `model: "voz"`, the prompt is the text to speak.
+
+- `modo_voz: "narrar"` reads the text with the default voice. About 12 s for a short sentence.
+- `modo_voz: "criar"` designs a voice from `instrucao_voz`, e.g. `"elderly woman, low pitch,
+  british accent"` (on your GPU: gender, age, pitch, whisper or accent).
+- `idioma_voz`: `English`, `Portuguese`, `Spanish`, `German`, `Italian`, `French`, `Japanese`,
+  `Chinese` or `Korean`.
+- Voice **cloning** and cleaning need a recording and a transcript, and are not available over
+  MCP yet.
+
+Files are saved as `.flac` in `~/EasyComfee-mcp` like the images.
+
 ## Tools
 
 | Tool | What it does |

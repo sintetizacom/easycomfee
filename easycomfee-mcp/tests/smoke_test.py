@@ -40,6 +40,10 @@ async def main():
         pago = modelos["image_cloud_api"][0]["id"]
         erro, t = await chamar("generate", model=pago, prompt="a red apple")
         print("paid without approval ->", t[:300])
+        erro, t = await chamar("list_models", kind="audio")
+        audio = json.loads(t)
+        assert audio["music"] and "voice_how_to" in audio, t
+        print("audio models:", [m["id"] for m in audio["music"]])
         # Referencia: so imagem de verdade, e o erro tem de chegar legivel ao modelo.
         import tempfile
         with tempfile.TemporaryDirectory() as d:

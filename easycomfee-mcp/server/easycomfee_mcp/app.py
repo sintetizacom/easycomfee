@@ -100,7 +100,8 @@ async def status() -> str:
 @legivel
 async def list_models(kind: str = "all") -> str:
     """The model ids you can pass to generate. kind: 'image' (text to image, local and
-    cloud), 'edit' (edit images with references), 'video' (video generators) or 'all'.
+    cloud), 'edit' (edit images with references), 'video' (video generators), 'audio'
+    (music and voice) or 'all'.
     A model marked paid=true is an API model and costs credits on Comfy Cloud."""
     d = (await _req("GET", "/api/modelos", timeout=60)).json()
     out = {}
@@ -123,6 +124,24 @@ async def list_models(kind: str = "all") -> str:
              if c in g} for g in v.get("geradores", [])]
         out["video_api"] = [{**m, "paid": True} for m in _resumo(
             d.get("video_api"), ("id", "rotulo", "modos", "duracao_min", "duracao_max"))]
+    if kind in ("audio", "all"):
+        musicas = (await _req("GET", "/api/musica", timeout=60)).json()
+        out["music_how_to"] = (
+            "generate(model='musica', prompt=<style/mood description>, options={'modelo_musica': "
+            "<id>, 'duracao_musica': <seconds>, 'vocal_musica': true|false, 'letra_musica': "
+            "<lyrics, only for models with lyrics=true>}). Min/max seconds per model below. "
+            "Models marked paid=true cost credits.")
+        out["music"] = [
+            {"id": m["id"], "rotulo": m["rotulo"], "lyrics": m.get("letra"),
+             "min_s": m.get("minimo"), "max_s": m.get("maximo"),
+             "runs": [x for x, ok in (("local", m.get("local")), ("cloud", m.get("nuvem"))) if ok],
+             "paid": "(API)" in m["rotulo"]}
+            for m in musicas if m.get("disponivel") and (m.get("local") or m.get("nuvem"))]
+        out["voice_how_to"] = (
+            "generate(model='voz', prompt=<the text to speak>, options={'modo_voz': 'narrar' "
+            "(default voice) | 'criar' (design a voice: also 'instrucao_voz', e.g. 'elderly woman, "
+            "low pitch, british accent'), 'idioma_voz': 'English'|'Portuguese'|'Spanish'|...}). "
+            "Free on the GPU. Voice cloning needs a recording and is not available over MCP yet.")
     return _json(out)
 
 
