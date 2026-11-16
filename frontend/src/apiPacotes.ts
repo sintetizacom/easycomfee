@@ -53,6 +53,7 @@ export type ProgressoInstalacao = {
   velocidade: number
   erro: string | null
   repo_recusado: string | null
+  aviso?: string | null
 }
 
 async function pedir<T>(caminho: string, opcoes?: RequestInit): Promise<T> {

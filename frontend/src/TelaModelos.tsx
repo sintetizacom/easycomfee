@@ -520,6 +520,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
                 <div className="mq-progresso">
                   <progress value={prog.baixado} max={prog.total || 1} />
                   <span>{Math.min(prog.feitos + 1, prog.quantos)}/{prog.quantos} · {prog.arquivo} · {gb(prog.baixado)} of {gb(prog.total)} · {(prog.velocidade / 1e6).toFixed(0)} MB/s</span>
+                  {prog.aviso && <small className="mq-aviso">{prog.aviso}</small>}
                 </div>
               )}
               {!prog?.ativo && prog?.pacote === p.id && prog.erro && (

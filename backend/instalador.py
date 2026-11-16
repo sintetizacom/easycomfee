@@ -21,7 +21,7 @@ BLOCO = 4 * 1024 * 1024
 
 ESTADO = {"pacote": None, "ativo": False, "arquivo": None, "baixado": 0,
           "total": 0, "feitos": 0, "quantos": 0, "velocidade": 0.0,
-          "erro": None, "terminado_em": None}
+          "erro": None, "aviso": None, "terminado_em": None}
 _tarefa: asyncio.Task | None = None
 
 
@@ -45,11 +45,18 @@ class FaltaAceite(Exception):
     """O Hugging Face recusou: falta o token ou o aceite da licenca do repositorio."""
 
 
+class ArquivoIncompleto(RuntimeError):
+    """A conexao fechou antes do fim do arquivo (o .part guarda o que veio)."""
+
+
 async def _baixar(cliente: httpx.AsyncClient, arq: dict, total_antes: int):
     final = destino(arq)
     parcial = final.with_name(final.name + ".part")
     final.parent.mkdir(parents=True, exist_ok=True)
     ja = parcial.stat().st_size if parcial.exists() else 0
+    if ja == arq["tamanho"]:  # ja veio inteiro numa tentativa anterior (o Range daria 416)
+        parcial.replace(final)
+        return
     # O token do Hugging Face so vai para o Hugging Face.
     cab = ({} if arq.get("url_direta") else _cabecalhos()) | ({"Range": f"bytes={ja}-"} if ja else {})
     async with cliente.stream("GET", pacotes.url_download(arq), headers=cab) as r:
@@ -67,8 +74,28 @@ async def _baixar(cliente: httpx.AsyncClient, arq: dict, total_antes: int):
                 ESTADO["baixado"] = total_antes + ja
                 ESTADO["velocidade"] = (ja - base) / max(time.monotonic() - inicio, 1e-3)
     if ja != arq["tamanho"]:
-        raise RuntimeError(f"{arq['arquivo']}: {ja} de {arq['tamanho']} bytes")
+        raise ArquivoIncompleto(f"{arq['arquivo']}: {ja} de {arq['tamanho']} bytes")
     parcial.replace(final)
+
+
+# Internet que oscila derrubava os arquivos grandes (13 GB do LTX 2.5 GGUF numa casa, 16/11/2026):
+# o pedaco baixado ficava no .part, mas so continuava com outro clique. Agora tenta sozinho.
+TENTATIVAS = 8
+ESPERA = (5, 10, 20, 30, 60, 60, 60)
+
+
+async def _baixar_insistindo(cliente: httpx.AsyncClient, arq: dict, total_antes: int):
+    for n in range(TENTATIVAS):
+        try:
+            return await _baixar(cliente, arq, total_antes)
+        except (httpx.TransportError, httpx.RemoteProtocolError, ArquivoIncompleto) as e:
+            if n == TENTATIVAS - 1:
+                raise RuntimeError(f"{arq['arquivo']}: the connection kept dropping ({type(e).__name__}). "
+                                   "Press Download again: it continues from where it stopped.") from e
+            ESTADO["aviso"] = f"Connection dropped. Retrying ({n + 2}/{TENTATIVAS}), keeping what was downloaded..."
+            await asyncio.sleep(ESPERA[min(n, len(ESPERA) - 1)])
+        finally:
+            ESTADO["aviso"] = None
 
 
 def extrair_tensores(origem: pathlib.Path, final: pathlib.Path, prefixos: list[str]):
@@ -126,7 +153,7 @@ async def _instalar(lista: list[dict]):
                     await asyncio.to_thread(extrair_tensores, config.MODELOS_DIR / d["de"],
                                             destino(arq), d["prefixos"])
                 else:
-                    await _baixar(c, arq, feito)
+                    await _baixar_insistindo(c, arq, feito)
                 feito += arq["tamanho"]
                 ESTADO["feitos"] += 1
     except FaltaAceite as e:
