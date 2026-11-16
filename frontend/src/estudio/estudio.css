@@ -3653,3 +3653,8 @@ span.hf-erro { display: inline-flex; vertical-align: middle; }
 .hf-dub-modelos span { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
 .hf-dub-modelos i { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #ffffff12; color: #cfc8da; }
 .hf-dub-resumo { margin: 0; align-self: center; }
+
+/* Palavras de ativacao da LoRA (CampoLora): botoes pequenos que poem a palavra no prompt. */
+.hf-lora-gatilhos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hf-lora-gatilhos small { width: 100%; }
+.hf-lora-gatilhos .hf-botao-sec { padding: 4px 10px; font-size: 12.5px; }

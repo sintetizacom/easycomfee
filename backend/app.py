@@ -3587,7 +3587,8 @@ async def loras():
     import familia_lora
     nomes = await loras_locais()
     fams = await asyncio.to_thread(lambda: {n: familia_lora.familia_do_arquivo(n) for n in nomes})
-    return {"loras": nomes, "familias": fams,
+    gats = {n: g for n in nomes if (g := familia_lora.gatilhos_do_arquivo(n))}  # ja no cache
+    return {"loras": nomes, "familias": fams, "gatilhos": gats,
             "modelos": {k: sorted(v) for k, v in familia_lora.FAMILIAS_DO_MODELO.items()}}
 
 

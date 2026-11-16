@@ -124,22 +124,71 @@ def familia(cab: dict) -> str | None:
     return None
 
 
-_CACHE: dict[str, tuple[float, str | None]] = {}
+# Campos onde os treinadores e sites gravam a palavra de ativacao (CivitAI, kohya, ai-toolkit...).
+_CAMPOS_GATILHO = ("modelspec.trigger_phrase", "trigger_phrase", "trigger_words", "trigger_word",
+                   "trigger", "activation_text", "ss_trigger_words")
 
 
-def familia_do_arquivo(nome_comfy: str) -> str | None:
-    """Familia da LoRA `nome_comfy` (como o ComfyUI lista). None se o arquivo nao esta na
-    pasta de modelos que conhecemos (pastas extras do extra_model_paths.yaml) ou nao foi
-    reconhecido. Guarda o resultado enquanto o arquivo nao muda."""
+def gatilhos(cab: dict, maximo: int = 3) -> list[str]:
+    """Palavras de ativacao da LoRA, pelos metadados. Primeiro um campo explicito; se nao ha,
+    as legendas de treino mais frequentes (ss_tag_frequency do kohya/ai-toolkit), onde a
+    palavra de ativacao costuma ser a mais repetida. Vazio quando nada foi gravado."""
+    meta = cab.get("__metadata__") or {}
+    achadas: list[str] = []
+
+    def por(t: str) -> None:
+        t = " ".join(str(t).split()).strip(" ,.")
+        if t and len(t) <= 60 and t.lower() not in (x.lower() for x in achadas):
+            achadas.append(t)
+
+    for campo in _CAMPOS_GATILHO:
+        valor = meta.get(campo)
+        if not valor:
+            continue
+        try:  # alguns gravam uma lista em JSON
+            lido = json.loads(valor)
+        except ValueError:
+            lido = valor
+        for t in (lido if isinstance(lido, list) else re.split(r"[,;\n]", str(lido))):
+            por(t)
+    if not achadas and meta.get("ss_tag_frequency"):
+        try:
+            freq = json.loads(meta["ss_tag_frequency"])
+        except ValueError:
+            freq = {}
+        contagem: dict[str, int] = {}
+        for grupo in freq.values() if isinstance(freq, dict) else []:
+            for tag, n in (grupo.items() if isinstance(grupo, dict) else []):
+                contagem[tag] = contagem.get(tag, 0) + int(n or 0)
+        for tag, _ in sorted(contagem.items(), key=lambda x: -x[1])[:maximo]:
+            por(tag)
+    return achadas[:maximo]
+
+
+_CACHE: dict[str, tuple[float, str | None, list[str]]] = {}
+
+
+def _ler(nome_comfy: str) -> tuple[str | None, list[str]]:
+    """Familia e palavras de ativacao da LoRA `nome_comfy` (como o ComfyUI lista). Familia
+    None se o arquivo nao esta na pasta de modelos que conhecemos (pastas extras do
+    extra_model_paths.yaml) ou nao foi reconhecido. Guarda enquanto o arquivo nao muda."""
     arquivo = config.MODELOS_DIR / "loras" / nome_comfy.replace("\\", "/")
     try:
         quando = arquivo.stat().st_mtime
     except OSError:
-        return None
+        return None, []
     guardado = _CACHE.get(nome_comfy)
     if guardado and guardado[0] == quando:
-        return guardado[1]
+        return guardado[1], guardado[2]
     cab = _cabecalho(arquivo)
-    fam = familia(cab) if cab else None
-    _CACHE[nome_comfy] = (quando, fam)
-    return fam
+    fam, gat = (familia(cab), gatilhos(cab)) if cab else (None, [])
+    _CACHE[nome_comfy] = (quando, fam, gat)
+    return fam, gat
+
+
+def familia_do_arquivo(nome_comfy: str) -> str | None:
+    return _ler(nome_comfy)[0]
+
+
+def gatilhos_do_arquivo(nome_comfy: str) -> list[str]:
+    return _ler(nome_comfy)[1]

@@ -49,3 +49,14 @@ def test_cada_modelo_local_tem_familia():
     import presets
     for modelo in presets.SIMPLE:
         assert f.FAMILIAS_DO_MODELO.get(modelo), modelo
+
+
+def test_palavras_de_ativacao():
+    # Campo explicito (lista em JSON ou texto separado por virgula).
+    assert f.gatilhos({"__metadata__": {"trigger_words": '["ohwx man", "photo"]'}}) == ["ohwx man", "photo"]
+    assert f.gatilhos({"__metadata__": {"modelspec.trigger_phrase": "pixel art, 8-bit"}}) == ["pixel art", "8-bit"]
+    # Sem campo: as legendas de treino mais repetidas (como na LoRA de pixel art do Z-Image).
+    cab = {"__metadata__": {"ss_tag_frequency": '{"1_Pixel art style.": {"Pixel art style.": 12, "sky": 3}}'}}
+    assert f.gatilhos(cab) == ["Pixel art style", "sky"]
+    assert f.gatilhos({"__metadata__": {}}) == []
+    assert f.gatilhos({}) == []
