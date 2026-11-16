@@ -446,6 +446,7 @@ export default function TelaModelos({ fechar, conta, abaInicial = 'locais', topo
 
 
         <Atualizacoes />
+        <ConectarIA />
         <BlenderBridge />
 
         {/* As duas opcoes de filtro juntas, sem caixa, uma em cima da outra. */}
@@ -697,6 +698,80 @@ function BlenderBridge() {
       {b.instalada && !b.blender && <p className="mq-sub">In Blender: Edit → Preferences → Add-ons → Install from Disk →
         <b> blender_bridge_addon.zip</b> (Open folder), and turn it on. It connects by itself whenever Blender opens.
         {clientes.length > 0 && ' Restart your AI app after adding the Bridge to it.'}</p>}
+    </section>
+  )
+}
+
+type EstadoIaMcp = {
+  disponivel: boolean; instalado?: boolean; config?: string
+  clientes?: { nome: string; registrado: boolean }[]; instalando?: boolean; erro?: string; etapa?: string
+  limite_usd?: number
+}
+
+/** EasyComfee MCP: a IA do usuario (LM Studio, Claude, Cursor...) gera pelo app. Separado da Blender Bridge. */
+function ConectarIA() {
+  const [b, setB] = useState<EstadoIaMcp | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const ler = () => fetch('/api/ia-mcp').then((r) => r.json()).then(setB).catch(() => {})
+  useEffect(() => { ler() }, [])
+  useEffect(() => {
+    if (!b?.instalando) return
+    const t = window.setInterval(ler, 1500)
+    return () => window.clearInterval(t)
+  }, [b?.instalando])
+  if (!b?.disponivel) return null
+  const instalar = async (clientes: string[]) => {
+    await fetch('/api/ia-mcp/instalar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientes }) })
+    ler()
+  }
+  const copiar = () => {
+    if (!b.config) return
+    navigator.clipboard.writeText(b.config).then(() => { setCopiado(true); window.setTimeout(() => setCopiado(false), 2000) }).catch(() => {})
+  }
+  const clientes = b.clientes ?? []
+  const faltam = clientes.filter((c) => !c.registrado)
+  const limite = b.limite_usd ?? 0
+  const mudarLimite = async (usd: number) => {
+    await fetch('/api/ia-mcp/limite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usd }) })
+    ler()
+  }
+  return (
+    <section className="mq-cartao mq-bridge">
+      <div className="mq-atualizar">
+        <div>
+          <span className="mq-rotulo">Connect your AI · MCP</span>
+          <p className="mq-sub">Let an AI app (LM Studio, Claude, Cursor…) generate images and videos here by chatting.
+            Paid models stay blocked unless you set a spending limit below.</p>
+        </div>
+        {b.instalando ? <span className="mq-sub">{b.etapa || 'Setting up'}…</span>
+          : !b.instalado ? <button className="mq-botao mq-botao-forte" onClick={() => instalar(faltam.map((c) => c.nome))}>Set up</button>
+          : <button className="mq-botao-sec" onClick={copiar}>{copiado ? 'Copied' : 'Copy config'}</button>}
+      </div>
+      <ul className="mq-bridge-estado">
+        <li data-ok={!!b.instalado}>{b.instalado ? 'Installed' : 'Not set up yet'}</li>
+        {clientes.map((c) => (
+          <li key={c.nome} data-ok={c.registrado}>
+            {c.registrado ? `Connected to ${c.nome}` : `Not in ${c.nome}`}
+            {!c.registrado && b.instalado && !b.instalando &&
+              <button className="mq-bridge-add" onClick={() => instalar([c.nome])}>Connect</button>}
+          </li>
+        ))}
+      </ul>
+      {b.erro && <p className="mq-aviso">{b.erro}</p>}
+      <div className="mq-atualizar">
+        <div>
+          <span className="mq-rotulo">AI spending limit</span>
+          <p className="mq-sub">{limite > 0
+            ? `An AI app can spend up to US$ ${limite.toFixed(2)} per generation on Comfy Cloud credits, without asking you again.`
+            : 'Off: an AI app can only use free models on your GPU. Set a limit to let it use paid models.'}</p>
+        </div>
+        <select className="mq-botao-sec" value={limite} onChange={(e) => mudarLimite(Number(e.target.value))}>
+          {[0, 0.1, 0.25, 0.5, 1, 2, 5].map((v) => <option key={v} value={v}>{v === 0 ? 'Off (free only)' : `US$ ${v.toFixed(2)} each`}</option>)}
+        </select>
+      </div>
+      {b.instalado && <p className="mq-sub">
+        {clientes.length > 0 ? 'Restart your AI app after connecting. ' : 'No AI app found on this PC: use Copy config and paste it into your MCP client. '}
+        Then ask it to list the EasyComfee models.</p>}
     </section>
   )
 }

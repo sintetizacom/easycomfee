@@ -299,6 +299,10 @@ To show ComfyUI inside the **Advanced** tab, start ComfyUI with `--enable-cors-h
 
 Describe a shot in words: an AI assistant blocks it out in Blender with colored boxes and a solved camera move, you watch it in the viewport, and **3D render → Video** (LTX 2.5) turns the greybox into the finished video, on your GPU. It is an **MCP** server, so it works with any MCP client (Claude, LM Studio with an open-weights model, VS Code, Cursor...), not one vendor. Setup and tools: [`blender-bridge/`](blender-bridge/README.md).
 
+## Optional: Connect your AI (MCP)
+
+Chat with an AI app (LM Studio with an open-weights model, Claude Desktop, Cursor...) and let it generate images and videos in EasyComfee. One click in **Config Models → Connect your AI · MCP** adds it to the AI apps on your PC. Paid models stay blocked unless you set an AI spending limit (off by default). Details: [`easycomfee-mcp/`](easycomfee-mcp/README.md). It is separate from the Blender Bridge.
+
 ## ComfyUI workflows
 
 [`comfy_workflows/`](comfy_workflows/) has the graphs the app sends to ComfyUI, one JSON per feature, in ComfyUI's API format. Drag one onto the ComfyUI canvas to open it. They are generated from the app's own builders by `scripts/exportar_workflows.py`.

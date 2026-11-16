@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 import atualizacao
 import biblioteca
 import bridge
+import ia_mcp
 import grafos
 import alpha
 import andamento
@@ -2878,6 +2879,38 @@ async def instalar_bridge(p: PedidoBridge):
 @app.post("/api/bridge/pasta")
 async def pasta_bridge():
     await asyncio.to_thread(bridge.abrir_pasta)
+    return {"ok": True}
+
+
+@app.get("/api/ia-mcp")
+async def estado_ia_mcp():
+    """EasyComfee MCP no Config Models: instalado, clientes achados e o JSON para colar."""
+    return {**await asyncio.to_thread(ia_mcp.estado), "limite_usd": comfy.ia_limite_usd()}
+
+
+class PedidoLimiteIA(Pedido):
+    usd: float = Field(0.0, ge=0, le=50)
+
+
+@app.get("/api/ia-mcp/limite")
+async def limite_ia_mcp():
+    """Quanto uma IA ligada pelo MCP pode gastar por geracao (0 = nada pago). O servidor
+    MCP le isto a cada geracao; so o usuario muda, pela tela."""
+    return {"usd": comfy.ia_limite_usd()}
+
+
+@app.post("/api/ia-mcp/limite")
+async def mudar_limite_ia_mcp(p: PedidoLimiteIA):
+    comfy.escolher_ia_limite(p.usd)
+    return {"usd": comfy.ia_limite_usd()}
+
+
+@app.post("/api/ia-mcp/instalar")
+async def instalar_ia_mcp(p: PedidoBridge):
+    if not ia_mcp.PASTA.is_dir():
+        raise HTTPException(404, "The easycomfee-mcp folder is missing from this install.")
+    if not ia_mcp.instalar(p.clientes):
+        raise HTTPException(409, "Already setting it up.")
     return {"ok": True}
 
 

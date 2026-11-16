@@ -71,3 +71,7 @@ blender-bridge/mcp-config.json
 backend/minhas_vozes.json
 logs/
 output/
+
+# EasyComfee MCP: ambiente e saidas.
+easycomfee-mcp/server/.venv/
+easycomfee-mcp/output/

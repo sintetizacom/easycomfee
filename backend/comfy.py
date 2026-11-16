@@ -54,7 +54,19 @@ _pref = _ler_preferencias()
 MODO = {"motor": _pref.get("motor", "local"),
         "abertos": bool(_pref.get("so_abertos", config.SO_MODELOS_ABERTOS)),
         # Safe mode ligado de fabrica; desligar e escolha de quem usa (ver seguro.py).
-        "seguro": bool(_pref.get("modo_seguro", True))}
+        "seguro": bool(_pref.get("modo_seguro", True)),
+        # Quanto, em US$ por geracao, uma IA ligada pelo MCP pode gastar. 0 = nada pago.
+        # So quem usa muda (Config Models); o servidor MCP so le.
+        "ia_usd": max(0.0, float(_pref.get("ia_max_usd", 0.0) or 0.0))}
+
+
+def ia_limite_usd() -> float:
+    return MODO["ia_usd"]
+
+
+def escolher_ia_limite(usd: float) -> None:
+    MODO["ia_usd"] = max(0.0, float(usd))
+    _gravar_preferencias(ia_max_usd=MODO["ia_usd"])
 
 
 def so_abertos() -> bool:
