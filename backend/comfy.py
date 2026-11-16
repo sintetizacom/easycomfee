@@ -116,6 +116,11 @@ def _cliente(timeout: float) -> httpx.AsyncClient:
 _INFO: dict[str, tuple[float, dict]] = {}
 _INFO_TRAVAS: dict[tuple, asyncio.Lock] = {}
 INFO_VALIDADE = 300
+# Vencida, a lista guardada ainda responde na hora e uma busca nova corre por tras:
+# o ComfyUI leva ~4 s para montar os ~2.800 nos, e cada pagina aberta depois de
+# 5 minutos esperava isso (e as outras chamadas da pagina na fila atras).
+_INFO_RENOVANDO: set[str] = set()
+_TAREFAS_INFO: set = set()
 
 
 async def info_nos(base: str | None = None, timeout: float = 120) -> dict:
@@ -127,10 +132,45 @@ async def info_nos(base: str | None = None, timeout: float = 120) -> dict:
 
     if (info := guardado()) is not None:
         return info
+    if (velho := _INFO.get(base)) is not None:
+        if base not in _INFO_RENOVANDO:
+            _INFO_RENOVANDO.add(base)
+            t = asyncio.get_running_loop().create_task(_renovar_info(base, timeout))
+            _TAREFAS_INFO.add(t)  # sem referencia, o asyncio pode descartar a tarefa
+            t.add_done_callback(_TAREFAS_INFO.discard)
+        return velho[1]
+    return await _buscar_info(base, timeout)
+
+
+async def _renovar_info(base: str, timeout: float) -> None:
+    try:
+        await _buscar_info(base, timeout, forcar=True)
+    except Exception:
+        pass  # motor fora do ar: fica a lista velha ate a proxima tentativa
+    finally:
+        _INFO_RENOVANDO.discard(base)
+
+
+async def aquecer_info() -> None:
+    """Ao ligar o app, busca a lista do motor local antes da primeira pagina pedir.
+
+    O motor pode estar subindo junto: tenta por alguns minutos e desiste calado."""
+    for _ in range(60):
+        try:
+            await _buscar_info(BASE_PRINCIPAL, 120)
+            return
+        except Exception:
+            await asyncio.sleep(10)
+
+
+async def _buscar_info(base: str, timeout: float, forcar: bool = False) -> dict:
+    def guardado():
+        g = _INFO.get(base)
+        return g[1] if g and time.monotonic() - g[0] < INFO_VALIDADE else None
     # Quem chega enquanto a busca anda espera por ela, em vez de pedir de novo.
     trava = _INFO_TRAVAS.setdefault((base, asyncio.get_running_loop()), asyncio.Lock())
     async with trava:
-        if (info := guardado()) is not None:
+        if not forcar and (info := guardado()) is not None:
             return info
         cliente = _cliente(timeout) if base == NUVEM else httpx.AsyncClient(timeout=timeout)
         async with cliente as c:

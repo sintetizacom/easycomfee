@@ -2814,6 +2814,8 @@ async def iniciar():
         # Vigia de instâncias: dois motores brigariam pela GPU.
         asyncio.create_task(motores.vigiar()),
         asyncio.create_task(andamento.vigiar(atualizar_fila_monitor)),
+        # A lista de nos do motor (~4 s) fica pronta antes da primeira pagina pedir.
+        asyncio.create_task(comfy.aquecer_info()),
     ]
 
 
