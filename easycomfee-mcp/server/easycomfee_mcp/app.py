@@ -106,6 +106,38 @@ async def list_models(kind: str = "all") -> str:
     return _json(out)
 
 
+_CAMPOS = {}
+
+
+async def _campos():
+    """Os campos que o app aceita num pedido (do OpenAPI dele). O app ignora em silencio o que
+    nao conhece, entao um nome errado (aspect_ratio em vez de proporcao) viraria um padrao."""
+    if not _CAMPOS:
+        try:
+            esquema = (await _req("GET", "/openapi.json", timeout=20)).json()
+            props = esquema["components"]["schemas"]["PedidoGeracao"]["properties"]
+            _CAMPOS["nomes"] = set(props)
+        except (ErroApp, KeyError, ValueError):
+            _CAMPOS["nomes"] = set()  # sem o esquema, nao valida
+    return _CAMPOS["nomes"]
+
+
+async def _opcoes_invalidas(opcoes):
+    """None se estiver tudo certo; senao a resposta de erro para a IA corrigir e tentar de novo."""
+    nomes = await _campos()
+    if not nomes or not opcoes:
+        return None
+    erradas = [k for k in opcoes if k not in nomes]
+    if not erradas:
+        return None
+    import difflib
+    return {"invalid_options": {k: difflib.get_close_matches(k, nomes, n=3, cutoff=0.4)
+                                for k in erradas},
+            "hint": "EasyComfee does not know these option names and would ignore them. "
+                    "Use the exact names, e.g. {\"proporcao\": \"16:9\"} for the aspect "
+                    "ratio. Nothing was generated; fix the names and call again."}
+
+
 async def _estimar(modelo, prompt, opcoes):
     pedido = {**(opcoes or {}), "modelo": modelo, "prompt": prompt}
     return pedido, (await _req("POST", "/api/estimar", json=pedido, timeout=120)).json()
@@ -129,6 +161,9 @@ async def estimate_cost(model: str, prompt: str, options: dict | None = None) ->
     {'type': 'free'|'api'|'gpu'|'unknown', usd...}. Local generation is free. Tell the
     user the number. `options` are extra fields of
     the request (e.g. {"modelo_video": "ltx23", "duracao_video": 5})."""
+    erro = await _opcoes_invalidas(options)
+    if erro:
+        return _json(erro)
     _, est = await _estimar(model, prompt, options)
     return _json(est)
 
@@ -150,10 +185,15 @@ async def generate(model: str, prompt: str, options: dict | None = None,
     EasyComfee app (Config Models -> Connect your AI); otherwise it is refused and you must
     tell the user the price and that they can raise the limit there. You cannot change the
     limit and must not try to work around a refusal: pick a free local model or stop.
-    It waits up to ~40 s; if the image is not ready it returns state 'na_fila' or
+    Extra settings go in `options` with the app's exact names, e.g. {"proporcao": "16:9"}
+    (also "1:1", "9:16"); unknown names are rejected. The result has the real `size`: report
+    that, not what you asked for. It waits up to ~40 s; if the image is not ready it returns state 'na_fila' or
     'executando' with a job_id: then call job_status(job_id) until state is 'pronto' (do not
     start the job again). wait=false returns the job id at once. Files are saved under
     ~/EasyComfee-mcp and appear in the app gallery."""
+    erro = await _opcoes_invalidas(options)
+    if erro:
+        return _json(erro)
     pedido, est = await _estimar(model, prompt, options)
     teto, conhecido = _maximo(est)
     limite = await _limite_usd()
@@ -214,6 +254,8 @@ async def _fim(tid, timeout_s):
         t = await _tarefa(tid)
     resp = {"job_id": tid, "state": t.get("estado"), "progress": t.get("progresso"),
             "cost_usd": t.get("custo_usd")}
+    if t.get("largura") and t.get("altura"):
+        resp["size"] = f"{t['largura']}x{t['altura']}"  # o que saiu de fato; relate este valor
     if t.get("estado") == "erro":
         resp["error"] = (t.get("erro") or "")[:800]
     elif t.get("estado") == "pronto":

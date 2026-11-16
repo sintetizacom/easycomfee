@@ -33,6 +33,20 @@ Tips:
   on port 8600.
 - A big chat model and a generation share your VRAM. If the card struggles, eject the chat
   model before heavy video.
+- **VRAM is shared, so size the pair.** On a 16 GB card, a 7 GB chat model (Qwen3.5 9B, Q4)
+  plus a 9B image model (Flux 2 Klein) did not fit: VRAM hit 100%, the first step took minutes
+  and the job looked stuck (it was only slow). Ejecting the chat model let it finish at once.
+  Rules of thumb: with a 9B chat model, stay with light image models (`krea`, `sdxl`,
+  `zimage`, `flux1s`); for `klein`, `flux2dev`, `qwen21` at 2K or video, use a smaller chat
+  model (3–4B) or eject it while the job runs. The job keeps running in EasyComfee and the
+  result shows up in its gallery either way.
+- Settings go in `options` with the app's exact names, e.g. `{"proporcao": "16:9"}`. A wrong
+  name (like `aspect_ratio`) is rejected instead of silently ignored, and every result reports the
+  real `size` of the image.
+- Long jobs: `generate` waits about 40 s and then returns a `job_id` with `state` set to
+  `executando`. The AI should call `job_status` with that same id (not `generate` again) until
+  `state` is `pronto`. If the chat is lost, the finished image is still in the gallery and in
+  `~/EasyComfee-mcp`.
 
 ## Tools
 
