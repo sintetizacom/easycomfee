@@ -4,3 +4,6 @@
 # Scripts do Mac precisam de LF (com CRLF o #!/bin/bash quebra), em qualquer configuracao de git.
 *.command text eol=lf
 *.sh text eol=lf
+
+# O zip do GitHub (Code > Download ZIP) troca $Format:%H$ pelo commit: o Update sabe a versao sem .git.
+backend/versao_publicada.txt export-subst

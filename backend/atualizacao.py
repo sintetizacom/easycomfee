@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 
+import httpx
+
 import config
 
 RAIZ = config.RAIZ
@@ -55,6 +57,33 @@ def _origem_valida(url: str) -> bool:
     return url.startswith(("https://github.com/", "git@github.com:"))
 
 
+# ---- Instalacao pelo .zip (Code > Download ZIP), sem .git (16/11/2026) -------------
+# O zip do GitHub troca "$Format:%H$" de versao_publicada.txt pelo commit (export-subst,
+# no .gitattributes). Com isso o app sabe a versao e pergunta a API do GitHub quantos
+# commits novos ha. Para aplicar, o .bat baixa o zip novo e o copia por cima da pasta:
+# a chave, a galeria, o config.json e os modelos nao vem no zip e ficam como estao.
+REPO = "sintetizacom/easycomfee"
+RAMO = "main"
+ARQ_VERSAO = RAIZ / "backend" / "versao_publicada.txt"
+
+
+def versao_do_zip() -> str:
+    """O commit gravado pelo zip do GitHub; vazio fora de um zip (o texto fica "$Format:%H$")."""
+    try:
+        t = ARQ_VERSAO.read_text(encoding="utf-8").strip().lower()
+    except OSError:
+        return ""
+    return t if len(t) == 40 and all(c in "0123456789abcdef" for c in t) else ""
+
+
+def _novos_no_github(sha: str) -> int:
+    """Commits do ramo publicado que esta versao nao tem (API publica do GitHub)."""
+    r = httpx.get(f"https://api.github.com/repos/{REPO}/compare/{sha}...{RAMO}", timeout=30,
+                  headers={"Accept": "application/vnd.github+json", "User-Agent": "EasyComfee-update"})
+    r.raise_for_status()
+    return int(r.json().get("ahead_by") or 0)
+
+
 def estado(forcar: bool = False) -> dict:
     """{"disponivel": bool, "novos": n, "versao": sha curto, "motivo": texto}.
     Consulta o GitHub no maximo a cada 1 h (git fetch), salvo forcar."""
@@ -64,7 +93,13 @@ def estado(forcar: bool = False) -> dict:
     dados = {"disponivel": False, "novos": 0, "versao": "", "motivo": "", "sem_internet": False}
     try:
         if not (RAIZ / ".git").exists():
-            dados["motivo"] = "not a git install"
+            sha = versao_do_zip()
+            if not sha:
+                dados["motivo"] = "not a git install"
+            else:
+                dados.update(versao=sha[:7], zip=True)
+                dados["novos"] = _novos_no_github(sha)
+                dados["disponivel"] = dados["novos"] > 0
         elif not _origem_valida(_git("remote", "get-url", "origin")):
             dados["motivo"] = "origin is not the published repository"
         else:
@@ -72,7 +107,7 @@ def estado(forcar: bool = False) -> dict:
             _git("fetch", "--quiet", "origin", timeout=120)
             dados["novos"] = int(_git("rev-list", "--count", "HEAD..@{u}") or 0)
             dados["disponivel"] = dados["novos"] > 0
-    except subprocess.TimeoutExpired:
+    except (subprocess.TimeoutExpired, httpx.TransportError):
         dados.update(motivo=SEM_INTERNET, sem_internet=True)
     except Exception as e:  # sem git, sem rede, sem upstream: so nao oferece
         dados["motivo"] = str(e)[:200]
@@ -193,6 +228,44 @@ exit 0
 """
 
 
+# Mesmo .bat do git, trocando a conferencia de rede e o "git pull" por baixar e copiar o zip.
+URL_ZIP = f"https://codeload.github.com/{REPO}/zip/refs/heads/{RAMO}"
+BAT_ZIP = BAT[:BAT.index("echo Checking the internet connection...")] + r"""echo Downloading the new version...
+set TMPZ=%TEMP%\easycomfee-update
+if exist "%TMPZ%" rmdir /s /q "%TMPZ%"
+mkdir "%TMPZ%"
+set N=0
+:baixar
+curl.exe -fsSL --retry 3 -o "%TMPZ%\novo.zip" "URL_ZIP" && goto abrir
+set /a N+=1
+if %N% geq 3 goto sem_internet
+echo Connection problem. Trying again...
+ping -n 6 127.0.0.1 >nul
+goto baixar
+:abrir
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '%TMPZ%\novo.zip' -DestinationPath '%TMPZ%\x' -Force" || goto erro
+REM O zip tem uma pasta so (easycomfee-main): o conteudo dela vai por cima desta pasta.
+for /d %%D in ("%TMPZ%\x\*") do robocopy "%%D" "%~dp0." /E /NFL /NDL /NJH /NJS /NP >nul
+if errorlevel 8 goto erro
+rmdir /s /q "%TMPZ%"
+""".replace("URL_ZIP", URL_ZIP) + BAT[BAT.index(":pip\n"):]
+
+SH_ZIP = SH[:SH.index('echo; echo "Checking the internet connection..."')] + r"""erro() {
+  echo; echo "The update did not finish. Nothing of yours was deleted."
+  echo "Usually the internet connection dropped. Open EasyComfee and press Update again."
+  read -r -p "Press Enter to close..." _
+  exit 1
+}
+tentar() { for n in 1 2 3; do "$@" && return 0; echo "Connection problem. Trying again..."; sleep 5; done; return 1; }
+echo; echo "Downloading the new version..."
+TMPZ="$(mktemp -d)"
+tentar curl -fsSL -o "$TMPZ/novo.zip" "URL_ZIP" || erro
+unzip -q "$TMPZ/novo.zip" -d "$TMPZ/x" || erro
+cp -R "$TMPZ"/x/*/. ./ || erro
+rm -rf "$TMPZ"
+""".replace("URL_ZIP", URL_ZIP) + SH[SH.index('echo; echo "Updating Python packages..."'):]
+
+
 def aplicar() -> None:
     """Grava atualizar.bat (Mac: atualizar.command), abre numa janela propria e encerra este servidor."""
     agora = estado(forcar=True)
@@ -202,12 +275,12 @@ def aplicar() -> None:
         raise RuntimeError("no update available")
     if sys.platform == "darwin":
         caminho = RAIZ / "atualizar.command"
-        caminho.write_text(SH, encoding="utf-8")
+        caminho.write_text(SH_ZIP if agora.get("zip") else SH, encoding="utf-8")
         caminho.chmod(0o755)
         subprocess.Popen(["open", "-a", "Terminal", str(caminho)], cwd=RAIZ)
         return
     caminho = RAIZ / "atualizar.bat"
-    caminho.write_text(BAT.replace("\n", "\r\n"), encoding="ascii")
+    caminho.write_text((BAT_ZIP if agora.get("zip") else BAT).replace("\n", "\r\n"), encoding="ascii")
     # "start" com um .bat abre "cmd /k" (a janela ficava aberta); com "cmd /c" ela fecha no fim.
     subprocess.Popen(["cmd", "/c", "start", "EasyComfee update", "cmd", "/c", str(caminho)], cwd=RAIZ,
                      creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
