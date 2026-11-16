@@ -3474,7 +3474,7 @@ def aplicar_lora_usuario(g, lora, forca):
     saida 0 do carregador passa a ler a da LoRA, entao serve para qualquer familia.
     """
     carregadores = [k for k, v in g.items()
-                    if v.get("class_type") in ("UNETLoader", "CheckpointLoaderSimple")]
+                    if v.get("class_type") in ("UNETLoader", "UnetLoaderGGUF", "CheckpointLoaderSimple")]
     for i, unet in enumerate(carregadores):
         chave = "lora_usuario" if i == 0 else f"lora_usuario{i}"
         g[chave] = {"class_type": "LoraLoaderModelOnly", "inputs": {

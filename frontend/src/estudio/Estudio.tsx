@@ -205,7 +205,10 @@ export default function Estudio() {
         if (antes && !semSaber) setTentativaCatalogo((n) => n + 1)
         return semSaber
       })
-      setInstalados(semSaber ? undefined : new Set(lista.filter((p) => p.pronto).map((p) => p.id)))
+      const prontos = new Set(lista.filter((p) => p.pronto).map((p) => p.id))
+      // LTX 2.5 em GGUF (placas AMD / 12 GB) serve no lugar do pacote padrao: o servidor troca o grafo.
+      if (prontos.has('ltx25_gguf')) prontos.add('ltx25')
+      setInstalados(semSaber ? undefined : prontos)
       if (semSaber) timer = window.setTimeout(ler, 8000)
     }).catch(() => { if (vivo) timer = window.setTimeout(ler, 8000) })
     ler()

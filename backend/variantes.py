@@ -115,3 +115,82 @@ def aplicar(g: dict, pedido) -> None:
             e["cfg"] = ajustes["cfg"]
         if "sampler_name" in e and isinstance(e["sampler_name"], str):
             e["sampler_name"] = ajustes["sampler"]
+
+
+# ---- LTX 2.5 em GGUF (placas AMD e de 12 GB, 16/11/2026) --------------------
+# O pacote padrao do LTX 2.5 usa arquivos int8 "convrot", feitos para placas NVIDIA:
+# numa AMD (ZLUDA/ROCm) eles nao rodam. O pacote "ltx25_gguf" traz o mesmo modelo em
+# GGUF (unsloth/LTX-2.5-GGUF, lido pelo no UnetLoaderGGUF da extensao ComfyUI-GGUF) e o
+# Gemma completo em bf16 (que fica na RAM). Os grafos continuam pedindo os arquivos int8;
+# aqui, quando o int8 NAO esta instalado e a versao GGUF esta, o grafo e trocado.
+LTX25_INT8 = "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"
+LTX25_GEMMA_INT8 = "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+LTX25_GGUF_PREFIXO = "ltx-2.5-22b-distilled-"  # + quantizacao + .gguf
+LTX25_GEMMA_BF16 = "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors"
+# Do mais leve que ainda fica bom ao mais pesado: com menos de 14 GB na placa, o primeiro
+# que existir; com mais, o maior que existir.
+LTX25_GGUF = ("Q4_K_M", "UD-Q4_K_XL", "Q3_K_M", "UD-Q3_K_XL", "Q5_K_M", "UD-Q5_K_XL",
+              "Q6_K", "Q8_0", "Q2_K", "UD-Q2_K_XL")
+_CACHE_LTX = {"quando": 0.0, "achados": None}
+
+
+def _base(nome: str) -> str:
+    return str(nome).replace("\\", "/").split("/")[-1]
+
+
+def _procurar(pastas: tuple[str, ...], padrao: str) -> list[str]:
+    """Nomes relativos (como o ComfyUI lista) dos arquivos `padrao` nestas pastas de modelos."""
+    achados = []
+    for pasta in pastas:
+        raiz = pathlib.Path(config.MODELOS_DIR) / pasta
+        if raiz.is_dir():
+            achados += [str(p.relative_to(raiz)).replace("/", os.sep) for p in raiz.rglob(padrao)]
+    return achados
+
+
+def achar_ltx25() -> dict:
+    """O que existe do LTX 2.5 neste PC: int8 (padrao), GGUF e Gemma bf16."""
+    if _CACHE_LTX["achados"] is not None and time.time() - _CACHE_LTX["quando"] < 60:
+        return _CACHE_LTX["achados"]
+    ggufs = _procurar(("diffusion_models", "unet"), LTX25_GGUF_PREFIXO + "*.gguf")
+    por_quant = {}
+    for nome in ggufs:
+        quant = _base(nome)[len(LTX25_GGUF_PREFIXO):-len(".gguf")]
+        por_quant.setdefault(quant, nome)
+    ordem = list(LTX25_GGUF) if preferir_leve() else list(reversed(LTX25_GGUF))
+    escolhido = next((por_quant[q] for q in ordem if q in por_quant), None)
+    if escolhido is None and ggufs:
+        escolhido = ggufs[0]  # uma quantizacao que nao esta na lista: serve igual
+    achados = {
+        "int8": bool(_procurar(("diffusion_models", "unet"), LTX25_INT8)),
+        "gemma_int8": bool(_procurar(("text_encoders", "clip"), LTX25_GEMMA_INT8)),
+        "gguf": escolhido,
+        "gemma_bf16": next(iter(_procurar(("text_encoders", "clip"), LTX25_GEMMA_BF16)), None),
+    }
+    _CACHE_LTX.update(quando=time.time(), achados=achados)
+    return achados
+
+
+def aplicar_ltx25_gguf(g: dict, achados: dict | None = None) -> bool:
+    """Troca o LTX 2.5 int8 do grafo pela versao GGUF quando so ela esta instalada.
+    Devolve True se trocou algo."""
+    alvos_unet = [n for n in g.values() if n.get("class_type") == "UNETLoader"
+                  and _base(n["inputs"].get("unet_name", "")) == LTX25_INT8]
+    alvos_clip = [n for n in g.values() if n.get("class_type") in ("CLIPLoader", "DualCLIPLoader")
+                  and any(_base(v) == LTX25_GEMMA_INT8 for v in n["inputs"].values() if isinstance(v, str))]
+    if not alvos_unet and not alvos_clip:
+        return False
+    a = achados or achar_ltx25()
+    trocou = False
+    if alvos_unet and not a["int8"] and a["gguf"]:
+        for n in alvos_unet:
+            n["class_type"] = "UnetLoaderGGUF"
+            n["inputs"] = {"unet_name": a["gguf"]}
+        trocou = True
+    if alvos_clip and not a["gemma_int8"] and a["gemma_bf16"]:
+        for n in alvos_clip:
+            for k, v in n["inputs"].items():
+                if isinstance(v, str) and _base(v) == LTX25_GEMMA_INT8:
+                    n["inputs"][k] = a["gemma_bf16"]
+        trocou = True
+    return trocou

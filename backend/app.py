@@ -789,6 +789,8 @@ async def montar(tarefa: Tarefa):
     g = await _montar(tarefa)
     if isinstance(g, dict):
         variantes.aplicar(g, tarefa.pedido)
+        if not comfy.na_nuvem():  # LTX 2.5 em GGUF (AMD / 12 GB): so no motor local
+            await asyncio.to_thread(variantes.aplicar_ltx25_gguf, g)
         await _aplicar_lora_usuario(g, tarefa.pedido)
     return g
 

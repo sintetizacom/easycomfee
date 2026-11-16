@@ -305,6 +305,94 @@
    ]
   },
   {
+   "id": "ltx25_gguf",
+   "nome": "LTX 2.5 Video (GGUF, AMD / 12 GB)",
+   "tipo": "video",
+   "descricao": "LTX 2.5 for AMD cards and 12 GB GPUs: GGUF model + full Gemma (runs in RAM). Slower than the NVIDIA version. Install only one of the two.",
+   "vram_min_gb": 12,
+   "modos": [
+    "video LTX",
+    "first/last frame",
+    "keyframes"
+   ],
+   "nos_extras": [
+    "ComfyUI-GGUF"
+   ],
+   "requisitos": {
+    "vram_min": 12,
+    "vram_rec": 16,
+    "ram_min": 48,
+    "medido": "Not measured: estimated from the file sizes.",
+    "nota_limitado": "On 12 GB part of the model sits in RAM: slow, several minutes per clip."
+   },
+   "licenca": {
+    "nome": "other",
+    "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF"
+   },
+   "arquivos": [
+    {
+     "arquivo": "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+     "pasta": "diffusion_models",
+     "subpasta": "LTX/2.5",
+     "repo": "unsloth/LTX-2.5-GGUF",
+     "caminho": "distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf",
+     "opcional": false,
+     "rotulo": "Transformer (GGUF Q4_K_M)",
+     "tamanho": 13584703872,
+     "licenca": "other",
+     "requer_aceite": false
+    },
+    {
+     "arquivo": "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+     "pasta": "text_encoders",
+     "subpasta": "Gemma",
+     "repo": "Lightricks/LTX-2.5",
+     "caminho": "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+     "opcional": false,
+     "rotulo": "Text encoder Gemma 4 12B (bf16)",
+     "tamanho": 26263858182,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-video-vae-bf16.safetensors",
+     "pasta": "vae",
+     "subpasta": "LTX/2.5",
+     "repo": "Lightricks/LTX-2.5",
+     "caminho": "vae/ltx-2.5-video-vae-bf16.safetensors",
+     "opcional": false,
+     "rotulo": "Video VAE",
+     "tamanho": 1472223346,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-audio-vae-bf16.safetensors",
+     "pasta": "vae",
+     "subpasta": "LTX/2.5",
+     "repo": "Lightricks/LTX-2.5",
+     "caminho": "vae/ltx-2.5-audio-vae-bf16.safetensors",
+     "opcional": false,
+     "rotulo": "Audio VAE",
+     "tamanho": 364866540,
+     "licenca": "other",
+     "requer_aceite": true
+    },
+    {
+     "arquivo": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+     "pasta": "latent_upscale_models",
+     "subpasta": "LTX/2.5",
+     "repo": "Lightricks/LTX-2.5",
+     "caminho": "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+     "opcional": false,
+     "rotulo": "Spatial upscaler x2",
+     "tamanho": 995778752,
+     "licenca": "other",
+     "requer_aceite": true
+    }
+   ]
+  },
+  {
    "id": "ltx23",
    "nome": "LTX 2.3 add-ons",
    "tipo": "video",

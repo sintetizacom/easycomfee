@@ -41,6 +41,11 @@ def pacote(id, nome, tipo, descricao, vram, modos, arquivos, nos=()):
 M16 = "Measured on a 16 GB card."
 REQ = {
     "ltx25": {"vram_min": 16, "vram_rec": 16, "ram_min": 32, "medido": M16 + " Peak 12.9 GB at 1080p/15 s."},
+    # Versao GGUF para placas AMD e de 12 GB: estimada (nao medida aqui). O Gemma bf16
+    # (26 GB) fica na RAM, por isso pede 48 GB.
+    "ltx25_gguf": {"vram_min": 12, "vram_rec": 16, "ram_min": 48,
+                   "medido": "Not measured: estimated from the file sizes.",
+                   "nota_limitado": "On 12 GB part of the model sits in RAM: slow, several minutes per clip."},
     "ltx23": {"vram_min": 16, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "krea2": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
     "kroma": {"vram_min": 12, "vram_rec": 16, "ram_min": 32, "medido": M16},
@@ -136,6 +141,21 @@ pacote("ltx25", "LTX 2.5 Video", "video",
     ("embeddings", "LTX/2.5/ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors", "Lightricks/LTX-2.5-22b-IC-LoRA-SDR-To-HDR", "ltx-2.5-22b-ic-lora-sdr-to-hdr-scene-emb.safetensors", True, "SDR to HDR (scene embedding)"),
     ("loras", "LTX/2.5/LTX-2.5-Licon-MSR-V1.safetensors", "LiconStudio/LTX-2.5-Multiple-Subject-Reference", "LTX-2.5-Licon-MSR-V1.safetensors", True, "Multi-subject reference (MSR)"),
 ])
+
+# A mesma geracao do LTX 2.5 para placas AMD (ZLUDA/ROCm) e de 12 GB: os arquivos int8
+# "convrot" do pacote acima sao para NVIDIA. O app troca o grafo sozinho quando so este
+# esta instalado (variantes.aplicar_ltx25_gguf). Os efeitos IC-LoRA do pacote acima
+# continuam opcionais la.
+UG = "unsloth/LTX-2.5-GGUF"
+pacote("ltx25_gguf", "LTX 2.5 Video (GGUF, AMD / 12 GB)", "video",
+       "LTX 2.5 for AMD cards and 12 GB GPUs: GGUF model + full Gemma (runs in RAM). Slower than the NVIDIA version. Install only one of the two.",
+       12, ["video LTX", "first/last frame", "keyframes"], [
+    ("diffusion_models", "LTX/2.5/ltx-2.5-22b-distilled-Q4_K_M.gguf", UG, "distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf", False, "Transformer (GGUF Q4_K_M)"),
+    ("text_encoders", "Gemma/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors", L25, "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors", False, "Text encoder Gemma 4 12B (bf16)"),
+    ("vae", "LTX/2.5/ltx-2.5-video-vae-bf16.safetensors", L25, "vae/ltx-2.5-video-vae-bf16.safetensors", False, "Video VAE"),
+    ("vae", "LTX/2.5/ltx-2.5-audio-vae-bf16.safetensors", L25, "vae/ltx-2.5-audio-vae-bf16.safetensors", False, "Audio VAE"),
+    ("latent_upscale_models", "LTX/2.5/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", L25, "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors", False, "Spatial upscaler x2"),
+], nos=["ComfyUI-GGUF"])
 
 pacote("ltx23", "LTX 2.3 add-ons", "video",
        "LTX 2.3 IC-LoRAs used by Expand frame, Character swap in video, Relight, Foley and Remove beard.",
