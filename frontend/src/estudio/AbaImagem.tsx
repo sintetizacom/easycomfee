@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useLora } from './CampoLora'
 import { abrirVisualizador, recriar, useRecriar, useReusarPrompt, type Receita } from './Visualizador'
 import { api, urlEntrada, type Elemento, type Modelo, type ModeloNuvem, type Referencia } from '../api'
 import LayoutIdeogram from './LayoutIdeogram'
@@ -161,21 +162,13 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
   const [forcaImagem, setForcaImagem] = useState(0.6)
   const tamanhoOk = tamanho === '4k' && comRefs ? 'padrao' : tamanho
   // LoRA do usuario: so modelos locais, sem imagens de referencia (o modo de referencia
-  // monta outro grafo). A lista vem da pasta models/loras do ComfyUI (/api/loras).
-  const comLora = !apiAtual && !naNuvem && !comRefs
-  const [loras, setLoras] = useState<string[]>([])
-  const [lora, setLora] = useState('')
-  const [forcaLora, setForcaLora] = useState(1)
-  const buscarLoras = useCallback(() => {
-    fetch('/api/loras').then((r) => r.json()).then((d) => setLoras(Array.isArray(d.loras) ? d.loras : [])).catch(() => {})
-  }, [])
-  useEffect(() => { if (comLora) buscarLoras() }, [comLora, buscarLoras])
-  const loraOk = comLora && loras.includes(lora) ? lora : ''
+  // monta outro grafo).
+  const { campos: camposLora, campo: campoLora } = useLora(!apiAtual && !naNuvem && !comRefs)
   const pedido = {
     modelo: comRefs && usoRefs ? usoRefs.modo : modelo, prompt: prompt || 'x', proporcao,
     ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),
     ...(versaoOk ? { variante: versaoOk } : {}),
-    ...(loraOk ? { lora: loraOk, forca_lora: forcaLora } : {}),
+    ...camposLora,
     lote: comRefs && !apiAtual ? 1 : lote, referencias: refsOk.map((r) => r.nome),
     ...(comRefs && IMG2IMG.has(modelo) ? { forca_imagem: forcaImagem } : {}),
     ...(apiAtual ? {} : camposAjustes(ajustes, true)),
@@ -339,22 +332,7 @@ export default function AbaImagem({ modelos, apiModelos, apiOcultos = [], naNuve
           <label className="hf-campo"><span>Model</span><select className="hf-select" value={valorSelect} onChange={(e) => escolher(e.target.value)} aria-label="Model">
             <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
           </select></label>
-          {comLora && (
-            <div className="hf-campo"><span>LoRA (optional)</span>
-              <select className="hf-select" value={loraOk} onChange={(e) => setLora(e.target.value)} onFocus={buscarLoras} aria-label="LoRA">
-                <option value="">None</option>
-                {loras.map((n) => <option key={n} value={n}>{n.replace(/[\\/]/g, ' / ').replace(/\.safetensors$/i, '')}</option>)}
-              </select>
-              {loraOk ? (<>
-                <span>Strength · {forcaLora.toFixed(2)}</span>
-                <input type="range" min={0} max={1.5} step={0.05} value={forcaLora} aria-label="LoRA strength"
-                  onChange={(e) => setForcaLora(Number(e.target.value))} />
-                <small className="hf-dica">The LoRA must be made for this model (an SDXL LoRA won't work on Z-Image). Add its trigger word to the prompt if it has one.</small>
-              </>) : (
-                <small className="hf-dica">{loras.length ? "Your LoRAs from ComfyUI's models/loras folder." : "No LoRAs found. Put .safetensors files in ComfyUI's models/loras folder."}</small>
-              )}
-            </div>
-          )}
+          {campoLora}
           <Chips rotulo="Aspect ratio" opcoes={PROPORCOES.map((p) => ({ id: p, rotulo: p }))} valor={proporcao} aoMudar={setProporcao} />
           {!(comRefs && !apiAtual) && <Chips rotulo="Images" opcoes={[1, 2, 4].map((n) => ({ id: n, rotulo: `×${n}` }))} valor={lote} aoMudar={setLote} />}
           {flux3Local && versoesVisiveis(versoes.flux3).length > 1 && (

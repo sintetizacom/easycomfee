@@ -1,3 +1,4 @@
+import { useLora } from './CampoLora'
 import { useEffect, useRef, useState } from 'react'
 import { useReusarPrompt } from './Visualizador'
 import { AvisoInstalar, GruposAbertos, useEscolha, useValor, useFaltaInstalar } from './motor'
@@ -126,6 +127,9 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
   const proporcoes = gApi ? (gApi.proporcoes ?? []).filter((p) => p !== 'adaptive') : ['16:9', '9:16', '1:1']
   // H3 na placa: so 480p e ate 5 s, o que foi medido numa placa de 16 GB (guia de 03/11/2026).
   const h3Local = motor === 'minimax' && !naNuvem
+  // LoRA do usuario: so nos videos da placa (LTX 2.5, MiniMax H3 e os leves), nunca na nuvem.
+  const videoLocal = !naNuvem && !apiGeradores.some((g) => g.id === motor) && (motor === 'ltx' || motor === 'minimax' || !!LEVES[motor])
+  const { campos: camposLora, campo: campoLora } = useLora(videoLocal, 'an LTX 2.3 LoRA may not work on LTX 2.5')
   const resolucoes = gApi ? (gApi.resolucoes ?? ['720p']) : leve ? leve.resolucoes : motor === 'minimax' ? ['480p', '720p'] : ['480p', '720p', '1080p']
   const proporcaoOk = proporcoes.includes(proporcao) ? proporcao : proporcoes[0]
   const resolucaoOk = resolucoes.includes(resolucao) ? resolucao : resolucoes[Math.min(1, resolucoes.length - 1)]
@@ -204,6 +208,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
         proporcao_video: proporcaoOk, resolucao_video: resolucaoOk, duracao_video: duracaoOk, com_audio: audio,
         referencias: ehChaves ? chavesOk.map((c) => c.img!.nome) : nomesRefs,
         ...(gApi ? {} : camposAjustes(ajustes, false)),
+        ...camposLora,
         ...(ehRef && motor === 'ltx' && fundo ? { fundo_referencia: fundo.nome } : {}),
         ...(ehChaves ? { quadros_referencias: chavesOk.map((c) => quadroChave(c.seg, duracaoOk) + 1), forca_chaves: forcaChaves } : {}),
       } as Parameters<typeof api.gerar>[0])
@@ -263,6 +268,7 @@ export default function AbaVideo({ apiGeradores = [], apiOcultos = [], naNuvem =
             <Chips rotulo="Speed" opcoes={[{ id: 1, rotulo: 'Turbo · 8 steps' }, { id: 0, rotulo: 'Quality · 40 steps' }]}
               valor={turbo ? 1 : 0} aoMudar={(v) => setTurbo(v === 1)} />
           ))}
+          {campoLora}
           </div>
         {apiOculta && <p className="hf-erro" role="alert">{apiOculta.rotulo.replace(/ \((API|nuvem)\)$/, '')} is a paid API model. To use it, turn on "Paid API models" in Comfy Cloud API (the balance at the top right). Showing LTX 2.5 instead.</p>}
         {indisponivel && soLocal && <p className="hf-erro" role="alert">{`${LEVES[escolhido].rotulo} runs only on your GPU: pick it under "Local" in the model menu to switch. Showing LTX 2.5 on Comfy Cloud instead.`}</p>}

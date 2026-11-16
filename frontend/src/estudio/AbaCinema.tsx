@@ -1,3 +1,4 @@
+import { useLora } from './CampoLora'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { abrirVisualizador, useReusarPrompt } from './Visualizador'
@@ -179,6 +180,10 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
   const castOk = cast.slice(0, maxCast)
   const refVideo = video && castOk.length > 0
   const local = video ? !gApi : !apiAtual
+  // LoRA do usuario, uma para imagem e outra para video (familias diferentes): so na placa,
+  // e na imagem so sem elenco (com elenco o pedido vai no modo de referencia).
+  const loraImg = useLora(!video && !naNuvem && !apiAtual && castOk.length === 0)
+  const loraVid = useLora(video && !naNuvem && !gApi, 'an LTX 2.3 LoRA may not work on LTX 2.5')
   const seed = local && ajustes.seed ? Number(ajustes.seed) : seedSorteada
   const duracaoDe = (p: Plano) => Math.max(dMin, Math.min(dMax, p.duracao ?? duracao))
   const pedidoVideo = {
@@ -187,6 +192,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
     duracao_video: Math.max(dMin, Math.min(dMax, duracao)), com_audio: audio,
     referencias: refVideo ? castOk.map((r) => r.nome) : [],
     ...(gApi ? {} : { ...camposAjustes(ajustes, false), seed }),
+    ...loraVid.campos,
   }
   // Flux 3 na placa: o tamanho padrao e ~1 MP (1344x768 no 16:9). "2 MP" usa a escala do servidor
   // (x1,4) e "4K" o modo nativo (~8,3 MP, uns 7,5 min em 16 GB), so sem imagens de referencia.
@@ -198,6 +204,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
     referencias: castOk.map((r) => r.nome), seed, ...extraApi,
     ...(flux3Local ? (tamanhoOk === 'alta' ? { escala: 1.4 } : tamanhoOk === '4k' ? { nativo_4k: true } : {}) : {}),
     ...(apiAtual ? {} : { ...camposAjustes(ajustes, true), seed }),
+    ...loraImg.campos,
   }
 
   const custo = useCusto(video ? { ...pedidoVideo, prompt: 'x' } : { ...pedidoImagem, prompt: 'x' })
@@ -499,6 +506,7 @@ export default function AbaCinema({ modelos: todos, apiModelos = [], apiGeradore
                 <GruposAbertos itens={modelos.map((m) => ({ id: m.id, rotulo: m.rotulo, nuvem: m.nuvem }))} api={apiModelos} />
               </select></label>
             )}
+            {video ? loraVid.campo : loraImg.campo}
           </div>
           <Controle icone="▭" rotulo="Aspect" valor={escolherDe(proporcoes, proporcao)} aoMudar={setProporcao}
             opcoes={proporcoes.map((x) => ({ id: x, rotulo: x }))} />

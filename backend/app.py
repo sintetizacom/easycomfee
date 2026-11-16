@@ -803,11 +803,17 @@ async def loras_locais() -> list[str]:
     return list(campo[0]) if campo and isinstance(campo[0], list) else []
 
 
+# Videos locais que aceitam a LoRA do usuario (aba Video e Cinema): o LTX 2.5 (id "ltx"),
+# o LTX 2.3, o MiniMax H3 na placa e os leves. Os de nuvem nao veem as LoRAs do PC.
+VIDEO_COM_LORA = {"ltx", "ltx23", "minimax"} | set(videos_leves.VIDEO_LEVES)
+
+
 async def _aplicar_lora_usuario(g: dict, p) -> None:
     """A LoRA escolhida na aba Image: so nos modelos locais da aba (presets.SIMPLE)."""
     if not p.lora:
         return
-    if p.modelo not in presets.SIMPLE or comfy.na_nuvem():
+    video_local = p.modelo == "video" and p.modelo_video in VIDEO_COM_LORA
+    if (p.modelo not in presets.SIMPLE and not video_local) or comfy.na_nuvem():
         raise ValueError("LoRAs only work with local models (your GPU).")
     # So nomes que o proprio ComfyUI lista: nada de caminho digitado.
     if p.lora not in await loras_locais():
