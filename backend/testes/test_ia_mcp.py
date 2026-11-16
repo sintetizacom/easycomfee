@@ -88,3 +88,21 @@ def test_maximo_da_estimativa():
     assert app._maximo({"tipo": "api", "min": 0.1, "max": 0.3}) == (0.3, True)
     assert app._maximo({"tipo": "gpu", "usd": 0.05}) == (0.05, True)
     assert app._maximo({"tipo": "desconhecido"})[1] is False
+
+
+def test_limite_de_gasto_so_muda_pela_janela_do_app(tmp_path, monkeypatch):
+    """Um curl ou uma IA com terminal nao manda Sec-Fetch-Site; so a pagina do app manda."""
+    from fastapi.testclient import TestClient
+    import app as A
+    import comfy
+    monkeypatch.setattr(comfy, "PREFERENCIAS", tmp_path / "preferencias.json")  # nao toca no real
+    monkeypatch.setitem(comfy.MODO, "ia_usd", 0.0)
+    c = TestClient(A.app, base_url="http://127.0.0.1:8600")
+    r = c.post("/api/ia-mcp/limite", json={"usd": 5})
+    assert r.status_code == 403 and comfy.ia_limite_usd() == 0.0
+    r = c.post("/api/ia-mcp/limite", json={"usd": 5}, headers={"Sec-Fetch-Site": "none"})
+    assert r.status_code == 403 and comfy.ia_limite_usd() == 0.0
+    r = c.post("/api/ia-mcp/limite", json={"usd": 0.25}, headers={"Sec-Fetch-Site": "same-origin"})
+    assert r.status_code == 200 and comfy.ia_limite_usd() == 0.25
+    r = c.post("/api/ia-mcp/instalar", json={"clientes": []})
+    assert r.status_code == 403

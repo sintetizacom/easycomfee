@@ -2901,14 +2901,25 @@ async def limite_ia_mcp():
     return {"usd": comfy.ia_limite_usd()}
 
 
+def _so_da_janela(request: Request, o_que: str) -> None:
+    """Recusa quem nao e a pagina do app. O navegador marca sozinho `Sec-Fetch-Site: same-origin`
+    nos pedidos da propria pagina; curl, scripts e uma IA com terminal nao mandam isso. Nao e uma
+    barreira absoluta (o cabecalho pode ser forjado de proposito), mas impede que uma IA suba o
+    proprio limite de gasto sem querer, so rodando um comando."""
+    if request.headers.get("sec-fetch-site") != "same-origin":
+        raise HTTPException(403, f"{o_que} can only be changed from the EasyComfee window.")
+
+
 @app.post("/api/ia-mcp/limite")
-async def mudar_limite_ia_mcp(p: PedidoLimiteIA):
+async def mudar_limite_ia_mcp(request: Request, p: PedidoLimiteIA):
+    _so_da_janela(request, "The AI spending limit")
     comfy.escolher_ia_limite(p.usd)
     return {"usd": comfy.ia_limite_usd()}
 
 
 @app.post("/api/ia-mcp/instalar")
-async def instalar_ia_mcp(p: PedidoBridge):
+async def instalar_ia_mcp(request: Request, p: PedidoBridge):
+    _so_da_janela(request, "Connecting an AI app")
     if not ia_mcp.PASTA.is_dir():
         raise HTTPException(404, "The easycomfee-mcp folder is missing from this install.")
     if not ia_mcp.instalar(p.clientes):
